@@ -7,9 +7,11 @@ export interface Page {
   updated_at: string
 }
 
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock'
+
 export interface Widget {
   id: string
-  type: 'bookmark' | 'weather' | 'ai-chat' | 'clock'
+  type: WidgetType
   page_id: string
   order: number
   title: string

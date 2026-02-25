@@ -8,33 +8,60 @@ import { AIChatWidget } from '../widgets/AIChatWidget'
 interface WidgetCardProps {
   widget: Widget
   onEdit?: (widgetId: string) => void
+  onEditTitle?: (widgetId: string) => void
   onDelete?: (widgetId: string) => void
+  onConfigChange?: (widgetId: string, newConfig: any) => void
   editingWidgetId?: string | null
   editingWidgetTitle?: string
   onTitleChange?: (widgetId: string, newTitle: string) => void
   onSaveTitle?: (widgetId: string) => void
   onTitleKeyDown?: (e: React.KeyboardEvent, widgetId: string) => void
+  // Drag and drop props
+  draggedWidgetId?: string | null
+  dragOverWidgetId?: string | null
+  onDragStart?: (widgetId: string) => void
+  onDragOver?: (widgetId: string) => void
+  onDragLeave?: () => void
+  onDrop?: () => void
+  onDragEnd?: () => void
 }
 
 export function WidgetCard({
   widget,
   onEdit,
+  onEditTitle,
   onDelete,
+  onConfigChange,
   editingWidgetId,
   editingWidgetTitle = '',
   onTitleChange,
   onSaveTitle,
-  onTitleKeyDown
+  onTitleKeyDown,
+  draggedWidgetId,
+  dragOverWidgetId,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd
 }: WidgetCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const isEditing = editingWidgetId === widget.id
+  const isDragging = draggedWidgetId === widget.id
+  const isDragOver = dragOverWidgetId === widget.id && !isDragging
 
   const renderWidget = () => {
     switch (widget.type) {
       case 'clock':
         return <ClockWidget title={widget.title} config={widget.config as any} />
       case 'bookmark':
-        return <BookmarkWidget title={widget.title} config={widget.config as any} />
+        return (
+          <BookmarkWidget
+            title={widget.title}
+            config={widget.config as any}
+            onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+          />
+        )
       case 'weather':
         return <WeatherWidget title={widget.title} config={widget.config as any} />
       case 'ai-chat':
@@ -65,10 +92,38 @@ export function WidgetCard({
   }
 
   return (
-    <div className="group relative border border-border rounded-card bg-surface shadow-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+    <div
+      draggable={!isEditing}
+      onDragStart={() => onDragStart?.(widget.id)}
+      onDragOver={(e) => {
+        e.preventDefault()
+        onDragOver?.(widget.id)
+      }}
+      onDragLeave={() => onDragLeave?.()}
+      onDrop={(e) => {
+        e.preventDefault()
+        onDrop?.()
+      }}
+      onDragEnd={() => onDragEnd?.()}
+      className={`
+        group relative border border-border rounded-card bg-surface
+        transition-all duration-200 overflow-hidden
+        ${isDragging ? 'opacity-50 scale-95 shadow-lg' : 'shadow-card hover:shadow-card-hover'}
+        ${isDragOver ? 'border-primary border-2 shadow-md scale-[1.02]' : ''}
+      `}
+    >
+      {/* Drag Handle - visible on hover */}
+      {!isEditing && (
+        <div className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg className="w-5 h-5 text-text-secondary" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+          </svg>
+        </div>
+      )}
+
       {/* Widget Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface">
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 pl-6">
           <span className="text-lg">{getWidgetIcon()}</span>
           {isEditing ? (
             <input
@@ -103,13 +158,22 @@ export function WidgetCard({
               </svg>
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-32 bg-background border border-border rounded-card shadow-lg z-10">
+              <div className="absolute right-0 mt-1 w-40 bg-background border border-border rounded-card shadow-lg z-10">
                 <button
                   onClick={() => {
                     onEdit?.(widget.id)
                     setShowMenu(false)
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-surface transition-colors"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-surface transition-colors flex items-center gap-2"
+                >
+                  ⚙️ Configure
+                </button>
+                <button
+                  onClick={() => {
+                    onEditTitle?.(widget.id)
+                    setShowMenu(false)
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-surface transition-colors flex items-center gap-2"
                 >
                   ✏️ Edit Title
                 </button>
@@ -118,7 +182,7 @@ export function WidgetCard({
                     onDelete?.(widget.id)
                     setShowMenu(false)
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-surface text-red-500 transition-colors"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-surface text-red-500 transition-colors flex items-center gap-2"
                 >
                   🗑️ Delete
                 </button>

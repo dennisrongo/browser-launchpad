@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { pagesStorage, verifyStorageConnection } from './services/storage'
-import { WidgetTypeSelector, WidgetType } from './components/WidgetTypeSelector'
+import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
-import type { Widget } from './types'
+import { WidgetConfigModal } from './components/WidgetConfigModal'
+import type { Widget, WidgetType } from './types'
 
 const MAX_PAGES = 10
 
@@ -49,6 +50,10 @@ function App() {
   const [showWidgetDeleteConfirm, setShowWidgetDeleteConfirm] = useState(false)
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
   const [editingWidgetTitle, setEditingWidgetTitle] = useState('')
+  const [showWidgetConfigModal, setShowWidgetConfigModal] = useState(false)
+  const [configuringWidget, setConfiguringWidget] = useState<Widget | null>(null)
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null)
+  const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null)
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -416,8 +421,54 @@ function App() {
     const widget = currentPage.widgets.find((w: Widget) => w.id === widgetId)
     if (!widget) return
 
+    setConfiguringWidget(widget)
+    setShowWidgetConfigModal(true)
+  }
+
+  const handleEditWidgetTitle = (widgetId: string) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const widget = currentPage.widgets.find((w: Widget) => w.id === widgetId)
+    if (!widget) return
+
     setEditingWidgetId(widgetId)
     setEditingWidgetTitle(widget.title)
+  }
+
+  const handleSaveWidgetConfig = async (widgetId: string, newConfig: any, newTitle: string) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const updatedWidgets = currentPage.widgets.map((w: Widget) =>
+      w.id === widgetId
+        ? { ...w, title: newTitle, config: newConfig }
+        : w
+    )
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widget configuration updated in Chrome storage')
+    } else {
+      console.error('Failed to update widget configuration:', result.error)
+    }
+
+    setShowWidgetConfigModal(false)
+    setConfiguringWidget(null)
+  }
+
+  const handleCancelWidgetConfig = () => {
+    setShowWidgetConfigModal(false)
+    setConfiguringWidget(null)
   }
 
   const handleSaveWidgetTitle = async (widgetId: string) => {
@@ -466,6 +517,104 @@ function App() {
     } else if (e.key === 'Escape') {
       handleCancelWidgetEdit()
     }
+  }
+
+  const handleWidgetConfigChange = async (widgetId: string, newConfig: any) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const updatedWidgets = currentPage.widgets.map((w: Widget) =>
+      w.id === widgetId
+        ? { ...w, config: newConfig }
+        : w
+    )
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widget config updated in Chrome storage')
+    } else {
+      console.error('Failed to update widget config:', result.error)
+    }
+  }
+
+  // Widget Drag and Drop Handlers
+  const handleWidgetDragStart = (widgetId: string) => {
+    setDraggedWidgetId(widgetId)
+  }
+
+  const handleWidgetDragOver = (targetWidgetId: string) => {
+    // Don't show drag over if hovering over the dragged widget itself
+    if (draggedWidgetId && draggedWidgetId !== targetWidgetId) {
+      setDragOverWidgetId(targetWidgetId)
+    }
+  }
+
+  const handleWidgetDragLeave = () => {
+    // Clear drag over state when leaving a widget
+    setDragOverWidgetId(null)
+  }
+
+  const handleWidgetDrop = async () => {
+    if (!draggedWidgetId || !dragOverWidgetId) return
+    if (draggedWidgetId === dragOverWidgetId) {
+      setDragOverWidgetId(null)
+      return
+    }
+
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const widgets = [...currentPage.widgets]
+    const draggedIndex = widgets.findIndex((w: Widget) => w.id === draggedWidgetId)
+    const targetIndex = widgets.findIndex((w: Widget) => w.id === dragOverWidgetId)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedWidgetId(null)
+      setDragOverWidgetId(null)
+      return
+    }
+
+    // Remove dragged widget and insert at new position
+    const [draggedWidget] = widgets.splice(draggedIndex, 1)
+    widgets.splice(targetIndex, 0, draggedWidget)
+
+    // Update order field for all widgets
+    widgets.forEach((w: Widget, index: number) => {
+      w.order = index
+    })
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widgets reordered in Chrome storage')
+    } else {
+      console.error('Failed to reorder widgets:', result.error)
+    }
+
+    setDraggedWidgetId(null)
+    setDragOverWidgetId(null)
+  }
+
+  const handleWidgetDragEnd = () => {
+    setDraggedWidgetId(null)
+    setDragOverWidgetId(null)
   }
 
   return (
@@ -642,12 +791,21 @@ function App() {
                     key={widget.id}
                     widget={widget}
                     onEdit={handleEditWidget}
+                    onEditTitle={handleEditWidgetTitle}
                     onDelete={handleDeleteWidget}
+                    onConfigChange={handleWidgetConfigChange}
                     editingWidgetId={editingWidgetId}
                     editingWidgetTitle={editingWidgetTitle}
                     onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
                     onSaveTitle={handleSaveWidgetTitle}
                     onTitleKeyDown={handleWidgetTitleKeyDown}
+                    draggedWidgetId={draggedWidgetId}
+                    dragOverWidgetId={dragOverWidgetId}
+                    onDragStart={handleWidgetDragStart}
+                    onDragOver={handleWidgetDragOver}
+                    onDragLeave={handleWidgetDragLeave}
+                    onDrop={handleWidgetDrop}
+                    onDragEnd={handleWidgetDragEnd}
                   />
                 ))}
               </div>
@@ -661,6 +819,14 @@ function App() {
         isOpen={showWidgetSelector}
         onSelect={handleSelectWidgetType}
         onCancel={handleCancelWidgetSelector}
+      />
+
+      {/* Widget Configuration Modal */}
+      <WidgetConfigModal
+        isOpen={showWidgetConfigModal}
+        widget={configuringWidget}
+        onSave={handleSaveWidgetConfig}
+        onCancel={handleCancelWidgetConfig}
       />
 
       {/* Widget Delete Confirmation Modal */}
