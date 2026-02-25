@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { pagesStorage, verifyStorageConnection } from './services/storage'
 
+const MAX_PAGES = 10
+
 function App() {
   const [pages, setPages] = useState<any[]>([])
   const [activePage, setActivePage] = useState(0)
@@ -9,6 +11,7 @@ function App() {
   const [editingPageName, setEditingPageName] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [pageToDelete, setPageToDelete] = useState<string | null>(null)
+  const [showLimitMessage, setShowLimitMessage] = useState(false)
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -223,17 +226,62 @@ function App() {
         {/* Page Navigation */}
         <div className="flex gap-2 mt-4">
           {pages.map((page, index) => (
-            <button
+            <div
               key={page.id}
-              onClick={() => setActivePage(index)}
-              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out ${
+              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out ${
                 activePage === index
                   ? 'bg-primary text-white font-semibold shadow-md'
                   : 'bg-background text-text hover:bg-surface'
               }`}
             >
-              {page.name}
-            </button>
+              {editingPageId === page.id ? (
+                <input
+                  type="text"
+                  value={editingPageName}
+                  onChange={(e) => setEditingPageName(e.target.value)}
+                  onKeyDown={(e) => handleRenameKeyDown(e, page.id)}
+                  onBlur={() => handleSaveRename(page.id)}
+                  className="px-3 py-2 bg-white text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                  maxLength={50}
+                />
+              ) : (
+                <>
+                  <button
+                    onClick={() => setActivePage(index)}
+                    onDoubleClick={() => handleStartRename(page.id, page.name)}
+                    className="px-4 py-2 min-w-[80px]"
+                  >
+                    {page.name}
+                  </button>
+                  {/* Action buttons - shown on hover */}
+                  <div className="absolute right-0 top-0 hidden group-hover:flex items-center h-full">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStartRename(page.id, page.name)
+                      }}
+                      className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors"
+                      title="Rename page (double-click)"
+                    >
+                      ✏️
+                    </button>
+                    {pages.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStartDelete(page.id)
+                        }}
+                        className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors hover:text-red-500"
+                        title="Delete page"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           ))}
           <button
             onClick={handleAddPage}
@@ -242,6 +290,35 @@ function App() {
             + Add Page
           </button>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-2">Delete Page?</h3>
+              <p className="text-text-secondary mb-6">
+                Are you sure you want to delete this page? This action cannot be undone.
+                {pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets &&
+                  pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets.length > 0 &&
+                  ' All widgets on this page will also be deleted.'}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleCancelDelete}
+                  className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600"
+                >
+                  Delete Page
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="p-6">
