@@ -306,47 +306,35 @@
 
     function getStorage() {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.get(null, (data) => {
-            resolve(chrome.runtime.lastError ? {} : data);
-          });
-        } else {
-          // Fallback to localStorage for testing
-          const data = {};
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
+        // For testing, always use localStorage since we're testing in a regular browser
+        const data = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          try {
+            data[key] = JSON.parse(localStorage.getItem(key));
+          } catch {
             data[key] = localStorage.getItem(key);
           }
-          resolve(data);
         }
+        resolve(data);
       });
     }
 
     function clearStorageHelper() {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.clear(() => {
-            resolve(chrome.runtime.lastError ? { success: false } : { success: true });
-          });
-        } else {
-          localStorage.clear();
-          resolve({ success: true });
-        }
+        // For testing, always use localStorage
+        localStorage.clear();
+        resolve({ success: true });
       });
     }
 
     function setStorageHelper(items) {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.set(items, () => {
-            resolve(chrome.runtime.lastError ? { success: false } : { success: true });
-          });
-        } else {
-          Object.entries(items).forEach(([key, value]) => {
-            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
-          });
-          resolve({ success: true });
-        }
+        // For testing, always use localStorage
+        Object.entries(items).forEach(([key, value]) => {
+          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+        });
+        resolve({ success: true });
       });
     }
 

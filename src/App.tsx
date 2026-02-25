@@ -4,6 +4,8 @@ import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
 import { SettingsModal } from './components/SettingsModal'
+import { Header } from './components/Header'
+import { MainContainer } from './components/MainContainer'
 import type { Widget, WidgetType, Settings } from './types'
 
 const MAX_PAGES = 10
@@ -826,23 +828,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-text">
-      <header className="border-b border-border bg-surface px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-primary">Browser Launchpad</h1>
-            {storageVerified && (
-              <span className="text-xs text-green-500">✓ Chrome Storage Connected</span>
-            )}
-          </div>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
-            title="Open settings"
-          >
-            <span className="text-lg">⚙️</span>
-            <span>Settings</span>
-          </button>
-        </div>
+      <Header
+        storageVerified={storageVerified}
+        onSettingsClick={() => setShowSettings(true)}
+      >
         {/* Page Navigation */}
         <div className="flex gap-2 mt-4">
           {pages.map((page, index) => (
@@ -970,9 +959,9 @@ function App() {
             </div>
           </div>
         )}
-      </header>
+      </Header>
 
-      <main className="p-6">
+      <MainContainer>
         <div className="animate-fade-in" key={pages[activePage]?.id}>
           {pages[activePage] && pages[activePage].widgets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -1039,7 +1028,7 @@ function App() {
             </>
           )}
         </div>
-      </main>
+      </MainContainer>
 
       {/* Widget Type Selector Modal */}
       <WidgetTypeSelector
