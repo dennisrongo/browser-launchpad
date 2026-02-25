@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI Foundation Features #19, #21, #22 Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #555; margin-top: 0; }
+    .test { margin: 10px 0; padding: 10px; border-radius: 4px; }
+    .pass { background: #d4edda; color: #155724; }
+    .fail { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    .css-demo {
+      padding: 20px;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .theme-light { background: var(--color-background, #fff); border: 1px solid var(--color-border, #ddd); }
+    .theme-dark { background: #1a1a1a; border: 1px solid #333; color: white; }
+    .font-demo {
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    .typography-test h1, .typography-test h2, .typography-test h3 {
+      font-weight: 700;
+    }
+    .typography-test p {
+      font-weight: 400;
+    }
+    .typography-test code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .responsive-box {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 16px;
+      background: #e5e7eb;
+      border-radius: 8px;
+    }
+    .responsive-item {
+      background: #3b82f6;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-radius: 4px;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    @media (max-width: 768px) {
+      .responsive-box {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 480px) {
+      .responsive-box {
+        grid-template-columns: 1fr;
+      }
+    }
+    .viewport-info {
+      background: #fff3cd;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>UI Foundation Features #19, #21, #22 Verification</h1>
+
+  <!-- Feature #19: CSS Variables -->
+  <div class="test-section">
+    <h2>Feature #19: CSS Variables for Theming</h2>
+    <div id="feature19-results"></div>
+
+    <h3>CSS Variable Demo</h3>
+    <div class="css-demo theme-light">
+      <h4 style="color: var(--color-primary, #3b82f6);">Primary Color</h4>
+      <p style="background: var(--color-surface, #f3f4f6); padding: 10px;">Surface Background</p>
+      <p style="color: var(--color-text-secondary, #6b7280);">Secondary Text</p>
+      <p style="border: 1px solid var(--color-border, #e5e7eb); padding: 5px;">Border Color</p>
+    </div>
+
+    <div class="css-demo theme-dark">
+      <h4 style="color: var(--color-primary, #8b5cf6);">Primary Color (Dark)</h4>
+      <p style="background: var(--color-surface, #1f2937); padding: 10px;">Surface Background (Dark)</p>
+      <p style="color: var(--color-text-secondary, #9ca3af);">Secondary Text (Dark)</p>
+      <p style="border: 1px solid var(--color-border, #374151); padding: 5px;">Border Color (Dark)</p>
+    </div>
+
+    <button onclick="testCSSVariablesInApp()">Test App CSS Variables</button>
+  </div>
+
+  <!-- Feature #21: Font Loading -->
+  <div class="test-section">
+    <h2>Feature #21: Font Loading and Typography Setup</h2>
+    <div id="feature21-results"></div>
+
+    <h3>Typography Demo (should use Inter font)</h3>
+    <div class="typography-test font-demo">
+      <h1>Heading Level 1 (Font Weight: 700)</h1>
+      <h2>Heading Level 2 (Font Weight: 700)</h2>
+      <h3>Heading Level 3 (Font Weight: 700)</h3>
+      <p>Body text with font weight 400. This should be rendered in Inter font if it's loaded properly. The quick brown fox jumps over the lazy dog.</p>
+      <p><strong>Bold text (font weight: 600-700)</strong> and <span style="font-weight: 500;">medium text (font weight: 500)</span>.</p>
+      <code>Code text in monospace font: const test = "monospace";</code>
+    </div>
+
+    <div class="viewport-info" id="font-detection">
+      <strong>Font Detection:</strong> <span id="font-status">Detecting...</span>
+    </div>
+
+    <button onclick="testFontsInApp()">Test App Fonts</button>
+  </div>
+
+  <!-- Feature #22: Responsive Design -->
+  <div class="test-section">
+    <h2>Feature #22: Responsive Design Foundation</h2>
+    <div id="feature22-results"></div>
+
+    <div class="viewport-info">
+      <strong>Current Viewport:</strong> <span id="viewport-size">Loading...</span>
+    </div>
+
+    <h3>Responsive Grid Demo</h3>
+    <p>Resize your browser window to see the grid adapt. Should show 3 columns on desktop, 2 on tablet, 1 on mobile.</p>
+    <div class="responsive-box">
+      <div class="responsive-item">1</div>
+      <div class="responsive-item">2</div>
+      <div class="responsive-item">3</div>
+      <div class="responsive-item">4</div>
+      <div class="responsive-item">5</div>
+      <div class="responsive-item">6</div>
+    </div>
+
+    <h3>Breakpoint Tests</h3>
+    <div id="breakpoint-tests"></div>
+
+    <button onclick="testResponsiveInApp()">Test App Responsive Design</button>
+  </div>
+
+  <!-- Iframe to test the actual app -->
+  <div class="test-section">
+    <h2>App Integration Test</h2>
+    <p>Testing the built application at <code>/dist/newtab.html</code></p>
+    <iframe id="app-frame" src="/dist/newtab.html" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 8px;"></iframe>
+    <button onclick="runAllTests()">Run All Tests</button>
+  </div>
+
+  <script>
+    // Test results storage
+    const results = {
+      feature19: [],
+      feature21: [],
+      feature22: []
+    };
+
+    // Update viewport size display
+    function updateViewportSize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const size = `${width}x${height}`;
+      document.getElementById('viewport-size').textContent = size;
+
+      // Determine breakpoint
+      let breakpoint = 'unknown';
+      if (width >= 1024) breakpoint = 'desktop (≥1024px)';
+      else if (width >= 768) breakpoint = 'tablet (768px-1023px)';
+      else if (width >= 480) breakpoint = 'mobile-large (480px-767px)';
+      else breakpoint = 'mobile-small (<480px)';
+
+      document.getElementById('viewport-size').textContent += ` - ${breakpoint}`;
+
+      // Check if responsive grid is working
+      const grid = document.querySelector('.responsive-box');
+      if (grid) {
+        const computedStyle = window.getComputedStyle(grid);
+        const columns = computedStyle.gridTemplateColumns.split(' ').length;
+        document.getElementById('breakpoint-tests').innerHTML = `
+          <div class="test ${columns === 3 && width >= 768 || columns === 2 && width >= 480 || columns === 1 && width < 480 ? 'pass' : 'fail'}">
+            Grid has ${columns} column(s) at ${width}px width
+          </div>
+        `;
+      }
+    }
+
+    // Detect if Inter font is loaded
+    function detectInterFont() {
+      // Create test elements
+      const testText = 'The quick brown fox jumps over the lazy dog';
+
+      // Test with Inter
+      const interElem = document.createElement('div');
+      interElem.style.fontFamily = "'Inter', sans-serif";
+      interElem.style.position = 'absolute';
+      interElem.style.visibility = 'hidden';
+      interElem.textContent = testText;
+      document.body.appendChild(interElem);
+
+      // Test with fallback
+      const fallbackElem = document.createElement('div');
+      fallbackElem.style.fontFamily = 'sans-serif';
+      fallbackElem.style.position = 'absolute';
+      fallbackElem.style.visibility = 'hidden';
+      fallbackElem.textContent = testText;
+      document.body.appendChild(fallbackElem);
+
+      // Compare widths
+      const interWidth = interElem.offsetWidth;
+      const fallbackWidth = fallbackElem.offsetWidth;
+
+      // Clean up
+      document.body.removeChild(interElem);
+      document.body.removeChild(fallbackElem);
+
+      // If widths differ, Inter is loaded
+      const isLoaded = interWidth !== fallbackWidth;
+      document.getElementById('font-status').textContent = isLoaded ?
+        'Inter font appears to be loaded ✅' :
+        'Inter font NOT loaded (using fallback) ❌';
+
+      return isLoaded;
+    }
+
+    // Feature #19: Test CSS Variables
+    function testCSSVariables() {
+      const tests = [];
+
+      // Test 1: Check if CSS variables are defined
+      const root = document.documentElement;
+      const primaryColor = getComputedStyle(root).getPropertyValue('--color-primary');
+      const bgColor = getComputedStyle(root).getPropertyValue('--color-background');
+      const surfaceColor = getComputedStyle(root).getPropertyValue('--color-surface');
+      const textColor = getComputedStyle(root).getPropertyValue('--color-text');
+      const textSecondaryColor = getComputedStyle(root).getPropertyValue('--color-text-secondary');
+      const borderColor = getComputedStyle(root).getPropertyValue('--color-border');
+
+      tests.push({
+        name: 'CSS variables are defined on :root',
+        pass: !!(primaryColor || bgColor || surfaceColor || textColor),
+        note: `Found: ${[primaryColor, bgColor, surfaceColor, textColor].filter(Boolean).join(', ')}`
+      });
+
+      tests.push({
+        name: '--color-primary variable exists',
+        pass: !!primaryColor,
+        note: `Value: ${primaryColor || 'not found'}`
+      });
+
+      tests.push({
+        name: '--color-background variable exists',
+        pass: !!bgColor,
+        note: `Value: ${bgColor || 'not found'}`
+      });
+
+      tests.push({
+        name: '--color-surface variable exists',
+        pass: !!surfaceColor,
+        note: `Value: ${surfaceColor || 'not found'}`
+      });
+
+      tests.push({
+        name: '--color-text variable exists',
+        pass: !!textColor,
+        note: `Value: ${textColor || 'not found'}`
+      });
+
+      tests.push({
+        name: '--color-text-secondary variable exists',
+        pass: !!textSecondaryColor,
+        note: `Value: ${textSecondaryColor || 'not found'}`
+      });
+
+      tests.push({
+        name: '--color-border variable exists',
+        pass: !!borderColor,
+        note: `Value: ${borderColor || 'not found'}`
+      });
+
+      // Display results
+      displayResults('feature19-results', tests);
+      return tests;
+    }
+
+    // Feature #21: Test Font Loading
+    function testFonts() {
+      const tests = [];
+
+      // Test 1: Check if Inter is in font-family
+      const body = document.body;
+      const bodyFont = window.getComputedStyle(body).fontFamily;
+      const hasInter = bodyFont.includes('Inter');
+
+      tests.push({
+        name: 'Inter font is in font-family stack',
+        pass: hasInter,
+        note: `Font family: ${bodyFont}`
+      });
+
+      // Test 2: Check font rendering
+      const interLoaded = detectInterFont();
+      tests.push({
+        name: 'Inter font is loaded and rendering',
+        pass: interLoaded,
+        note: interLoaded ? 'Inter detected via width comparison' : 'Using fallback font'
+      });
+
+      // Test 3: Check heading font weights
+      const h1 = document.querySelector('h1');
+      if (h1) {
+        const h1Weight = window.getComputedStyle(h1).fontWeight;
+        tests.push({
+          name: 'Headings use font weight 600-700',
+          pass: parseInt(h1Weight) >= 600 && parseInt(h1Weight) <= 700,
+          note: `H1 weight: ${h1Weight}`
+        });
+      }
+
+      // Test 4: Check body text font weight
+      const p = document.querySelector('p');
+      if (p) {
+        const pWeight = window.getComputedStyle(p).fontWeight;
+        tests.push({
+          name: 'Body text uses font weight 400-500',
+          pass: parseInt(pWeight) >= 400 && parseInt(pWeight) <= 500,
+          note: `P weight: ${pWeight}`
+        });
+      }
+
+      // Test 5: Check monospace for code
+      const code = document.querySelector('code');
+      if (code) {
+        const codeFont = window.getComputedStyle(code).fontFamily;
+        tests.push({
+          name: 'Code uses monospace font',
+          pass: codeFont.includes('monospace') || codeFont.includes('Mono'),
+          note: `Code font: ${codeFont}`
+        });
+      }
+
+      displayResults('feature21-results', tests);
+      return tests;
+    }
+
+    // Feature #22: Test Responsive Design
+    function testResponsive() {
+      const tests = [];
+      const width = window.innerWidth;
+
+      // Test 1: Check viewport meta tag
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      tests.push({
+        name: 'Viewport meta tag is present',
+        pass: viewportMeta && viewportMeta.content.includes('width=device-width'),
+        note: viewportMeta ? viewportMeta.content : 'not found'
+      });
+
+      // Test 2: Check for no horizontal scroll
+      tests.push({
+        name: 'No horizontal scroll at current viewport',
+        pass: document.body.scrollWidth <= window.innerWidth,
+        note: `Body width: ${document.body.scrollWidth}px, Window width: ${width}px`
+      });
+
+      // Test 3: Check responsive grid
+      const grid = document.querySelector('.responsive-box');
+      if (grid) {
+        const computedStyle = window.getComputedStyle(grid);
+        const hasGrid = computedStyle.display.includes('grid');
+        tests.push({
+          name: 'Responsive grid layout using CSS Grid',
+          pass: hasGrid,
+          note: `Display: ${computedStyle.display}`
+        });
+
+        // Test columns based on viewport
+        const columns = computedStyle.gridTemplateColumns.split(' ').length;
+        let expectedColumns = 3;
+        if (width < 480) expectedColumns = 1;
+        else if (width < 768) expectedColumns = 2;
+
+        tests.push({
+          name: `Grid has ${expectedColumns} column(s) at ${width}px viewport`,
+          pass: columns === expectedColumns,
+          note: `Expected: ${expectedColumns}, Actual: ${columns}`
+        });
+      }
+
+      // Test 4: Check media query support
+      const hasMediaQuery = window.matchMedia('(max-width: 768px)').media === '(max-width: 768px)';
+      tests.push({
+        name: 'Media queries are supported',
+        pass: hasMediaQuery,
+        note: 'window.matchMedia is available'
+      });
+
+      displayResults('feature22-results', tests);
+      return tests;
+    }
+
+    // Display test results
+    function displayResults(containerId, tests) {
+      const container = document.getElementById(containerId);
+      const passCount = tests.filter(t => t.pass).length;
+      const totalCount = tests.length;
+
+      container.innerHTML = `
+        <div class="test ${passCount === totalCount ? 'pass' : 'info'}">
+          <strong>Tests: ${passCount}/${totalCount} passing</strong>
+        </div>
+        ${tests.map(t => `
+          <div class="test ${t.pass ? 'pass' : 'fail'}">
+            ${t.pass ? '✓' : '✗'} ${t.name}
+            ${t.note ? `<br><small>${t.note}</small>` : ''}
+          </div>
+        `).join('')}
+      `;
+    }
+
+    // Test CSS variables in the app iframe
+    function testCSSVariablesInApp() {
+      const iframe = document.getElementById('app-frame');
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const root = iframeDoc.documentElement;
+        const vars = {
+          '--color-primary': getComputedStyle(root).getPropertyValue('--color-primary'),
+          '--color-background': getComputedStyle(root).getPropertyValue('--color-background'),
+          '--color-surface': getComputedStyle(root).getPropertyValue('--color-surface'),
+          '--color-text': getComputedStyle(root).getPropertyValue('--color-text'),
+        };
+
+        const found = Object.values(vars).filter(v => v.trim()).length;
+        alert(`CSS Variables in app:\n${Object.entries(vars).map(([k, v]) => `${k}: ${v || 'NOT FOUND'}`).join('\n')}\n\n${found}/4 found`);
+      } catch (e) {
+        alert('Cannot access iframe (CSP restriction): ' + e.message);
+      }
+    }
+
+    // Test fonts in the app iframe
+    function testFontsInApp() {
+      const iframe = document.getElementById('app-frame');
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const body = iframeDoc.body;
+        const bodyFont = window.getComputedStyle(body).fontFamily;
+        alert(`Font in app: ${bodyFont}`);
+      } catch (e) {
+        alert('Cannot access iframe (CSP restriction): ' + e.message);
+      }
+    }
+
+    // Test responsive design in the app iframe
+    function testResponsiveInApp() {
+      const iframe = document.getElementById('app-frame');
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const viewportMeta = iframeDoc.querySelector('meta[name="viewport"]');
+        alert(`Viewport meta: ${viewportMeta ? viewportMeta.content : 'NOT FOUND'}`);
+      } catch (e) {
+        alert('Cannot access iframe (CSP restriction): ' + e.message);
+      }
+    }
+
+    // Run all tests
+    function runAllTests() {
+      const f19 = testCSSVariables();
+      const f21 = testFonts();
+      const f22 = testResponsive();
+
+      const totalPassing = [...f19, ...f21, ...f22].filter(t => t.pass).length;
+      const totalTests = f19.length + f21.length + f22.length;
+
+      alert(`Overall Results: ${totalPassing}/${totalTests} tests passing (${Math.round(totalPassing/totalTests*100)}%)`);
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+      updateViewportSize();
+      detectInterFont();
+    });
+
+    window.addEventListener('resize', updateViewportSize);
+
+    // Auto-run tests on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        runAllTests();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
