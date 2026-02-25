@@ -12,11 +12,13 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
   const [newUrl, setNewUrl] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [newIcon, setNewIcon] = useState('🔗')
+  const [newCustomIcon, setNewCustomIcon] = useState<string | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null)
   const [editUrl, setEditUrl] = useState('')
   const [editTitle, setEditTitle] = useState('')
   const [editIcon, setEditIcon] = useState('')
+  const [editCustomIcon, setEditCustomIcon] = useState<string | null>(null)
 
   const bookmarks = config.bookmarks || []
 
@@ -69,6 +71,51 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     }
   }
 
+  // Handle custom icon upload
+  const handleIconUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 100KB to avoid storage issues)
+    if (file.size > 100 * 1024) {
+      alert('Image file too large. Please select an image under 100KB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      if (isEdit) {
+        setEditCustomIcon(dataUrl)
+        setEditIcon('') // Clear emoji when using custom icon
+      } else {
+        setNewCustomIcon(dataUrl)
+        setNewIcon('') // Clear emoji when using custom icon
+      }
+    }
+    reader.onerror = () => {
+      alert('Failed to read image file')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Clear custom icon
+  const handleClearCustomIcon = (isEdit: boolean = false) => {
+    if (isEdit) {
+      setEditCustomIcon(null)
+      setEditIcon('🔗')
+    } else {
+      setNewCustomIcon(null)
+      setNewIcon('🔗')
+    }
+  }
+
   // Add new bookmark
   const handleAddBookmark = () => {
     if (!newUrl.trim()) return
@@ -77,7 +124,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
       id: 'bookmark-' + Date.now(),
       url: newUrl.trim(),
       title: newTitle.trim() || newUrl,
-      icon: newIcon,
+      icon: newCustomIcon || newIcon,
     }
 
     const updatedConfig: BookmarkWidgetConfig = {
@@ -90,6 +137,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     setNewUrl('')
     setNewTitle('')
     setNewIcon('🔗')
+    setNewCustomIcon(null)
     setShowAddForm(false)
   }
 
@@ -106,7 +154,14 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     setEditingBookmarkId(bookmark.id)
     setEditUrl(bookmark.url)
     setEditTitle(bookmark.title)
-    setEditIcon(bookmark.icon || '🔗')
+    // Check if icon is a data URL (custom image) or emoji
+    if (bookmark.icon?.startsWith('data:')) {
+      setEditCustomIcon(bookmark.icon)
+      setEditIcon('')
+    } else {
+      setEditIcon(bookmark.icon || '🔗')
+      setEditCustomIcon(null)
+    }
   }
 
   // Save bookmark edit
@@ -116,7 +171,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     const updatedConfig: BookmarkWidgetConfig = {
       bookmarks: bookmarks.map(b =>
         b.id === editingBookmarkId
-          ? { ...b, url: editUrl, title: editTitle, icon: editIcon }
+          ? { ...b, url: editUrl, title: editTitle, icon: editCustomIcon || editIcon }
           : b
       ),
     }
@@ -126,6 +181,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     setEditUrl('')
     setEditTitle('')
     setEditIcon('')
+    setEditCustomIcon(null)
   }
 
   // Cancel edit
@@ -134,6 +190,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     setEditUrl('')
     setEditTitle('')
     setEditIcon('')
+    setEditCustomIcon(null)
   }
 
   return (
@@ -168,30 +225,79 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                     placeholder="Title"
                     className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   />
-                  <div className="flex gap-1">
-                    <input
-                      type="text"
-                      value={editIcon}
-                      onChange={(e) => setEditIcon(e.target.value)}
-                      placeholder="Icon"
-                      className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <div className="flex gap-1 flex-1">
-                      {emojiIcons.slice(0, 6).map(emoji => (
+
+                  {/* Icon Selection for Edit */}
+                  <div className="space-y-2">
+                    {/* Custom Icon Upload */}
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1 px-2 py-1 text-xs bg-background border border-border rounded hover:bg-surface cursor-pointer transition-colors">
+                        <span>📷</span>
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/gif,image/webp"
+                          onChange={(e) => handleIconUpload(e, true)}
+                          className="hidden"
+                        />
+                      </label>
+                      {editCustomIcon && (
                         <button
-                          key={emoji}
-                          onClick={() => setEditIcon(emoji)}
-                          className={`px-2 py-1 text-sm rounded transition-colors ${
-                            editIcon === emoji
-                              ? 'bg-primary text-white'
-                              : 'bg-background hover:bg-surface'
-                          }`}
+                          onClick={() => handleClearCustomIcon(true)}
+                          className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          title="Remove custom icon"
                         >
-                          {emoji}
+                          ✕ Clear
                         </button>
-                      ))}
+                      )}
                     </div>
+
+                    {/* Custom Icon Preview */}
+                    {editCustomIcon && (
+                      <div className="flex items-center gap-2 p-2 bg-surface rounded">
+                        <img
+                          src={editCustomIcon}
+                          alt="Custom icon preview"
+                          className="w-6 h-6 object-contain rounded"
+                        />
+                        <span className="text-xs text-text-secondary">Custom icon</span>
+                      </div>
+                    )}
+
+                    {/* Or Emoji Selection */}
+                    {!editCustomIcon && (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editIcon}
+                            onChange={(e) => setEditIcon(e.target.value)}
+                            placeholder="Emoji"
+                            className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="flex gap-1 flex-wrap">
+                          {emojiIcons.map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                setEditIcon(emoji)
+                                setEditCustomIcon(null)
+                              }}
+                              className={`px-2 py-1 text-xs rounded transition-colors ${
+                                editIcon === emoji
+                                  ? 'bg-primary text-white'
+                                  : 'bg-background hover:bg-surface'
+                              }`}
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
+
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveEdit}
@@ -210,7 +316,15 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
               ) : (
                 // Display mode
                 <>
-                  <span className="text-xl flex-shrink-0">{bookmark.icon || '🔗'}</span>
+                  {bookmark.icon?.startsWith('data:') ? (
+                    <img
+                      src={bookmark.icon}
+                      alt=""
+                      className="w-5 h-5 flex-shrink-0 object-contain rounded"
+                    />
+                  ) : (
+                    <span className="text-xl flex-shrink-0">{bookmark.icon || '🔗'}</span>
+                  )}
                   <a
                     href={bookmark.url}
                     target="_blank"
@@ -262,30 +376,80 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
             placeholder="Title (auto-fetched from URL)"
             className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <div className="flex gap-1">
-            <input
-              type="text"
-              value={newIcon}
-              onChange={(e) => setNewIcon(e.target.value)}
-              placeholder="Icon"
-              className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <div className="flex gap-1 flex-1 overflow-x-auto">
-              {emojiIcons.map(emoji => (
+
+          {/* Icon Selection */}
+          <div className="space-y-2">
+            {/* Custom Icon Upload */}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 px-2 py-1 text-sm bg-background border border-border rounded hover:bg-surface cursor-pointer transition-colors">
+                <span>📷</span>
+                <span>Upload Image</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  onChange={(e) => handleIconUpload(e, false)}
+                  className="hidden"
+                />
+              </label>
+              {newCustomIcon && (
                 <button
-                  key={emoji}
-                  onClick={() => setNewIcon(emoji)}
-                  className={`px-2 py-1 text-sm rounded transition-colors flex-shrink-0 ${
-                    newIcon === emoji
-                      ? 'bg-primary text-white'
-                      : 'bg-background hover:bg-surface'
-                  }`}
+                  onClick={() => handleClearCustomIcon(false)}
+                  className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                  title="Remove custom icon"
                 >
-                  {emoji}
+                  ✕ Clear
                 </button>
-              ))}
+              )}
             </div>
+
+            {/* Custom Icon Preview */}
+            {newCustomIcon && (
+              <div className="flex items-center gap-2 p-2 bg-surface rounded">
+                <img
+                  src={newCustomIcon}
+                  alt="Custom icon preview"
+                  className="w-8 h-8 object-contain rounded"
+                />
+                <span className="text-xs text-text-secondary">Custom icon selected</span>
+              </div>
+            )}
+
+            {/* Or Emoji Selection */}
+            {!newCustomIcon && (
+              <>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={newIcon}
+                    onChange={(e) => setNewIcon(e.target.value)}
+                    placeholder="Emoji"
+                    className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-xs text-text-secondary">or pick one:</span>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {emojiIcons.map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        setNewIcon(emoji)
+                        setNewCustomIcon(null)
+                      }}
+                      className={`px-2 py-1 text-sm rounded transition-colors ${
+                        newIcon === emoji
+                          ? 'bg-primary text-white'
+                          : 'bg-background hover:bg-surface'
+                      }`}
+                      title={emoji}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
+
           {isFetching && (
             <p className="text-xs text-text-secondary">Fetching page title...</p>
           )}
@@ -303,6 +467,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                 setNewUrl('')
                 setNewTitle('')
                 setNewIcon('🔗')
+                setNewCustomIcon(null)
               }}
               className="px-3 py-1 text-sm bg-background border border-border rounded hover:bg-surface"
             >
