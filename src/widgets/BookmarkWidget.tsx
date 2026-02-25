@@ -123,9 +123,26 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     }
   }
 
+  // Validate URL format
+  const isValidUrl = (url: string): boolean => {
+    if (!url.trim()) return false
+    try {
+      const urlObj = new URL(url)
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
   // Add new bookmark
   const handleAddBookmark = () => {
     if (!newUrl.trim()) return
+
+    // Validate URL
+    if (!isValidUrl(newUrl)) {
+      alert('Please enter a valid URL (e.g., https://example.com)')
+      return
+    }
 
     const newBookmark: Bookmark = {
       id: 'bookmark-' + Date.now(),
@@ -188,6 +205,12 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
   // Save bookmark edit
   const handleSaveEdit = () => {
     if (!editingBookmarkId) return
+
+    // Validate URL
+    if (!isValidUrl(editUrl)) {
+      alert('Please enter a valid URL (e.g., https://example.com)')
+      return
+    }
 
     const updatedConfig: BookmarkWidgetConfig = {
       bookmarks: bookmarks.map(b =>
@@ -441,7 +464,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 text-sm font-medium text-text hover:text-primary transition-colors truncate"
-                    title={bookmark.title}
+                    title={`${bookmark.title}\n${bookmark.url}`}
                   >
                     {bookmark.title}
                   </a>

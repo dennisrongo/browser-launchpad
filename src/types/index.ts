@@ -39,6 +39,7 @@ export interface Bookmark {
 export interface WeatherWidgetConfig {
   city: string
   units: 'celsius' | 'fahrenheit'
+  apiKey?: string
 }
 
 export interface AIChatWidgetConfig {
