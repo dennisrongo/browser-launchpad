@@ -267,15 +267,22 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
+    // Optimistic UI update - show page immediately
+    const updatedPages = [...pages, newPage]
+    const previousPages = pages
+    setPages(updatedPages)
+    setActivePage(updatedPages.length - 1)
+
+    // Save to storage in background
     const result = await pagesStorage.add(newPage)
 
     if (result.success) {
-      const updatedPages = [...pages, newPage]
-      setPages(updatedPages)
-      setActivePage(updatedPages.length - 1)
       console.log('✓ Page added to Chrome storage')
     } else {
-      console.error('Failed to add page:', result.error)
+      // Rollback on error
+      console.error('Failed to add page, rolling back:', result.error)
+      setPages(previousPages)
+      setActivePage(pages.length > 0 ? pages.length - 1 : 0)
     }
   }
 
@@ -298,17 +305,22 @@ function App() {
         : page
     )
 
-    const result = await pagesStorage.set(updatedPages)
-
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Page renamed in Chrome storage')
-    } else {
-      console.error('Failed to rename page:', result.error)
-    }
-
+    // Optimistic UI update - show new name immediately
+    const previousPages = pages
+    setPages(updatedPages)
     setEditingPageId(null)
     setEditingPageName('')
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to rename page, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Page renamed in Chrome storage')
+    }
   }
 
   // Cancel editing
@@ -344,25 +356,35 @@ function App() {
       return
     }
 
+    const deletedPageIndex = pages.findIndex((p) => p.id === pageToDelete)
     const updatedPages = pages.filter((page) => page.id !== pageToDelete)
-    const result = await pagesStorage.set(updatedPages)
 
-    if (result.success) {
-      // If deleting active page, switch to another page
-      if (pages.findIndex((p) => p.id === pageToDelete) === activePage) {
-        setActivePage(0)
-      } else if (activePage >= updatedPages.length) {
-        setActivePage(updatedPages.length - 1)
-      }
+    // Optimistic UI update - remove page immediately
+    const previousPages = pages
+    const previousActivePage = activePage
 
-      setPages(updatedPages)
-      console.log('✓ Page deleted from Chrome storage')
-    } else {
-      console.error('Failed to delete page:', result.error)
+    // Update active page if needed
+    if (deletedPageIndex === activePage) {
+      setActivePage(0)
+    } else if (deletedPageIndex < activePage) {
+      setActivePage(activePage - 1)
     }
 
+    setPages(updatedPages)
     setShowDeleteConfirm(false)
     setPageToDelete(null)
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to delete page, rolling back:', result.error)
+      setPages(previousPages)
+      setActivePage(previousActivePage)
+    } else {
+      console.log('✓ Page deleted from Chrome storage')
+    }
   }
 
   // Cancel delete
@@ -419,26 +441,36 @@ function App() {
       updated_at: new Date().toISOString(),
     }))
 
-    // Save to storage
-    const result = await pagesStorage.set(updatedPages)
+    // Optimistic UI update - show reorder immediately
+    const previousPages = pages
+    const previousActivePage = activePage
+    let newActivePage = activePage
 
-    if (result.success) {
-      setPages(updatedPages)
-      // Update active page index if needed
-      if (activePage === draggedIndex) {
-        setActivePage(targetIndex)
-      } else if (draggedIndex < activePage && targetIndex >= activePage) {
-        setActivePage(activePage - 1)
-      } else if (draggedIndex > activePage && targetIndex <= activePage) {
-        setActivePage(activePage + 1)
-      }
-      console.log('✓ Pages reordered in Chrome storage')
-    } else {
-      console.error('Failed to reorder pages:', result.error)
+    // Update active page index if needed
+    if (activePage === draggedIndex) {
+      newActivePage = targetIndex
+    } else if (draggedIndex < activePage && targetIndex >= activePage) {
+      newActivePage = activePage - 1
+    } else if (draggedIndex > activePage && targetIndex <= activePage) {
+      newActivePage = activePage + 1
     }
 
+    setPages(updatedPages)
+    setActivePage(newActivePage)
     setDraggedPageId(null)
     setDragOverPageId(null)
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to reorder pages, rolling back:', result.error)
+      setPages(previousPages)
+      setActivePage(previousActivePage)
+    } else {
+      console.log('✓ Pages reordered in Chrome storage')
+    }
   }
 
   const handleDragEnd = () => {
@@ -472,16 +504,21 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
+    // Optimistic UI update - show widget immediately
+    const previousPages = pages
+    setPages(updatedPages)
+    setShowWidgetSelector(false)
+
+    // Save to storage in background
     const result = await pagesStorage.set(updatedPages)
 
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widget added to Chrome storage')
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to add widget, rolling back:', result.error)
+      setPages(previousPages)
     } else {
-      console.error('Failed to add widget:', result.error)
+      console.log('✓ Widget added to Chrome storage')
     }
-
-    setShowWidgetSelector(false)
   }
 
   const handleCancelWidgetSelector = () => {
@@ -508,17 +545,22 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    const result = await pagesStorage.set(updatedPages)
-
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widget deleted from Chrome storage')
-    } else {
-      console.error('Failed to delete widget:', result.error)
-    }
-
+    // Optimistic UI update - remove widget immediately
+    const previousPages = pages
+    setPages(updatedPages)
     setShowWidgetDeleteConfirm(false)
     setWidgetToDelete(null)
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to delete widget, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Widget deleted from Chrome storage')
+    }
   }
 
   const handleCancelDeleteWidget = () => {
@@ -565,17 +607,22 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    const result = await pagesStorage.set(updatedPages)
-
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widget configuration updated in Chrome storage')
-    } else {
-      console.error('Failed to update widget configuration:', result.error)
-    }
-
+    // Optimistic UI update - show changes immediately
+    const previousPages = pages
+    setPages(updatedPages)
     setShowWidgetConfigModal(false)
     setConfiguringWidget(null)
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to update widget configuration, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Widget configuration updated in Chrome storage')
+    }
   }
 
   const handleCancelWidgetConfig = () => {

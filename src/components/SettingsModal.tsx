@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { settingsStorage } from '../services/storage'
+import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
 import type { Settings } from '../types'
 
 interface SettingsModalProps {
@@ -118,7 +119,21 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     try {
       const result = await chrome.storage.local.get(['ai_config'])
       if (result.ai_config) {
-        setAIConfig(result.ai_config as AIProviderConfig)
+        const storedConfig = result.ai_config as AIProviderConfig
+        // Decode API keys from storage
+        const decodedConfig: AIProviderConfig = {
+          openai: {
+            apiKey: decodeApiKey(storedConfig.openai.apiKey),
+            model: storedConfig.openai.model
+          },
+          straico: {
+            apiKey: decodeApiKey(storedConfig.straico.apiKey),
+            model: storedConfig.straico.model
+          }
+        }
+        setAIConfig(decodedConfig)
+        logApiKeyInfo(decodedConfig.openai.apiKey, 'OpenAI API key loaded')
+        logApiKeyInfo(decodedConfig.straico.apiKey, 'Straico API key loaded')
       }
     } catch (error) {
       console.error('Failed to load AI config:', error)
@@ -147,10 +162,22 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       onSettingsChange(updatedSettings)
       setValidationError(null)
 
-      // Save AI config
+      // Save AI config (with encoded API keys)
       try {
-        await chrome.storage.local.set({ ai_config: aiConfig })
-        console.log('✓ AI config saved to Chrome storage')
+        const encodedConfig: AIProviderConfig = {
+          openai: {
+            apiKey: encodeApiKey(aiConfig.openai.apiKey),
+            model: aiConfig.openai.model
+          },
+          straico: {
+            apiKey: encodeApiKey(aiConfig.straico.apiKey),
+            model: aiConfig.straico.model
+          }
+        }
+        await chrome.storage.local.set({ ai_config: encodedConfig })
+        logApiKeyInfo(aiConfig.openai.apiKey, 'OpenAI API key saved')
+        logApiKeyInfo(aiConfig.straico.apiKey, 'Straico API key saved')
+        console.log('✓ AI config saved to Chrome storage (encoded)')
       } catch (error) {
         console.error('Failed to save AI config:', error)
       }
@@ -190,9 +217,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setAIConfig(DEFAULT_AI_CONFIG)
       onSettingsChange(defaultSettings)
 
-      // Also clear AI config
+      // Also clear AI config (encode empty strings for consistency)
       try {
-        await chrome.storage.local.set({ ai_config: DEFAULT_AI_CONFIG })
+        const emptyConfig: AIProviderConfig = {
+          openai: { apiKey: '', model: DEFAULT_AI_CONFIG.openai.model },
+          straico: { apiKey: '', model: DEFAULT_AI_CONFIG.straico.model }
+        }
+        await chrome.storage.local.set({ ai_config: emptyConfig })
         console.log('✓ AI config reset to defaults')
       } catch (error) {
         console.error('Failed to reset AI config:', error)
@@ -313,6 +344,58 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     if (!hasValidStructure) {
       return { valid: false, error: 'Invalid file: data does not contain valid pages, settings, or configuration' }
     }
+
+    // Security check: Scan for malicious code patterns
+    const dataString = JSON.stringify(data)
+    const maliciousPatterns = [
+      /<script[^>]*>/i,           // Script tags
+      /javascript:/i,             // JavaScript protocol
+      /on\w+\s*=/i,               // Event handlers (onclick=, etc.)
+      /<iframe/i,                 // Iframes
+      /<embed/i,                  // Embed tags
+      /<object/i,                 // Object tags
+      /eval\s*\(/i,               // eval() function
+      /document\.write/i,         // document.write
+      /fromCharCode/i,            // fromCharCode (obfuscation)
+      /\\u003c/i,                 // Unicode for <
+      /&#60;/,                    // HTML entity for <
+    ]
+
+    for (const pattern of maliciousPatterns) {
+      if (pattern.test(dataString)) {
+        return { valid: false, error: 'Security alert: File contains potentially malicious code patterns' }
+      }
+    }
+
+    // Check for excessively large values (potential DoS)
+    const checkValueSize = (obj: any, path: string = ''): boolean => {
+      if (typeof obj === 'string' && obj.length > 100000) { // 100KB per string
+        console.warn(`Excessively large string value at ${path}: ${obj.length} chars`)
+        return false
+      }
+      if (Array.isArray(obj) && obj.length > 10000) { // More than 10000 items
+        console.warn(`Excessively large array at ${path}: ${obj.length} items`)
+        return false
+      }
+      if (typeof obj === 'object' && obj !== null) {
+        const keys = Object.keys(obj)
+        if (keys.length > 1000) { // More than 1000 keys
+          console.warn(`Excessively large object at ${path}: ${keys.length} keys`)
+          return false
+        }
+        for (const key of keys) {
+          if (!checkValueSize(obj[key], `${path}.${key}`)) {
+            return false
+          }
+        }
+      }
+      return true
+    }
+
+    if (!checkValueSize(data, 'root')) {
+      return { valid: false, error: 'Invalid file: data contains excessively large values that may cause performance issues' }
+    }
+
     return { valid: true }
   }
 

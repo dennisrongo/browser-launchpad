@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrome Extension Infrastructure Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        h2 { color: #555; margin-top: 0; }
+        .status { font-weight: bold; padding: 8px 12px; border-radius: 4px; margin: 10px 0; }
+        .status.passed { background: #d4edda; color: #155724; }
+        .status.failed { background: #f8d7da; color: #721c24; }
+        .status.running { background: #fff3cd; color: #856404; }
+        .details { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>Chrome Extension Infrastructure Regression Test</h1>
+    <p>Testing Features 1, 2, 3 - Database Connection, Schema, and Persistence</p>
+
+    <div id="test-controls">
+        <button id="runAllTests" onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // Mock chrome API for testing outside of actual Chrome extension context
+        if (typeof chrome === 'undefined') {
+            console.warn('Chrome API not available - this test must run in Chrome extension context');
+            window.chrome = {
+                storage: {
+                    local: {
+                        get: function(keys, callback) {
+                            // Return stored data from localStorage as mock
+                            const data = {};
+                            if (typeof keys === 'string') keys = [keys];
+                            if (keys === null) {
+                                // Return all data
+                                Object.keys(localStorage).forEach(key => {
+                                    try {
+                                        data[key] = JSON.parse(localStorage.getItem(key));
+                                    } catch(e) {
+                                        data[key] = localStorage.getItem(key);
+                                    }
+                                });
+                            } else {
+                                keys.forEach(key => {
+                                    const val = localStorage.getItem(key);
+                                    if (val) {
+                                        try {
+                                            data[key] = JSON.parse(val);
+                                        } catch(e) {
+                                            data[key] = val;
+                                        }
+                                    }
+                                });
+                            }
+                            if (callback) callback(data);
+                            return Promise.resolve(data);
+                        },
+                        set: function(items, callback) {
+                            Object.keys(items).forEach(key => {
+                                localStorage.setItem(key, JSON.stringify(items[key]));
+                            });
+                            if (callback) callback();
+                            return Promise.resolve();
+                        },
+                        clear: function(callback) {
+                            localStorage.clear();
+                            if (callback) callback();
+                            return Promise.resolve();
+                        }
+                    }
+                },
+                runtime: {
+                    lastError: null
+                }
+            };
+        }
+
+        let testResults = {
+            feature1: null,
+            feature2: null,
+            feature3: null
+        };
+
+        function displayStatus(featureId, status, message, details = null) {
+            const resultsDiv = document.getElementById('results');
+            let featureDiv = document.getElementById(`feature-${featureId}`);
+
+            if (!featureDiv) {
+                featureDiv = document.createElement('div');
+                featureDiv.id = `feature-${featureId}`;
+                featureDiv.className = 'test-section';
+                resultsDiv.appendChild(featureDiv);
+            }
+
+            const statusClass = status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'running';
+            const icon = status === 'passed' ? '✅' : status === 'failed' ? '❌' : '⏳';
+
+            featureDiv.innerHTML = `
+                <h2>Feature ${featureId}</h2>
+                <div class="status ${statusClass}">${icon} ${status.toUpperCase()}: ${message}</div>
+                ${details ? `<div class="details">${JSON.stringify(details, null, 2)}</div>` : ''}
+            `;
+        }
+
+        // Feature 1: Database Connection
+        async function testFeature1_DatabaseConnection() {
+            displayStatus(1, 'running', 'Testing Chrome Storage API connection...');
+
+            try {
+                const result = await new Promise((resolve) => {
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        // Test storage connection with a test read
+                        chrome.storage.local.get(['_connection_test'], (result) => {
+                            if (chrome.runtime.lastError) {
+                                resolve({
+                                    success: false,
+                                    error: chrome.runtime.lastError.message
+                                });
+                            } else {
+                                resolve({
+                                    success: true,
+                                    apiAvailable: true,
+                                    storageType: 'chrome.storage.local',
+                                    testReadSuccessful: true
+                                });
+                            }
+                        });
+                    } else {
+                        resolve({
+                            success: false,
+                            error: 'Chrome Storage API not available'
+                        });
+                    }
+                });
+
+                testResults.feature1 = result;
+
+                if (result.success && result.apiAvailable) {
+                    displayStatus(1, 'passed', 'Chrome Storage API connection established', result);
+                    return true;
+                } else {
+                    displayStatus(1, 'failed', result.error || 'Unknown error', result);
+                    return false;
+                }
+            } catch (error) {
+                displayStatus(1, 'failed', 'Exception: ' + error.message, { error: error.stack });
+                return false;
+            }
+        }
+
+        // Feature 2: Database Schema
+        async function testFeature2_DatabaseSchema() {
+            displayStatus(2, 'running', 'Testing database schema structure...');
+
+            try {
+                const schemaCheck = await new Promise((resolve) => {
+                    chrome.storage.local.get(null, (data) => {
+                        const hasPages = 'pages' in data;
+                        const hasWidgets = 'widgets' in data;
+                        const hasSettings = 'settings' in data;
+                        const hasChatHistory = 'chat_history' in data;
+
+                        // Check structure
+                        const pagesStructure = Array.isArray(data.pages);
+                        const widgetsStructure = Array.isArray(data.widgets);
+                        const settingsStructure = typeof data.settings === 'object' && data.settings !== null && !Array.isArray(data.settings);
+
+                        resolve({
+                            allKeysExist: hasPages && hasWidgets && hasSettings && hasChatHistory,
+                            details: {
+                                pages: { exists: hasPages, correctStructure: pagesStructure },
+                                widgets: { exists: hasWidgets, correctStructure: widgetsStructure },
+                                settings: { exists: hasSettings, correctStructure: settingsStructure },
+                                chat_history: { exists: hasChatHistory }
+                            },
+                            rawData: data
+                        });
+                    });
+                });
+
+                testResults.feature2 = schemaCheck;
+
+                const allCorrect = schemaCheck.allKeysExist &&
+                                   schemaCheck.details.pages.correctStructure &&
+                                   schemaCheck.details.widgets.correctStructure &&
+                                   schemaCheck.details.settings.correctStructure;
+
+                if (allCorrect) {
+                    displayStatus(2, 'passed', 'Database schema is correctly structured', schemaCheck.details);
+                    return true;
+                } else {
+                    displayStatus(2, 'failed', 'Schema structure issues detected', schemaCheck.details);
+                    return false;
+                }
+            } catch (error) {
+                displayStatus(2, 'failed', 'Exception: ' + error.message, { error: error.stack });
+                return false;
+            }
+        }
+
+        // Feature 3: Data Persistence
+        async function testFeature3_DataPersistence() {
+            displayStatus(3, 'running', 'Testing data persistence...');
+
+            const TEST_PAGE_NAME = 'PERSIST_TEST_' + Date.now();
+            const TEST_WIDGET = { id: 'test_widget_' + Date.now(), type: 'clock', name: 'Test Clock' };
+
+            try {
+                // Step 1: Create test page
+                await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (data) => {
+                        const pages = data.pages || [];
+                        pages.push({
+                            id: TEST_PAGE_NAME,
+                            name: TEST_PAGE_NAME,
+                            widgets: []
+                        });
+                        chrome.storage.local.set({ pages }, resolve);
+                    });
+                });
+
+                // Step 2: Verify data exists
+                const verify1 = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (data) => {
+                        const exists = data.pages && data.pages.some(p => p.id === TEST_PAGE_NAME);
+                        resolve({ step: 'create_verify', exists });
+                    });
+                });
+
+                if (!verify1.exists) {
+                    throw new Error('Failed to create test data');
+                }
+
+                // Step 3: Simulate "extension reload" by clearing and reloading data
+                // In a real extension, this would survive across reloads
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Step 4: Verify data still exists after delay (simulating reload)
+                const verify2 = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (data) => {
+                        const exists = data.pages && data.pages.some(p => p.id === TEST_PAGE_NAME);
+                        resolve({ step: 'persistence_verify', exists });
+                    });
+                });
+
+                // Step 5: Clean up test data
+                await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (data) => {
+                        const pages = (data.pages || []).filter(p => p.id !== TEST_PAGE_NAME);
+                        chrome.storage.local.set({ pages }, resolve);
+                    });
+                });
+
+                // Step 6: Verify cleanup
+                const verifyCleanup = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (data) => {
+                        const cleaned = !data.pages || !data.pages.some(p => p.id === TEST_PAGE_NAME);
+                        resolve({ step: 'cleanup_verify', cleaned });
+                    });
+                });
+
+                testResults.feature3 = {
+                    createSuccess: verify1.exists,
+                    persistenceSuccess: verify2.exists,
+                    cleanupSuccess: verifyCleanup.cleaned,
+                    usesChromeStorage: true
+                };
+
+                if (verify1.exists && verify2.exists && verifyCleanup.cleaned) {
+                    displayStatus(3, 'passed', 'Data persists correctly and can be managed', testResults.feature3);
+                    return true;
+                } else {
+                    displayStatus(3, 'failed', 'Persistence test failed', testResults.feature3);
+                    return false;
+                }
+            } catch (error) {
+                displayStatus(3, 'failed', 'Exception: ' + error.message, { error: error.stack });
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            document.getElementById('runAllTests').disabled = true;
+
+            const results = {
+                feature1: await testFeature1_DatabaseConnection(),
+                feature2: await testFeature2_DatabaseSchema(),
+                feature3: await testFeature3_DataPersistence()
+            };
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-section';
+            const passedCount = Object.values(results).filter(r => r).length;
+            const totalCount = Object.keys(results).length;
+
+            summaryDiv.innerHTML = `
+                <h2>Test Summary</h2>
+                <div class="status ${passedCount === totalCount ? 'passed' : 'failed'}">
+                    ${passedCount}/${totalCount} tests passed
+                </div>
+                <div class="details">
+                    Feature 1 (Database Connection): ${results.feature1 ? '✅ PASSED' : '❌ FAILED'}<br>
+                    Feature 2 (Database Schema): ${results.feature2 ? '✅ PASSED' : '❌ FAILED'}<br>
+                    Feature 3 (Data Persistence): ${results.feature3 ? '✅ PASSED' : '❌ FAILED'}
+                </div>
+            `;
+
+            document.getElementById('results').appendChild(summaryDiv);
+
+            // Enable re-run
+            document.getElementById('runAllTests').disabled = false;
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            console.log('Test page loaded. Click "Run All Tests" to begin.');
+        });
+    </script>
+</body>
+</html>

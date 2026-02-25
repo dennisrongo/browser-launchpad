@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { AIChatWidgetConfig, ChatMessage } from '../types'
 import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse, validateApiKeyFormat, RateLimitInfo } from '../utils/ai'
+import { decodeApiKey } from '../utils/security'
 
 interface AIChatWidgetProps {
   title: string
@@ -56,8 +57,18 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
       return
     }
 
+    // Get and decode API key
+    const encodedApiKey = config.provider === 'openai' ? config.openaiApiKey : config.straicoApiKey
+    const apiKey = decodeApiKey(encodedApiKey || '')
+
     // Validate API key format before attempting to send
-    const apiKey = config.provider === 'openai' ? config.openaiApiKey : config.straicoApiKey
+    if (apiKey) {
+      const formatCheck = validateApiKeyFormat(config.provider, apiKey)
+      if (!formatCheck.valid) {
+        setError(`Invalid API key: ${formatCheck.error}`)
+        return
+      }
+    }
     if (apiKey) {
       const formatCheck = validateApiKeyFormat(config.provider, apiKey)
       if (!formatCheck.valid) {
@@ -359,7 +370,12 @@ async function callAIStream(
   const provider = config.provider
 
   if (provider === 'openai') {
-    const apiKey = config.openaiApiKey
+    const encodedApiKey = config.openaiApiKey
+    if (!encodedApiKey) {
+      throw new Error('OpenAI API key not configured')
+    }
+
+    const apiKey = decodeApiKey(encodedApiKey)
     if (!apiKey) {
       throw new Error('OpenAI API key not configured')
     }
@@ -372,7 +388,12 @@ async function callAIStream(
       onError: (error) => { throw error },
     })
   } else if (provider === 'straico') {
-    const apiKey = config.straicoApiKey
+    const encodedApiKey = config.straicoApiKey
+    if (!encodedApiKey) {
+      throw new Error('Straico API key not configured')
+    }
+
+    const apiKey = decodeApiKey(encodedApiKey)
     if (!apiKey) {
       throw new Error('Straico API key not configured')
     }

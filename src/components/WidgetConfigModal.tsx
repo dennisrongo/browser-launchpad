@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Widget, WidgetType, ChatMessage } from '../types'
+import { Widget, WidgetType, ChatMessage, AIChatWidgetConfig } from '../types'
 import { fetchStraicoModels, validateOpenAIKey, validateStraicoKey, validateApiKeyFormat } from '../utils/ai'
+import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
@@ -24,14 +25,23 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
   useEffect(() => {
     if (widget) {
       setTitle(widget.title)
-      setConfig({ ...widget.config })
-      // Store initial messages for comparison
+      const configCopy = { ...widget.config }
+
+      // Decode API keys from widget config if present
       if (widget.type === 'ai-chat') {
-        const aiConfig = widget.config as any
+        const aiConfig = widget.config as AIChatWidgetConfig
+        if (aiConfig.openaiApiKey) {
+          (configCopy as AIChatWidgetConfig).openaiApiKey = decodeApiKey(aiConfig.openaiApiKey)
+        }
+        if (aiConfig.straicoApiKey) {
+          (configCopy as AIChatWidgetConfig).straicoApiKey = decodeApiKey(aiConfig.straicoApiKey)
+        }
         if (aiConfig.messages) {
           previousMessagesRef.current = aiConfig.messages
         }
       }
+
+      setConfig(configCopy)
     }
     // Reset state when widget changes
     setModelFetchError(null)
@@ -101,7 +111,19 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
 
   const handleSave = () => {
     if (title.trim()) {
-      onSave(widget.id, config, title.trim())
+      const configToSave = { ...config }
+
+      // Encode API keys before saving
+      if (widget.type === 'ai-chat') {
+        if ((configToSave as any).openaiApiKey) {
+          (configToSave as any).openaiApiKey = encodeApiKey((configToSave as any).openaiApiKey)
+        }
+        if ((configToSave as any).straicoApiKey) {
+          (configToSave as any).straicoApiKey = encodeApiKey((configToSave as any).straicoApiKey)
+        }
+      }
+
+      onSave(widget.id, configToSave, title.trim())
     }
   }
 
