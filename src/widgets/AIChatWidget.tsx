@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { AIChatWidgetConfig, ChatMessage } from '../types'
-import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse, validateApiKeyFormat } from '../utils/ai'
+import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse, validateApiKeyFormat, RateLimitInfo } from '../utils/ai'
 
 interface AIChatWidgetProps {
   title: string
@@ -20,6 +20,7 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null)
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -95,6 +96,7 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
     }
 
     setMessages([...updatedMessages, assistantMessage])
+    setRateLimitInfo(null) // Clear previous rate limit info
 
     try {
       // Call AI API with streaming
@@ -138,7 +140,22 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
         }
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get response')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get response'
+
+      // Check if this is a rate limit error
+      if (errorMessage.includes('Rate limit') || errorMessage.includes('Too many')) {
+        // Extract retry-after information from the error message
+        const retryMatch = errorMessage.match(/wait (\d+) seconds/)
+        const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : undefined
+
+        setRateLimitInfo({
+          isRateLimited: true,
+          retryAfter,
+          message: errorMessage,
+        })
+      }
+
+      setError(errorMessage)
       // Remove the assistant message on error
       setMessages(updatedMessages)
     } finally {
@@ -238,8 +255,23 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
 
       {/* Error Message */}
       {error && (
-        <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          ⚠️ {error}
+        <div className={`mb-3 p-3 border rounded-lg text-sm ${
+          rateLimitInfo?.isRateLimited
+            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+        }`}>
+          <div className="flex items-start gap-2">
+            <span className="text-lg">{rateLimitInfo?.isRateLimited ? '⏱️' : '⚠️'}</span>
+            <div className="flex-1">
+              <p className="font-medium">{rateLimitInfo?.isRateLimited ? 'Rate Limit Exceeded' : 'Error'}</p>
+              <p className="text-xs mt-1 opacity-90">{error}</p>
+              {rateLimitInfo?.retryAfter && (
+                <p className="text-xs mt-2 font-medium">
+                  Please wait {rateLimitInfo.retryAfter} seconds before retrying.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

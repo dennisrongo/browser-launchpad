@@ -130,7 +130,8 @@ export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]
         throw new Error('Straico: Access denied. Please verify your API key permissions.')
       }
       if (response.status === 429) {
-        throw new Error('Straico: Rate limit exceeded. Please wait a moment before trying again.')
+        const rateLimitInfo = parseRateLimitInfo(response, errorData)
+        throw new Error(`Straico: ${rateLimitInfo.message}`)
       }
 
       throw new Error(
@@ -493,7 +494,8 @@ export async function sendStraicoChat(
         throw new Error('Straico: Access denied. Please verify your API key permissions.')
       }
       if (response.status === 429) {
-        throw new Error('Straico: Rate limit exceeded. Please wait a moment before trying again.')
+        const rateLimitInfo = parseRateLimitInfo(response, errorData)
+        throw new Error(`Straico: ${rateLimitInfo.message}`)
       }
       if (response.status === 500) {
         throw new Error('Straico: Service error. Please try again later.')
@@ -577,7 +579,8 @@ export async function sendStraicoChatStream(
         throw new Error('Straico: Access denied. Please verify your API key permissions.')
       }
       if (response.status === 429) {
-        throw new Error('Straico: Rate limit exceeded. Please wait a moment before trying again.')
+        const rateLimitInfo = parseRateLimitInfo(response, errorData)
+        throw new Error(`Straico: ${rateLimitInfo.message}`)
       }
       if (response.status === 500) {
         throw new Error('Straico: Service error. Please try again later.')

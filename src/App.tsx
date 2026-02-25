@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { pagesStorage, verifyStorageConnection } from './services/storage'
+import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
-import type { Widget, WidgetType } from './types'
+import { SettingsModal } from './components/SettingsModal'
+import type { Widget, WidgetType, Settings } from './types'
 
 const MAX_PAGES = 10
 
@@ -55,6 +56,15 @@ function App() {
   const [configuringWidget, setConfiguringWidget] = useState<Widget | null>(null)
   const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null)
   const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState<Settings>({
+    id: 'global-settings',
+    theme: 'modern-light',
+    grid_columns: 3,
+    grid_gap: 24,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  })
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -69,11 +79,11 @@ function App() {
       }
 
       // Load pages from storage (or create default)
-      const result = await pagesStorage.getAll()
+      const pagesResult = await pagesStorage.getAll()
 
-      if (result.data && result.data.length > 0) {
-        console.log('Loaded', result.data.length, 'pages from Chrome storage')
-        setPages(result.data)
+      if (pagesResult.data && pagesResult.data.length > 0) {
+        console.log('Loaded', pagesResult.data.length, 'pages from Chrome storage')
+        setPages(pagesResult.data)
       } else {
         // Create default page and save to Chrome storage
         const defaultPage = {
@@ -93,6 +103,28 @@ function App() {
           setPages(newPages)
         } else {
           console.error('Failed to save default page:', saveResult.error)
+        }
+      }
+
+      // Load settings from storage
+      const settingsResult = await settingsStorage.get()
+      if (settingsResult.data) {
+        console.log('Loaded settings from Chrome storage')
+        setSettings(settingsResult.data)
+      } else {
+        // Create default settings
+        const defaultSettings: Settings = {
+          id: 'global-settings',
+          theme: 'modern-light',
+          grid_columns: 3,
+          grid_gap: 24,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        const settingsSaveResult = await settingsStorage.set(defaultSettings)
+        if (settingsSaveResult.success) {
+          console.log('✓ Created default settings in Chrome storage')
+          setSettings(defaultSettings)
         }
       }
     }
@@ -697,6 +729,16 @@ function App() {
     setDragOverWidgetId(null)
   }
 
+  const handleSettingsChange = (newSettings: Settings) => {
+    setSettings(newSettings)
+    // Apply theme to document
+    if (newSettings.theme === 'dark-elegance') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-text">
       <header className="border-b border-border bg-surface px-6 py-4">
@@ -707,8 +749,13 @@ function App() {
               <span className="text-xs text-green-500">✓ Chrome Storage Connected</span>
             )}
           </div>
-          <button className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90">
-            Settings
+          <button
+            onClick={() => setShowSettings(true)}
+            className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
+            title="Open settings"
+          >
+            <span className="text-lg">⚙️</span>
+            <span>Settings</span>
           </button>
         </div>
         {/* Page Navigation */}
@@ -865,7 +912,21 @@ function App() {
                   Add Widget
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div
+                className={`grid gap-6 ${
+                  settings.grid_columns === 1
+                    ? 'grid-cols-1'
+                    : settings.grid_columns === 2
+                    ? 'grid-cols-1 md:grid-cols-2'
+                    : settings.grid_columns === 3
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                    : settings.grid_columns === 4
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                    : settings.grid_columns === 5
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
+                }`}
+              >
                 {pages[activePage]?.widgets.map((widget: Widget) => (
                   <WidgetCard
                     key={widget.id}
@@ -907,6 +968,13 @@ function App() {
         widget={configuringWidget}
         onSave={handleSaveWidgetConfig}
         onCancel={handleCancelWidgetConfig}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSettingsChange={handleSettingsChange}
       />
 
       {/* Widget Delete Confirmation Modal */}
