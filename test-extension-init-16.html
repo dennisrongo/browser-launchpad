@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature #16: Extension Loading and Initialization Sequence</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .test-section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    .step {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .step-number {
+      background: #667eea;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .step-content {
+      flex: 1;
+    }
+    .step-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      color: #666;
+      font-size: 13px;
+    }
+    .test-result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .test-result.pass {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .test-result.fail {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .test-result.pending {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .info-box {
+      background: #e7f3ff;
+      border: 1px solid #b3d7ff;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #004085;
+    }
+    .console-output {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+    .console-line {
+      margin-bottom: 4px;
+    }
+    .console-line.success {
+      color: #4ec9b0;
+    }
+    .console-line.error {
+      color: #f48771;
+    }
+    .console-line.info {
+      color: #9cdcfe;
+    }
+    #storageStatus {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Feature #16: Extension Loading and Initialization Sequence</h1>
+    <p class="subtitle">Verify extension creates default data on first load when storage is empty</p>
+
+    <div class="info-box">
+      <strong>Test Scenario:</strong> Simulate first-time extension load by clearing storage, then verify
+      that default page and settings are created automatically without errors.
+    </div>
+
+    <div class="test-section">
+      <h2>Test Steps</h2>
+
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="step-title">Clear All Extension Data</div>
+          <div class="step-desc">Simulate fresh install by clearing Chrome storage</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-title">Reload Extension</div>
+          <div class="step-desc">Simulate chrome://extensions reload by clearing app state</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-title">Open New Tab</div>
+          <div class="step-desc">Load the extension in iframe to simulate new tab</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <div class="step-title">Verify Default Page Created</div>
+          <div class="step-desc">Check that "My Page" is automatically created</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <div class="step-title">Verify Default Settings Applied</div>
+          <div class="step-desc">Check that default theme and grid settings are applied</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <div class="step-title">Verify No Initialization Errors</div>
+          <div class="step-desc">Check console for successful initialization</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">7</div>
+        <div class="step-content">
+          <div class="step-title">Check Initialization Message</div>
+          <div class="step-desc">Verify "✓ App initialized in Xms" console message</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button id="runTestBtn" onclick="runTest()">🚀 Run Initialization Test</button>
+      <button id="clearStorageBtn" onclick="clearStorage()">🗑️ Clear Storage</button>
+      <button id="checkStorageBtn" onclick="checkStorage()">🔍 Check Storage</button>
+    </div>
+
+    <div id="testResult" class="test-result pending">Test not started</div>
+
+    <div id="storageStatus" style="display: none;">
+      <strong>Current Storage Contents:</strong>
+      <pre id="storageContents" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 12px;"></pre>
+    </div>
+
+    <div id="consoleOutput" style="display: none;">
+      <strong>Console Output:</strong>
+      <div class="console-output" id="consoleLines"></div>
+    </div>
+
+    <div class="test-section" style="margin-top: 20px;">
+      <h2>Live Extension Preview</h2>
+      <iframe id="extensionFrame" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 8px; background: white;"></iframe>
+    </div>
+  </div>
+
+  <script type="module">
+    let testResults = [];
+    let consoleMessages = [];
+
+    // Add console log capture
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    function addConsoleMessage(type, ...args) {
+      const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)).join(' ');
+      consoleMessages.push({ type, message, timestamp: new Date().toISOString() });
+      updateConsoleOutput();
+    }
+
+    console.log = (...args) => {
+      originalLog(...args);
+      addConsoleMessage('info', ...args);
+    };
+
+    console.error = (...args) => {
+      originalError(...args);
+      addConsoleMessage('error', ...args);
+    };
+
+    console.warn = (...args) => {
+      originalWarn(...args);
+      addConsoleMessage('warn', ...args);
+    };
+
+    function updateConsoleOutput() {
+      const consoleDiv = document.getElementById('consoleLines');
+      if (consoleMessages.length === 0) {
+        consoleDiv.innerHTML = '<div class="console-line info">No console messages yet</div>';
+        return;
+      }
+
+      consoleDiv.innerHTML = consoleMessages.map(msg => {
+        let className = 'console-line';
+        if (msg.message.includes('✓')) className += '.success';
+        if (msg.message.includes('✗')) className += '.error';
+        if (msg.type === 'error') className += '.error';
+        if (msg.type === 'info') className += '.info';
+
+        const time = new Date(msg.timestamp).toLocaleTimeString();
+        return `<div class="${className}">[${time}] ${msg.message}</div>`;
+      }).join('');
+
+      document.getElementById('consoleOutput').style.display = 'block';
+    }
+
+    function getStorage() {
+      return new Promise((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.get(null, (data) => {
+            resolve(chrome.runtime.lastError ? {} : data);
+          });
+        } else {
+          // Fallback to localStorage for testing
+          const data = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            data[key] = localStorage.getItem(key);
+          }
+          resolve(data);
+        }
+      });
+    }
+
+    function clearStorageHelper() {
+      return new Promise((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.clear(() => {
+            resolve(chrome.runtime.lastError ? { success: false } : { success: true });
+          });
+        } else {
+          localStorage.clear();
+          resolve({ success: true });
+        }
+      });
+    }
+
+    function setStorageHelper(items) {
+      return new Promise((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.set(items, () => {
+            resolve(chrome.runtime.lastError ? { success: false } : { success: true });
+          });
+        } else {
+          Object.entries(items).forEach(([key, value]) => {
+            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+          });
+          resolve({ success: true });
+        }
+      });
+    }
+
+    async function checkStorage() {
+      const storage = await getStorage();
+      const storageDiv = document.getElementById('storageStatus');
+      const contentsPre = document.getElementById('storageContents');
+
+      const pages = storage.pages ? JSON.parse(storage.pages) : [];
+      const settings = storage.settings ? JSON.parse(storage.settings) : null;
+
+      contentsPre.textContent = JSON.stringify({
+        pages: pages.length + ' page(s)',
+        settings: settings ? 'Found' : 'Not found',
+        ...storage
+      }, null, 2);
+
+      storageDiv.style.display = 'block';
+    }
+
+    async function clearStorage() {
+      await clearStorageHelper();
+      console.log('✓ Storage cleared');
+      await checkStorage();
+      testResults = [];
+      updateTestResult('pending', 'Storage cleared. Ready to test initialization.');
+    }
+
+    async function runTest() {
+      consoleMessages = [];
+      testResults = [];
+      const btn = document.getElementById('runTestBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Testing...';
+
+      try {
+        // Step 1: Clear all extension data
+        console.log('Step 1: Clearing all extension data...');
+        const clearResult = await clearStorageHelper();
+        if (clearResult.success) {
+          console.log('✓ All extension data cleared');
+          testResults.push({ step: 1, name: 'Clear All Extension Data', pass: true });
+        } else {
+          console.log('✗ Failed to clear storage');
+          testResults.push({ step: 1, name: 'Clear All Extension Data', pass: false });
+        }
+
+        // Step 2: Verify storage is empty
+        console.log('Step 2: Verifying storage is empty...');
+        const emptyStorage = await getStorage();
+        const isEmpty = Object.keys(emptyStorage).length === 0;
+        if (isEmpty) {
+          console.log('✓ Storage is empty (simulates fresh install)');
+          testResults.push({ step: 2, name: 'Verify Storage Empty', pass: true });
+        } else {
+          console.log('✗ Storage not empty, found:', Object.keys(emptyStorage));
+          testResults.push({ step: 2, name: 'Verify Storage Empty', pass: false });
+        }
+
+        // Step 3: Load extension (simulate new tab)
+        console.log('Step 3: Loading extension (simulating new tab)...');
+        const iframe = document.getElementById('extensionFrame');
+        iframe.src = '../dist/newtab.html';
+
+        // Wait for iframe to load and initialize
+        await new Promise((resolve) => {
+          iframe.onload = resolve;
+          setTimeout(resolve, 2000); // Max 2 second wait
+        });
+
+        console.log('✓ Extension loaded in iframe');
+        testResults.push({ step: 3, name: 'Load Extension', pass: true });
+
+        // Step 4: Wait for initialization and check storage
+        console.log('Step 4: Waiting for initialization...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const afterStorage = await getStorage();
+        const pagesData = afterStorage.pages ? JSON.parse(afterStorage.pages) : [];
+        const settingsData = afterStorage.settings ? JSON.parse(afterStorage.settings) : null;
+
+        // Step 5: Verify default page created
+        console.log('Step 5: Verifying default page created...');
+        if (pagesData.length === 1 && pagesData[0].name === 'My Page') {
+          console.log('✓ Default page "My Page" created automatically');
+          testResults.push({ step: 5, name: 'Default Page Created', pass: true });
+        } else {
+          console.log('✗ Default page not created correctly. Pages:', pagesData);
+          testResults.push({ step: 5, name: 'Default Page Created', pass: false });
+        }
+
+        // Step 6: Verify default settings
+        console.log('Step 6: Verifying default settings...');
+        const hasDefaultSettings = settingsData &&
+          settingsData.id === 'global-settings' &&
+          settingsData.theme === 'modern-light' &&
+          settingsData.grid_columns === 3;
+
+        if (hasDefaultSettings) {
+          console.log('✓ Default settings applied:', settingsData);
+          testResults.push({ step: 6, name: 'Default Settings Applied', pass: true });
+        } else {
+          console.log('✗ Default settings not applied correctly. Settings:', settingsData);
+          testResults.push({ step: 6, name: 'Default Settings Applied', pass: false });
+        }
+
+        // Step 7: Check console messages for initialization
+        console.log('Step 7: Checking initialization messages...');
+        const hasInitMessage = consoleMessages.some(msg =>
+          msg.message.includes('App initialized') ||
+          msg.message.includes('Chrome Storage API connection verified')
+        );
+
+        const hasDefaultPageMessage = consoleMessages.some(msg =>
+          msg.message.includes('Created default page')
+        );
+
+        const hasDefaultSettingsMessage = consoleMessages.some(msg =>
+          msg.message.includes('Created default settings')
+        );
+
+        if (hasInitMessage && hasDefaultPageMessage && hasDefaultSettingsMessage) {
+          console.log('✓ All initialization messages present');
+          testResults.push({ step: 7, name: 'Initialization Messages', pass: true });
+        } else {
+          console.log('✗ Some initialization messages missing');
+          console.log('  - Init message:', hasInitMessage);
+          console.log('  - Default page message:', hasDefaultPageMessage);
+          console.log('  - Default settings message:', hasDefaultSettingsMessage);
+          testResults.push({ step: 7, name: 'Initialization Messages', pass: false });
+        }
+
+        // Calculate final result
+        const allPassed = testResults.every(r => r.pass);
+        const passedCount = testResults.filter(r => r.pass).length;
+        const totalCount = testResults.length;
+
+        if (allPassed) {
+          updateTestResult('pass', `✓ ALL TESTS PASSED (${passedCount}/${totalCount})`);
+          console.log('✓ Feature #16: Extension Loading and Initialization Sequence - PASSING');
+        } else {
+          updateTestResult('fail', `✗ SOME TESTS FAILED (${passedCount}/${totalCount} passed)`);
+          console.log('✗ Feature #16: Extension Loading and Initialization Sequence - FAILING');
+        }
+
+        await checkStorage();
+
+      } catch (error) {
+        console.error('✗ Test error:', error.message);
+        updateTestResult('fail', `✗ Test error: ${error.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Run Initialization Test';
+      }
+    }
+
+    function updateTestResult(status, message) {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.className = `test-result ${status}`;
+      resultDiv.textContent = message;
+    }
+
+    // Expose functions to window
+    window.runTest = runTest;
+    window.clearStorage = clearStorage;
+    window.checkStorage = checkStorage;
+
+    // Initial storage check
+    checkStorage();
+  </script>
+</body>
+</html>
