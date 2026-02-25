@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Widget, WidgetType } from '../types'
+import { useState, useEffect, useRef } from 'react'
+import { Widget, WidgetType, ChatMessage } from '../types'
 import { fetchStraicoModels } from '../utils/ai'
 
 interface WidgetConfigModalProps {
@@ -14,15 +14,29 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
   const [config, setConfig] = useState<any>({})
   const [isFetchingModels, setIsFetchingModels] = useState(false)
   const [modelFetchError, setModelFetchError] = useState<string | null>(null)
+  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false)
+  const [pendingProviderChange, setPendingProviderChange] = useState<'openai' | 'straico' | null>(null)
+  const [pendingModelChange, setPendingModelChange] = useState<string | null>(null)
+  const previousMessagesRef = useRef<ChatMessage[]>([])
 
   useEffect(() => {
     if (widget) {
       setTitle(widget.title)
       setConfig({ ...widget.config })
+      // Store initial messages for comparison
+      if (widget.type === 'ai-chat') {
+        const aiConfig = widget.config as any
+        if (aiConfig.messages) {
+          previousMessagesRef.current = aiConfig.messages
+        }
+      }
     }
     // Reset state when widget changes
     setModelFetchError(null)
     setIsFetchingModels(false)
+    setShowClearChatConfirm(false)
+    setPendingProviderChange(null)
+    setPendingModelChange(null)
   }, [widget])
 
   const handleFetchModels = async () => {
@@ -52,6 +66,32 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
     if (title.trim()) {
       onSave(widget.id, config, title.trim())
     }
+  }
+
+  // Handle confirmation to clear chat
+  const handleConfirmClearChat = () => {
+    const newConfig = { ...config, messages: [] }
+
+    if (pendingProviderChange) {
+      newConfig.provider = pendingProviderChange
+      newConfig.model = '' // Reset model when provider changes
+    }
+
+    if (pendingModelChange) {
+      newConfig.model = pendingModelChange
+    }
+
+    setConfig(newConfig)
+    setShowClearChatConfirm(false)
+    setPendingProviderChange(null)
+    setPendingModelChange(null)
+  }
+
+  // Handle cancel - restore previous selection
+  const handleCancelClearChat = () => {
+    setShowClearChatConfirm(false)
+    setPendingProviderChange(null)
+    setPendingModelChange(null)
   }
 
   const renderConfigFields = () => {
@@ -209,6 +249,9 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
         )
 
       case 'ai-chat':
+        // Check if there are existing messages
+        const hasExistingMessages = config.messages && config.messages.length > 0
+
         return (
           <div className="space-y-4">
             <div>
@@ -217,13 +260,24 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 value={config.provider || 'openai'}
                 onChange={(e) => {
                   const newProvider = e.target.value as 'openai' | 'straico'
-                  setConfig({ ...config, provider: newProvider, model: '' })
+                  // Check if there are existing messages and provider is actually changing
+                  if (hasExistingMessages && newProvider !== config.provider) {
+                    setPendingProviderChange(newProvider)
+                    setShowClearChatConfirm(true)
+                  } else {
+                    setConfig({ ...config, provider: newProvider, model: '' })
+                  }
                 }}
                 className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="openai">OpenAI</option>
                 <option value="straico">Straico</option>
               </select>
+              {hasExistingMessages && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  ⚠️ Changing provider will clear chat history
+                </p>
+              )}
             </div>
 
             {/* OpenAI Model Selection Dropdown */}
@@ -232,7 +286,16 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 <label className="block text-sm font-medium text-text mb-1">Model</label>
                 <select
                   value={config.model || 'gpt-3.5-turbo'}
-                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                  onChange={(e) => {
+                    const newModel = e.target.value
+                    // Check if there are existing messages and model is actually changing
+                    if (hasExistingMessages && newModel !== config.model) {
+                      setPendingModelChange(newModel)
+                      setShowClearChatConfirm(true)
+                    } else {
+                      setConfig({ ...config, model: newModel })
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="gpt-4">GPT-4</option>
@@ -242,6 +305,11 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 <p className="text-xs text-text-secondary mt-1">
                   Select the OpenAI model to use for chat completions
                 </p>
+                {hasExistingMessages && config.model && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    ⚠️ Changing model will clear chat history
+                  </p>
+                )}
               </div>
             )}
 
@@ -273,7 +341,16 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   <label className="block text-sm font-medium text-text mb-1">Model</label>
                   <select
                     value={config.model || ''}
-                    onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                    onChange={(e) => {
+                      const newModel = e.target.value
+                      // Check if there are existing messages and model is actually changing
+                      if (hasExistingMessages && newModel !== config.model) {
+                        setPendingModelChange(newModel)
+                        setShowClearChatConfirm(true)
+                      } else {
+                        setConfig({ ...config, model: newModel })
+                      }
+                    }}
                     disabled={!config.straicoApiKey || isFetchingModels}
                     className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -293,6 +370,11 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                       ? 'Click "Fetch Models" to load available models'
                       : `${(config.straicoModels || []).length} models available`}
                   </p>
+                  {hasExistingMessages && config.model && (
+                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                      ⚠️ Changing model will clear chat history
+                    </p>
+                  )}
                 </div>
                 {modelFetchError && (
                   <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
@@ -360,44 +442,82 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
-        <h3 className="text-lg font-semibold mb-4">Configure Widget</h3>
+    <>
+      {/* Main Config Modal */}
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+          <h3 className="text-lg font-semibold mb-4">Configure Widget</h3>
 
-        <div className="space-y-4 mb-6">
-          {/* Widget Title */}
-          <div>
-            <label className="block text-sm font-medium text-text mb-1">Widget Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Widget title"
-              className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              maxLength={50}
-            />
+          <div className="space-y-4 mb-6">
+            {/* Widget Title */}
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Widget Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Widget title"
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                maxLength={50}
+              />
+            </div>
+
+            {/* Widget-specific configuration */}
+            {renderConfigFields()}
           </div>
 
-          {/* Widget-specific configuration */}
-          {renderConfigFields()}
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!title.trim()}
-            className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save Changes
-          </button>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!title.trim()}
+              className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Confirmation Dialog for Clearing Chat */}
+      {showClearChatConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
+          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-sm w-full mx-4 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">💬</div>
+              <h3 className="text-lg font-semibold mb-2">Clear Chat History?</h3>
+              <p className="text-sm text-text-secondary">
+                {pendingProviderChange
+                  ? `Switching from ${config.provider === 'openai' ? 'OpenAI' : 'Straico'} to ${pendingProviderChange === 'openai' ? 'OpenAI' : 'Straico'} will clear your chat history.`
+                  : 'Changing the model will clear your chat history.'}
+              </p>
+              <p className="text-xs text-text-secondary mt-2">
+                {config.messages?.length || 0} message(s) will be deleted.
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={handleCancelClearChat}
+                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmClearChat}
+                className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90"
+              >
+                Clear & Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

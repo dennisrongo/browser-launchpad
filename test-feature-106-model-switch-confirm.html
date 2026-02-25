@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature #106 Test: Model Switching Confirmation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Feature #106: Model Switching Clears Chat (with Confirmation)</h1>
+
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4">Test Overview</h2>
+      <p class="text-gray-600 mb-4">
+        This test verifies that switching AI providers or models shows a confirmation dialog
+        and clears chat history when confirmed, but preserves chat history when canceled.
+      </p>
+
+      <div class="grid gap-4">
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-2">1. Provider Switch Confirmation</h3>
+          <ul class="text-sm text-gray-600 list-disc list-inside">
+            <li>Send messages in AI chat (OpenAI provider)</li>
+            <li>Click edit on widget</li>
+            <li>Change provider to Straico</li>
+            <li>Verify confirmation dialog appears</li>
+            <li>Confirm the change</li>
+            <li>Verify chat history is cleared</li>
+            <li>Verify new provider is active</li>
+          </ul>
+        </div>
+
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-2">2. Model Switch Confirmation (OpenAI)</h3>
+          <ul class="text-sm text-gray-600 list-disc list-inside">
+            <li>Send messages in AI chat with GPT-3.5</li>
+            <li>Click edit on widget</li>
+            <li>Change model to GPT-4</li>
+            <li>Verify confirmation dialog appears</li>
+            <li>Confirm the change</li>
+            <li>Verify chat history is cleared</li>
+            <li>Verify new model is active</li>
+          </ul>
+        </div>
+
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-2">3. Cancel Preserves Chat</h3>
+          <ul class="text-sm text-gray-600 list-disc list-inside">
+            <li>Send messages in AI chat</li>
+            <li>Click edit on widget</li>
+            <li>Change to different model</li>
+            <li>Verify confirmation dialog appears</li>
+            <li>Cancel the change</li>
+            <li>Verify chat is preserved</li>
+            <li>Verify original model is still selected</li>
+          </ul>
+        </div>
+
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-2">4. Warning Text Display</h3>
+          <ul class="text-sm text-gray-600 list-disc list-inside">
+            <li>Verify orange warning appears when messages exist</li>
+            <li>Warning text: "⚠️ Changing provider will clear chat history"</li>
+            <li>Warning text: "⚠️ Changing model will clear chat history"</li>
+          </ul>
+        </div>
+
+        <div class="border rounded p-4">
+          <h3 class="font-medium mb-2">5. Empty Chat - No Confirmation</h3>
+          <ul class="text-sm text-gray-600 list-disc list-inside">
+            <li>Open AI chat widget with no messages</li>
+            <li>Click edit on widget</li>
+            <li>Change provider or model</li>
+            <li>Verify NO confirmation dialog appears</li>
+            <li>Change happens immediately</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-lg font-semibold mb-4">Code Verification</h2>
+      <p class="text-gray-600 mb-4">
+        Check the build output for required strings:
+      </p>
+
+      <div class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm overflow-x-auto">
+        <div id="verification-results"></div>
+      </div>
+    </div>
+
+    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <h3 class="font-semibold text-blue-800 mb-2">Manual Testing Instructions</h3>
+      <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
+        <li>Run <code class="bg-blue-100 px-1 rounded">npm run build</code></li>
+        <li>Load extension in Chrome</li>
+        <li>Create an AI Chat widget</li>
+        <li>Configure with OpenAI API key and select a model</li>
+        <li>Send a few messages</li>
+        <li>Click Edit on the widget</li>
+        <li>Change the provider dropdown (OpenAI → Straico or vice versa)</li>
+        <li>CONFIRM: Confirmation dialog appears with "Clear Chat History?" title</li>
+        <li>Click "Clear & Switch"</li>
+        <li>CONFIRM: Widget config is saved with empty messages array</li>
+        <li>CONFIRM: Chat history in widget shows empty state</li>
+        <li>Repeat steps 4-10 but click "Cancel" instead</li>
+        <li>CONFIRM: Chat history is preserved, dropdown selection reverts</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    // Verify build output contains required strings
+    async function verifyBuild() {
+      const results = []
+
+      try {
+        const response = await fetch('../dist/newtab.js')
+        const code = await response.text()
+
+        const checks = [
+          { name: 'Confirmation dialog text', pattern: 'Clear Chat History', found: false },
+          { name: 'Confirm button text', pattern: 'Clear & Switch', found: false },
+          { name: 'Pending provider change state', pattern: 'pendingProviderChange', found: false },
+          { name: 'Pending model change state', pattern: 'pendingModelChange', found: false },
+          { name: 'Show confirmation state', pattern: 'showClearChatConfirm', found: false },
+          { name: 'Warning message for provider', pattern: 'Changing provider will clear chat history', found: false },
+          { name: 'Warning message for model', pattern: 'Changing model will clear chat history', found: false },
+          { name: 'Handle confirm clear chat', pattern: 'handleConfirmClearChat', found: false },
+          { name: 'Handle cancel clear chat', pattern: 'handleCancelClearChat', found: false },
+        ]
+
+        checks.forEach(check => {
+          check.found = code.includes(check.pattern)
+          results.push(check)
+        })
+
+      } catch (error) {
+        results.push({ name: 'Error', pattern: error.message, found: false })
+      }
+
+      // Display results
+      const container = document.getElementById('verification-results')
+      container.innerHTML = results.map(r =>
+        `<div class="${r.found ? 'text-green-400' : 'text-red-400'}">
+          ${r.found ? '✓' : '✗'} ${r.name}: ${r.found ? 'FOUND' : 'NOT FOUND'}
+        </div>`
+      ).join('')
+
+      // Update pass count
+      const passCount = results.filter(r => r.found).length
+      const totalCount = results.length
+      container.innerHTML += `\n<div class="text-white mt-2">Result: ${passCount}/${totalCount} checks passed</div>`
+    }
+
+    verifyBuild()
+  </script>
+</body>
+</html>

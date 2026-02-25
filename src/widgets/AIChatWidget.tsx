@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { AIChatWidgetConfig, ChatMessage } from '../types'
+import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse } from '../utils/ai'
 
 interface AIChatWidgetProps {
   title: string
@@ -7,11 +8,19 @@ interface AIChatWidgetProps {
   onConfigChange?: (newConfig: Partial<AIChatWidgetConfig>) => void
 }
 
+interface TokenUsage {
+  promptTokens?: number
+  completionTokens?: number
+  totalTokens?: number
+  cost?: number
+}
+
 export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(config.messages || [])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -58,6 +67,7 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
     setMessages(updatedMessages)
     setInput('')
     setError(null)
+    setTokenUsage(null)
     setIsLoading(true)
 
     // Update config with new messages
@@ -65,27 +75,62 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
       onConfigChange({ messages: updatedMessages })
     }
 
+    // Create a placeholder assistant message for streaming
+    const assistantMessageId = `msg-${Date.now() + 1}`
+    const assistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+    }
+
+    setMessages([...updatedMessages, assistantMessage])
+
     try {
-      // Call AI API
-      const response = await callAI(config, updatedMessages)
+      // Call AI API with streaming
+      await callAIStream(config, updatedMessages, (content) => {
+        // Update the assistant message content as it streams in
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: msg.content + content }
+              : msg
+          )
+        )
+      }, (response) => {
+        // On complete, update token usage
+        if (response.usage || response.cost !== undefined) {
+          setTokenUsage({
+            promptTokens: response.usage?.prompt_tokens,
+            completionTokens: response.usage?.completion_tokens,
+            totalTokens: response.usage?.total_tokens,
+            cost: response.cost,
+          })
+        }
 
-      // Add assistant response
-      const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: response,
-        timestamp: new Date().toISOString(),
-      }
+        // Final update to ensure full content is saved
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: response.content }
+              : msg
+          )
+        )
 
-      const finalMessages = [...updatedMessages, assistantMessage]
-      setMessages(finalMessages)
-
-      // Update config with assistant response
-      if (onConfigChange) {
-        onConfigChange({ messages: finalMessages })
-      }
+        // Update config with final messages
+        if (onConfigChange) {
+          onConfigChange({
+            messages: [
+              ...updatedMessages,
+              { ...assistantMessage, content: response.content }
+            ]
+          })
+        }
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get response')
+      // Remove the assistant message on error
+      setMessages(updatedMessages)
     } finally {
       setIsLoading(false)
     }
@@ -188,6 +233,29 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
         </div>
       )}
 
+      {/* Token Usage Display */}
+      {tokenUsage && (tokenUsage.totalTokens || tokenUsage.promptTokens) && (
+        <div className="mb-3 p-2 bg-surface border border-border rounded-lg text-text-secondary text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Token Usage:</span>
+            {tokenUsage.promptTokens && (
+              <span>Input: {tokenUsage.promptTokens}</span>
+            )}
+            {tokenUsage.completionTokens && (
+              <span>Output: {tokenUsage.completionTokens}</span>
+            )}
+            {tokenUsage.totalTokens && (
+              <span className="text-primary font-medium">Total: {tokenUsage.totalTokens}</span>
+            )}
+          </div>
+          {tokenUsage.cost !== undefined && (
+            <div className="mt-1 text-text-secondary">
+              Cost: ${tokenUsage.cost.toFixed(6)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="flex flex-col gap-2 pt-2 border-t border-border">
         <textarea
@@ -239,82 +307,45 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
   )
 }
 
-// AI API call function
-async function callAI(config: AIChatWidgetConfig, messages: ChatMessage[]): Promise<string> {
+// AI API call function with streaming support
+async function callAIStream(
+  config: AIChatWidgetConfig,
+  messages: ChatMessage[],
+  onChunk: (content: string) => void,
+  onComplete: (response: ChatCompletionResponse) => void
+): Promise<void> {
   const provider = config.provider
 
   if (provider === 'openai') {
-    return await callOpenAI(config, messages)
+    const apiKey = config.openaiApiKey
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured')
+    }
+
+    const model = config.model || 'gpt-3.5-turbo'
+
+    await sendOpenAIChatStream(apiKey, model, messages, {
+      onChunk,
+      onComplete,
+      onError: (error) => { throw error },
+    })
   } else if (provider === 'straico') {
-    return await callStraico(config, messages)
+    const apiKey = config.straicoApiKey
+    if (!apiKey) {
+      throw new Error('Straico API key not configured')
+    }
+
+    const model = config.model
+    if (!model) {
+      throw new Error('Straico model not selected')
+    }
+
+    await sendStraicoChatStream(apiKey, model, messages, {
+      onChunk,
+      onComplete,
+      onError: (error) => { throw error },
+    })
+  } else {
+    throw new Error('Unknown provider')
   }
-
-  throw new Error('Unknown provider')
-}
-
-async function callOpenAI(config: AIChatWidgetConfig, messages: ChatMessage[]): Promise<string> {
-  const apiKey = config.openaiApiKey
-  if (!apiKey) {
-    throw new Error('OpenAI API key not configured')
-  }
-
-  const model = config.model || 'gpt-3.5-turbo'
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`)
-  }
-
-  const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response from AI'
-}
-
-async function callStraico(config: AIChatWidgetConfig, messages: ChatMessage[]): Promise<string> {
-  const apiKey = config.straicoApiKey
-  if (!apiKey) {
-    throw new Error('Straico API key not configured')
-  }
-
-  const model = config.model
-  if (!model) {
-    throw new Error('Straico model not selected')
-  }
-
-  const response = await fetch('https://api.straico.com/v0/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(`Straico API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`)
-  }
-
-  const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response from AI'
 }
