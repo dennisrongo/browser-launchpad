@@ -2104,3 +2104,98 @@ grep -rn "globalThis|devStore|dev-store|mockDb|mockData|fakeData|sampleData|dumm
 - AI Chat Widget features
 - Settings Page features
 - Import/Export functionality
+
+---
+
+## SESSION 11 - Clock Widget Features #83, #84, #85
+
+### Date: 2026-02-24
+
+### Features Completed: 3/3
+
+#### ✅ Feature #83: City configuration for clock (PASSING)
+**Implementation Summary:**
+- Replaced text input with proper timezone dropdown selector
+- 20 timezone options including UTC and major cities worldwide
+- "Local Time" default option uses browser's timezone
+- City name extracted from timezone and displayed below clock
+- Configuration persisted in Chrome storage
+- Real-time clock updates with selected timezone using Intl.DateTimeFormat
+
+**Code Changes:**
+- src/components/WidgetConfigModal.tsx: Lines 37-68 (timezone dropdown)
+- Timezone options: Local Time, UTC, New York, Los Angeles, Chicago, Denver, Phoenix, London, Paris, Berlin, Moscow, Tokyo, Shanghai, Hong Kong, Singapore, Dubai, Kolkata, Sydney, Melbourne, Auckland
+
+**Verification:**
+- ✅ Build successful: dist/newtab.js 190.22 kB
+- ✅ Mock data check: No patterns found (STEP 5.6)
+- ✅ Uses Intl.DateTimeFormat with timeZone option
+
+---
+
+#### ✅ Feature #84: 12-hour vs 24-hour format toggle (PASSING)
+**Implementation Summary:**
+- Checkbox in config modal: "Use 12-hour format (AM/PM)"
+- Default: checked (12-hour format with AM/PM)
+- When unchecked: 24-hour format (14:30 instead of 2:30 PM)
+- Clock display respects format12Hour config via Intl.DateTimeFormat hour12 option
+
+**Code Location:**
+- src/components/WidgetConfigModal.tsx: Lines 69-80 (checkbox)
+- src/widgets/ClockWidget.tsx: Line 26 (hour12: config.format12Hour \!== false)
+
+**Verification:**
+- ✅ Build successful
+- ✅ Mock data check: No patterns found
+- ✅ Configuration persisted in storage
+
+---
+
+#### ✅ Feature #85: Seconds display toggle (PASSING)
+**Implementation Summary:**
+- Checkbox in config modal: "Show seconds"
+- Default: unchecked (seconds hidden)
+- When checked: Shows seconds in time display
+- Real-time updates every second via setInterval
+- Seconds appear/disappear based on config.showSeconds
+
+**Code Location:**
+- src/components/WidgetConfigModal.tsx: Lines 81-91 (checkbox)
+- src/widgets/ClockWidget.tsx: Line 29 (second: config.showSeconds ? '2-digit' : undefined)
+
+**Verification:**
+- ✅ Build successful
+- ✅ Mock data check: No patterns found
+- ✅ Real-time updates verified (1-second interval)
+
+---
+
+### Updated Statistics
+- **Features passing**: 68/171 (39.8%)
+- **Clock Widget**: 3/7 complete (42.9%)
+- **Completed this session**: 3 features
+
+### Clock Widget Progress
+✅ 83. City configuration for clock
+✅ 84. 12-hour vs 24-hour format toggle
+✅ 85. Seconds display toggle
+⏳ 86. Clock styling and font options
+⏳ 87. Real-time updates (every second)
+⏳ 88. (Additional features from spec)
+
+### Build Verification
+```
+dist/newtab.html    0.51 kB │ gzip:  0.31 kB
+dist/newtab.css    16.54 kB │ gzip:  3.97 kB
+dist/newtab.js    190.22 kB │ gzip: 57.50 kB
+✓ built in 385ms
+```
+
+### Recent Commit
+- 0d238cb: feat: implement clock widget features #83, #84, #85 - timezone, format, and seconds
+
+### Next Session
+- Continue with remaining Clock Widget features (#86, #87, etc.)
+- Implement clock styling and font options (if not complete)
+- Verify all clock widget functionality
+
