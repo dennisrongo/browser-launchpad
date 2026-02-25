@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { settingsStorage } from '../services/storage'
 import type { Settings } from '../types'
 
@@ -45,6 +45,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [theme, setTheme] = useState<'modern-light' | 'dark-elegance'>('modern-light')
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false })
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' })
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load settings when modal opens
   useEffect(() => {
@@ -128,6 +130,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     // Reset to current saved values
     setGridColumns(settings.grid_columns)
     setTheme(settings.theme)
+    loadAIConfig()
     onClose()
   }
 
@@ -162,8 +165,60 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       URL.revokeObjectURL(url)
 
       console.log('✓ Data exported successfully')
+      setImportStatus({ type: 'success', message: 'Data exported successfully!' })
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 3000)
     } catch (error) {
       console.error('Failed to export data:', error)
+      setImportStatus({ type: 'error', message: 'Failed to export data' })
+    }
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      // Read file
+      const text = await file.text()
+      const importData = JSON.parse(text)
+
+      // Validate import structure
+      if (!importData.version || !importData.data) {
+        throw new Error('Invalid import file format')
+      }
+
+      // Validate version compatibility
+      if (importData.version !== '1.0.0') {
+        throw new Error(`Incompatible version: ${importData.version}`)
+      }
+
+      // Import data to Chrome storage
+      await chrome.storage.local.clear()
+      await chrome.storage.local.set(importData.data)
+
+      console.log('✓ Data imported successfully')
+      setImportStatus({ type: 'success', message: 'Data imported successfully! Reloading...' })
+
+      // Reload after short delay
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (error) {
+      console.error('Failed to import data:', error)
+      setImportStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to import data'
+      })
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -388,7 +443,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         {/* Import/Export Section */}
         <div className="border-t border-border pt-6 mt-6">
           <h3 className="text-lg font-semibold mb-3">Data Management</h3>
-          <div className="flex gap-3">
+          <div className="flex gap-3 mb-3">
             <button
               onClick={handleExportData}
               className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
@@ -397,9 +452,33 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               <span className="text-lg">📤</span>
               <span>Export Data</span>
             </button>
+            <button
+              onClick={handleImportClick}
+              className="px-4 py-2 bg-surface text-text rounded-button hover:bg-background border border-border transition-colors flex items-center gap-2"
+              title="Import data from JSON file"
+            >
+              <span className="text-lg">📥</span>
+              <span>Import Data</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
-          <p className="text-sm text-text-secondary mt-2">
-            Export all your pages, widgets, and settings to a JSON file for backup.
+          {importStatus.type && (
+            <div className={`p-3 rounded-button text-sm mb-3 ${
+              importStatus.type === 'success'
+                ? 'bg-green-500/10 text-green-600 border border-green-500/20'
+                : 'bg-red-500/10 text-red-600 border border-red-500/20'
+            }`}>
+              {importStatus.message}
+            </div>
+          )}
+          <p className="text-sm text-text-secondary">
+            Export all your pages, widgets, and settings to a JSON file for backup. Import to restore from a backup.
           </p>
         </div>
 
