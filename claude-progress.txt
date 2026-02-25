@@ -2990,3 +2990,145 @@ NEXT SESSION:
 
 COMMIT: e58d637
 ================================================================================
+
+### Session 14C - 2026-02-24
+
+**Assigned Features**: #109, #110 (AI Chat Widget)
+
+**Features Completed This Session**: 2/2
+
+#### ✅ Feature #109: Provider-specific error messages (PASSING)
+**Verification Method**: Static code analysis + build verification
+
+**Implementation Verified**:
+- ✓ OpenAI-specific error messages for:
+  - 401: "OpenAI: Invalid API key. Please check your API key in widget settings."
+  - 429: "OpenAI: Rate limit exceeded. Please wait a moment before trying again."
+  - 500: "OpenAI: Service error. Please try again later."
+  - insufficient_quota: "OpenAI: Insufficient quota. Please check your billing details."
+  - model_not_found: "OpenAI: Model not found. Please select a valid model in settings."
+  - Network errors: "OpenAI: Network error. Please check your internet connection and try again."
+- ✓ Straico-specific error messages for:
+  - 401: "Straico: Invalid API key. Please check your API key in widget settings."
+  - 403: "Straico: Access denied. Please verify your API key permissions."
+  - 429: "Straico: Rate limit exceeded. Please wait a moment before trying again."
+  - 500: "Straico: Service error. Please try again later."
+  - invalid_api_key: "Straico: Invalid API key format. Please check your API key in widget settings."
+  - insufficient_credits: "Straico: Insufficient credits. Please top up your account."
+  - model_not_found: "Straico: Model not found. Please select a valid model in settings."
+  - Network errors: "Straico: Network error. Please check your internet connection and try again."
+- ✓ Error messages include provider name prefix for clarity
+- ✓ All error messages are actionable with specific guidance
+- ✓ fetchStraicoModels also has provider-specific error handling
+
+**Code Locations**: src/utils/ai.ts
+- Lines 237-260: OpenAI non-streaming error handling
+- Lines 347-371: OpenAI streaming error handling
+- Lines 449-478: Straico non-streaming error handling
+- Lines 533-562: Straico streaming error handling
+- Lines 53-87: fetchStraicoModels error handling
+
+---
+
+#### ✅ Feature #110: Multi-turn conversation context (PASSING)
+**Verification Method**: Static code analysis + code trace
+
+**Implementation Verified**:
+- ✓ Full message history passed to API calls
+- ✓ Line 101 (AIChatWidget.tsx): `updatedMessages` contains all previous messages + new user message
+- ✓ Line 337 (AIChatWidget.tsx): Complete messages array passed to `sendOpenAIChatStream`
+- ✓ Line 353 (AIChatWidget.tsx): Complete messages array passed to `sendStraicoChatStream`
+- ✓ Line 248 (ai.ts): `messages.map(({ role, content }) => ({ role, content }))` sends all messages to OpenAI
+- ✓ Line 342 (ai.ts): All messages sent to OpenAI streaming endpoint
+- ✓ Line 457 (ai.ts): All messages sent to Straico endpoint
+- ✓ Line 527 (ai.ts): All messages sent to Straico streaming endpoint
+- ✓ Messages persisted to Chrome storage (config.messages)
+- ✓ Each new message includes entire conversation context
+
+**How Context Works**:
+1. User sends: "My name is Alice"
+2. AI receives: [{role: "user", content: "My name is Alice"}]
+3. AI responds: "Hello Alice\!"
+4. Messages saved: [user_msg, assistant_msg]
+5. User sends: "What is my name?"
+6. AI receives: [{role: "user", content: "My name is Alice"}, {role: "assistant", content: "Hello Alice\!"}, {role: "user", content: "What is my name?"}]
+7. AI responds: "Your name is Alice\!" (context maintained)
+
+**Code Locations**: src/widgets/AIChatWidget.tsx
+- Lines 66-67: Updated messages include all previous history
+- Line 101: Full message history passed to callAIStream
+- Lines 337, 353: Full history passed to API functions
+
+---
+
+### Code Quality Verification
+
+✅ **Build successful**:
+```
+dist/newtab.html    0.51 kB │ gzip:  0.31 kB
+dist/newtab.css    19.22 kB │ gzip:  4.42 kB
+dist/newtab.js    210.27 kB │ gzip: 62.12 kB
+```
+
+✅ **Mock Data Detection (STEP 5.6)** - No mock data patterns found:
+```bash
+grep -rn "globalThis|devStore|dev-store|mockDb|mockData|fakeData|sampleData|dummyData" src/
+# No results - using real OpenAI and Straico APIs
+```
+
+---
+
+### Updated Statistics
+- **Features passing**: 93/171 (54.4%)
+- **AI Chat Widget**: 20/20 complete (100%) 🎉
+- **Completed this session**: 2 features
+
+---
+
+### Recent Commit
+- 163a060: feat: implement AI chat features #109, #110 - provider-specific errors and multi-turn context
+
+---
+
+### AI Chat Widget Category - COMPLETE\! 🎉
+
+All 20 AI Chat Widget features are now implemented and passing:
+1. ✅ Add AI chat widget to page (#88)
+2. ✅ Provider selection dropdown (#89)
+3. ✅ OpenAI API key input and storage (#90)
+4. ✅ OpenAI model selection dropdown (#91)
+5. ✅ Straico API key input and storage (#92)
+6. ✅ Fetch available models from Straico API (#93)
+7. ✅ Straico model selection (#94)
+8. ✅ Chat message input field (#95)
+9. ✅ Send message button (#96)
+10. ✅ Display chat conversation history (#97)
+11. ✅ User message styling (#98)
+12. ✅ AI response styling (#99)
+13. ✅ Loading indicator during API call (#100)
+14. ✅ Error handling for failed API calls (#101)
+15. ✅ Clear chat history button (#102)
+16. ✅ Chat history persistence in storage (#103)
+17. ✅ Streaming response support (#104)
+18. ✅ Token/cost display from Straico (#105)
+19. ✅ Provider-specific error messages (#109)
+20. ✅ Multi-turn conversation context (#110)
+
+---
+
+### Next Session
+- Settings Page features (#111-120)
+  - Settings button/icon on main page
+  - Settings page/modal overlay
+  - Grid layout options
+  - Theme selection dropdown
+  - AI providers configuration section
+  - Import data functionality
+  - Export data functionality
+  - About section with credits
+  - Settings persistence
+  - Reset to defaults option
+  - Settings validation
+
+COMMIT: 163a060
+================================================================================
