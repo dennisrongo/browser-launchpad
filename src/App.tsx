@@ -12,6 +12,8 @@ function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [pageToDelete, setPageToDelete] = useState<string | null>(null)
   const [showLimitMessage, setShowLimitMessage] = useState(false)
+  const [draggedPageId, setDraggedPageId] = useState<string | null>(null)
+  const [dragOverPageId, setDragOverPageId] = useState<string | null>(null)
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -217,6 +219,81 @@ function App() {
     setPageToDelete(null)
   }
 
+  // Drag and drop handlers for page reordering
+  const handleDragStart = (e: React.DragEvent, pageId: string) => {
+    setDraggedPageId(pageId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, pageId: string) => {
+    e.preventDefault()
+    if (draggedPageId && draggedPageId !== pageId) {
+      setDragOverPageId(pageId)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverPageId(null)
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetPageId: string) => {
+    e.preventDefault()
+
+    if (!draggedPageId || draggedPageId === targetPageId) {
+      setDraggedPageId(null)
+      setDragOverPageId(null)
+      return
+    }
+
+    // Find indices
+    const draggedIndex = pages.findIndex((p) => p.id === draggedPageId)
+    const targetIndex = pages.findIndex((p) => p.id === targetPageId)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedPageId(null)
+      setDragOverPageId(null)
+      return
+    }
+
+    // Reorder pages
+    const newPages = [...pages]
+    const [draggedPage] = newPages.splice(draggedIndex, 1)
+    newPages.splice(targetIndex, 0, draggedPage)
+
+    // Update order field
+    const updatedPages = newPages.map((page, index) => ({
+      ...page,
+      order: index,
+      updated_at: new Date().toISOString(),
+    }))
+
+    // Save to storage
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      // Update active page index if needed
+      if (activePage === draggedIndex) {
+        setActivePage(targetIndex)
+      } else if (draggedIndex < activePage && targetIndex >= activePage) {
+        setActivePage(activePage - 1)
+      } else if (draggedIndex > activePage && targetIndex <= activePage) {
+        setActivePage(activePage + 1)
+      }
+      console.log('✓ Pages reordered in Chrome storage')
+    } else {
+      console.error('Failed to reorder pages:', result.error)
+    }
+
+    setDraggedPageId(null)
+    setDragOverPageId(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedPageId(null)
+    setDragOverPageId(null)
+  }
+
   return (
     <div className="min-h-screen bg-background text-text">
       <header className="border-b border-border bg-surface px-6 py-4">
@@ -236,10 +313,24 @@ function App() {
           {pages.map((page, index) => (
             <div
               key={page.id}
-              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out ${
+              draggable={editingPageId !== page.id}
+              onDragStart={(e) => handleDragStart(e, page.id)}
+              onDragOver={(e) => handleDragOver(e, page.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, page.id)}
+              onDragEnd={handleDragEnd}
+              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out cursor-move ${
                 activePage === index
                   ? 'bg-primary text-white font-semibold shadow-md'
                   : 'bg-background text-text hover:bg-surface'
+              } ${
+                draggedPageId === page.id
+                  ? 'opacity-50 scale-95 shadow-lg'
+                  : ''
+              } ${
+                dragOverPageId === page.id && draggedPageId !== page.id
+                  ? 'shadow-md scale-105 border-2 border-primary'
+                  : ''
               }`}
             >
               {editingPageId === page.id ? (
@@ -255,10 +346,14 @@ function App() {
                 />
               ) : (
                 <>
+                  {/* Drag handle */}
+                  <div className="absolute left-0 top-0 bottom-0 px-1 flex items-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                    <span className="text-lg">⋮⋮</span>
+                  </div>
                   <button
                     onClick={() => setActivePage(index)}
                     onDoubleClick={() => handleStartRename(page.id, page.name)}
-                    className="px-4 py-2 min-w-[80px]"
+                    className="px-4 py-2 min-w-[80px] pl-6"
                   >
                     {page.name}
                   </button>
