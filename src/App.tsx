@@ -72,6 +72,14 @@ function App() {
     const initializeApp = async () => {
       const startTime = performance.now()
 
+      // Verify Chrome Storage API connection first (Feature 1)
+      const connectionCheck = await verifyStorageConnection()
+      if (connectionCheck.connected) {
+        console.log('✓ Chrome Storage API connection verified')
+      } else {
+        console.error('Chrome Storage API connection failed:', connectionCheck.error)
+      }
+
       // Load pages and settings in parallel for faster initial load
       const [pagesResult, settingsResult] = await Promise.all([
         pagesStorage.getAll(),

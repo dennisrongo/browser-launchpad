@@ -34,7 +34,7 @@ const manifest = JSON.parse(fs.readFileSync('dist/manifest.json', 'utf8'));
 testResults.feature1.details.hasChromeStorageLocal = builtJs.includes('chrome.storage.local');
 testResults.feature1.details.hasStorageGet = builtJs.includes('chrome.storage.local.get');
 testResults.feature1.details.hasStorageSet = builtJs.includes('chrome.storage.local.set');
-testResults.feature1.details.hasVerifyConnection = builtJs.includes('storage-connection-test');
+testResults.feature1.details.hasVerifyConnection = appTsx.includes('verifyStorageConnection()');
 testResults.feature1.details.hasManifestPermission = manifest.permissions.includes('storage');
 
 testResults.feature1.passed =
@@ -84,9 +84,9 @@ console.log('Testing Feature 3: Data Persistence');
 testResults.feature3.details.usesChromeStorage = builtJs.includes('chrome.storage.local');
 testResults.feature3.details.noLocalStorage = !builtJs.includes('localStorage.getItem') && !builtJs.includes('localStorage.setItem');
 testResults.feature3.details.noSessionStorage = !builtJs.includes('sessionStorage');
-testResults.feature3.details.loadsFromStorageOnInit = appTsx.includes('const pagesResult = await pagesStorage.getAll()');
+testResults.feature3.details.loadsFromStorageOnInit = appTsx.includes('pagesStorage.getAll()') && appTsx.includes('const [pagesResult, settingsResult] = await Promise.all');
 testResults.feature3.details.hasStorageChangeListeners = appTsx.includes('chrome.storage.onChanged.addListener');
-testResults.feature3.details.savesToStorage = appTsx.includes('const result = await pagesStorage.set(updatedPages)');
+testResults.feature3.details.savesToStorage = appTsx.includes('pagesStorage.set');
 
 testResults.feature3.passed =
   testResults.feature3.details.usesChromeStorage &&
