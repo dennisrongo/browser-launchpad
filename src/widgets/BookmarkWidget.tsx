@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
-import { BookmarkWidgetConfig, Bookmark } from '../types'
+import { BookmarkWidgetConfig } from '../types'
 import { getBookmarkIconDisplay } from '../utils/favicon'
+import { IconEdit, IconTrash, IconPlus, IconX, IconLink, IconAlert } from '../components/Icons'
 
 interface BookmarkWidgetProps {
   title: string
@@ -12,118 +13,45 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
   const [showAddForm, setShowAddForm] = useState(false)
   const [newUrl, setNewUrl] = useState('')
   const [newTitle, setNewTitle] = useState('')
-  const [newIcon, setNewIcon] = useState('🔗')
-  const [newCustomIcon, setNewCustomIcon] = useState<string | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null)
   const [editUrl, setEditUrl] = useState('')
   const [editTitle, setEditTitle] = useState('')
-  const [editIcon, setEditIcon] = useState('')
-  const [editCustomIcon, setEditCustomIcon] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [bookmarkToDelete, setBookmarkToDelete] = useState<string | null>(null)
-
-  // Drag and drop state for bookmark reordering
   const [draggedBookmarkId, setDraggedBookmarkId] = useState<string | null>(null)
   const [dragOverBookmarkId, setDragOverBookmarkId] = useState<string | null>(null)
 
   const bookmarks = config.bookmarks || []
 
-  // Emoji icons for quick selection
-  const emojiIcons = ['🔗', '📁', '⭐', '💼', '🎮', '🎵', '📚', '🛒', '💻', '📰', '🎬', '🏠']
-
-  // Fetch page title from URL
   const fetchPageTitle = useCallback(async (url: string): Promise<string | null> => {
     if (!url || !url.match(/^https?:\/\//i)) {
       return null
     }
-
     try {
       setIsFetching(true)
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml',
-        },
+        headers: { 'Accept': 'text/html,application/xhtml+xml' },
       })
-
-      if (!response.ok) {
-        console.warn('Failed to fetch page title:', response.status)
-        return null
-      }
-
+      if (!response.ok) return null
       const text = await response.text()
       const match = text.match(/<title[^>]*>([^<]+)<\/title>/i)
-
-      if (match && match[1]) {
-        return match[1].trim()
-      }
-
-      return null
-    } catch (error) {
-      console.error('Error fetching page title:', error)
+      return match && match[1] ? match[1].trim() : null
+    } catch {
       return null
     } finally {
       setIsFetching(false)
     }
   }, [])
 
-  // Handle URL blur - auto-fetch title
   const handleUrlBlur = async () => {
     if (newUrl && !newTitle) {
       const fetchedTitle = await fetchPageTitle(newUrl)
-      if (fetchedTitle) {
-        setNewTitle(fetchedTitle)
-      }
+      if (fetchedTitle) setNewTitle(fetchedTitle)
     }
   }
 
-  // Handle custom icon upload
-  const handleIconUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
-      return
-    }
-
-    // Validate file size (max 100KB to avoid storage issues)
-    if (file.size > 100 * 1024) {
-      alert('Image file too large. Please select an image under 100KB.')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string
-      if (isEdit) {
-        setEditCustomIcon(dataUrl)
-        setEditIcon('') // Clear emoji when using custom icon
-      } else {
-        setNewCustomIcon(dataUrl)
-        setNewIcon('') // Clear emoji when using custom icon
-      }
-    }
-    reader.onerror = () => {
-      alert('Failed to read image file')
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // Clear custom icon
-  const handleClearCustomIcon = (isEdit: boolean = false) => {
-    if (isEdit) {
-      setEditCustomIcon(null)
-      setEditIcon('🔗')
-    } else {
-      setNewCustomIcon(null)
-      setNewIcon('🔗')
-    }
-  }
-
-  // Validate URL format
   const isValidUrl = (url: string): boolean => {
     if (!url.trim()) return false
     try {
@@ -134,354 +62,163 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
     }
   }
 
-  // Add new bookmark
   const handleAddBookmark = () => {
-    if (!newUrl.trim()) return
-
-    // Validate URL
-    if (!isValidUrl(newUrl)) {
-      alert('Please enter a valid URL (e.g., https://example.com)')
-      return
-    }
-
-    const newBookmark: Bookmark = {
+    if (!newUrl.trim() || !isValidUrl(newUrl)) return
+    const newBookmark = {
       id: 'bookmark-' + Date.now(),
       url: newUrl.trim(),
       title: newTitle.trim() || newUrl,
-      icon: newCustomIcon || newIcon,
+      icon: undefined,
     }
-
-    const updatedConfig: BookmarkWidgetConfig = {
-      bookmarks: [...bookmarks, newBookmark],
-    }
-
-    onConfigChange?.(updatedConfig)
-
-    // Reset form
+    onConfigChange?.({ bookmarks: [...bookmarks, newBookmark] })
     setNewUrl('')
     setNewTitle('')
-    setNewIcon('🔗')
-    setNewCustomIcon(null)
     setShowAddForm(false)
   }
 
-  // Delete bookmark
-  const handleDeleteBookmark = (bookmarkId: string) => {
-    setBookmarkToDelete(bookmarkId)
+  const handleDeleteBookmark = (id: string) => {
+    setBookmarkToDelete(id)
     setShowDeleteConfirm(true)
   }
 
   const handleConfirmDelete = () => {
     if (!bookmarkToDelete) return
-
-    const updatedConfig: BookmarkWidgetConfig = {
-      bookmarks: bookmarks.filter(b => b.id !== bookmarkToDelete),
-    }
-    onConfigChange?.(updatedConfig)
+    onConfigChange?.({ bookmarks: bookmarks.filter(b => b.id !== bookmarkToDelete) })
     setShowDeleteConfirm(false)
     setBookmarkToDelete(null)
   }
 
-  const handleCancelDelete = () => {
-    setShowDeleteConfirm(false)
-    setBookmarkToDelete(null)
-  }
-
-  // Start editing bookmark
-  const handleStartEdit = (bookmark: Bookmark) => {
+  const handleStartEdit = (bookmark: { id: string; url: string; title: string; icon?: string }) => {
     setEditingBookmarkId(bookmark.id)
     setEditUrl(bookmark.url)
     setEditTitle(bookmark.title)
-    // Check if icon is a data URL (custom image) or emoji
-    if (bookmark.icon?.startsWith('data:')) {
-      setEditCustomIcon(bookmark.icon)
-      setEditIcon('')
-    } else {
-      setEditIcon(bookmark.icon || '🔗')
-      setEditCustomIcon(null)
-    }
   }
 
-  // Save bookmark edit
   const handleSaveEdit = () => {
-    if (!editingBookmarkId) return
-
-    // Validate URL
-    if (!isValidUrl(editUrl)) {
-      alert('Please enter a valid URL (e.g., https://example.com)')
-      return
-    }
-
-    const updatedConfig: BookmarkWidgetConfig = {
+    if (!editingBookmarkId || !isValidUrl(editUrl)) return
+    onConfigChange?.({
       bookmarks: bookmarks.map(b =>
-        b.id === editingBookmarkId
-          ? { ...b, url: editUrl, title: editTitle, icon: editCustomIcon || editIcon }
-          : b
+        b.id === editingBookmarkId ? { ...b, url: editUrl, title: editTitle } : b
       ),
-    }
-
-    onConfigChange?.(updatedConfig)
+    })
     setEditingBookmarkId(null)
     setEditUrl('')
     setEditTitle('')
-    setEditIcon('')
-    setEditCustomIcon(null)
   }
 
-  // Cancel edit
-  const handleCancelEdit = () => {
-    setEditingBookmarkId(null)
-    setEditUrl('')
-    setEditTitle('')
-    setEditIcon('')
-    setEditCustomIcon(null)
-  }
+  const handleDragStart = (id: string) => setDraggedBookmarkId(id)
 
-  // Drag and drop handlers for bookmark reordering
-  const handleBookmarkDragStart = (bookmarkId: string) => {
-    setDraggedBookmarkId(bookmarkId)
-  }
-
-  const handleBookmarkDragOver = (e: React.DragEvent, bookmarkId: string) => {
+  const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault()
-    if (draggedBookmarkId && draggedBookmarkId !== bookmarkId) {
-      setDragOverBookmarkId(bookmarkId)
-    }
+    if (draggedBookmarkId && draggedBookmarkId !== id) setDragOverBookmarkId(id)
   }
 
-  const handleBookmarkDragLeave = () => {
-    setDragOverBookmarkId(null)
-  }
-
-  const handleBookmarkDrop = (e: React.DragEvent, targetId: string) => {
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
-
     if (!draggedBookmarkId || draggedBookmarkId === targetId) {
       setDraggedBookmarkId(null)
       setDragOverBookmarkId(null)
       return
     }
-
-    // Find positions
     const oldIndex = bookmarks.findIndex(b => b.id === draggedBookmarkId)
     const newIndex = bookmarks.findIndex(b => b.id === targetId)
-
-    if (oldIndex === -1 || newIndex === -1) {
-      setDraggedBookmarkId(null)
-      setDragOverBookmarkId(null)
-      return
-    }
-
-    // Reorder bookmarks array
-    const reorderedBookmarks = [...bookmarks]
-    const [removed] = reorderedBookmarks.splice(oldIndex, 1)
-    reorderedBookmarks.splice(newIndex, 0, removed)
-
-    // Update config with new order
-    const updatedConfig: BookmarkWidgetConfig = {
-      bookmarks: reorderedBookmarks,
-    }
-
-    onConfigChange?.(updatedConfig)
-
-    // Clear drag state
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = [...bookmarks]
+    const [removed] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, removed)
+    onConfigChange?.({ bookmarks: reordered })
     setDraggedBookmarkId(null)
     setDragOverBookmarkId(null)
   }
 
-  const handleBookmarkDragEnd = () => {
-    setDraggedBookmarkId(null)
-    setDragOverBookmarkId(null)
+  const renderIcon = (bookmark: { url: string; icon?: string }) => {
+    const display = getBookmarkIconDisplay(bookmark.url, bookmark.icon)
+    if (display.type === 'image') {
+      return (
+        <img
+          src={display.content}
+          alt=""
+          className="w-4 h-4 flex-shrink-0 object-contain rounded"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+      )
+    }
+    return <IconLink className="w-4 h-4 flex-shrink-0 text-text-muted" />
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Bookmarks List */}
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto space-y-1">
         {bookmarks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="text-3xl mb-2">📋</div>
-            <p className="text-text-secondary text-sm">No bookmarks yet</p>
+            <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center mb-2">
+              <IconLink className="w-5 h-5 text-text-muted" />
+            </div>
+            <p className="text-text-muted text-xs">No bookmarks</p>
           </div>
         ) : (
           bookmarks.map((bookmark) => (
             <div
               key={bookmark.id}
               draggable={editingBookmarkId !== bookmark.id}
-              onDragStart={() => handleBookmarkDragStart(bookmark.id)}
-              onDragOver={(e) => handleBookmarkDragOver(e, bookmark.id)}
-              onDragLeave={handleBookmarkDragLeave}
-              onDrop={(e) => handleBookmarkDrop(e, bookmark.id)}
-              onDragEnd={handleBookmarkDragEnd}
-              className={`group flex items-center gap-2 p-2 rounded transition-all ${
-                draggedBookmarkId === bookmark.id
-                  ? 'opacity-50 scale-95 shadow-lg'
-                  : dragOverBookmarkId === bookmark.id
-                  ? 'border-2 border-primary scale-[1.02] shadow-md'
-                  : 'hover:bg-surface'
+              onDragStart={() => handleDragStart(bookmark.id)}
+              onDragOver={(e) => handleDragOver(e, bookmark.id)}
+              onDragLeave={() => setDragOverBookmarkId(null)}
+              onDrop={(e) => handleDrop(e, bookmark.id)}
+              onDragEnd={() => { setDraggedBookmarkId(null); setDragOverBookmarkId(null) }}
+              className={`group flex items-center gap-2 px-2 py-1.5 rounded transition-all ${
+                draggedBookmarkId === bookmark.id ? 'opacity-50 scale-95' :
+                dragOverBookmarkId === bookmark.id ? 'border border-primary bg-primary/5' :
+                'hover:bg-surface'
               }`}
             >
               {editingBookmarkId === bookmark.id ? (
-                // Edit mode
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 flex items-center gap-2">
                   <input
-                    type="text"
+                    type="url"
                     value={editUrl}
                     onChange={(e) => setEditUrl(e.target.value)}
                     placeholder="URL"
-                    className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="flex-1 min-w-0 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
                   />
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Title"
-                    className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-
-                  {/* Icon Selection for Edit */}
-                  <div className="space-y-2">
-                    {/* Custom Icon Upload */}
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1 px-2 py-1 text-xs bg-background border border-border rounded hover:bg-surface cursor-pointer transition-colors">
-                        <span>📷</span>
-                        <span>Upload Image</span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/gif,image/webp"
-                          onChange={(e) => handleIconUpload(e, true)}
-                          className="hidden"
-                        />
-                      </label>
-                      {editCustomIcon && (
-                        <button
-                          onClick={() => handleClearCustomIcon(true)}
-                          className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                          title="Remove custom icon"
-                        >
-                          ✕ Clear
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Custom Icon Preview */}
-                    {editCustomIcon && (
-                      <div className="flex items-center gap-2 p-2 bg-surface rounded">
-                        <img
-                          src={editCustomIcon}
-                          alt="Custom icon preview"
-                          className="w-6 h-6 object-contain rounded"
-                        />
-                        <span className="text-xs text-text-secondary">Custom icon</span>
-                      </div>
-                    )}
-
-                    {/* Or Emoji Selection */}
-                    {!editCustomIcon && (
-                      <>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="text"
-                            value={editIcon}
-                            onChange={(e) => setEditIcon(e.target.value)}
-                            placeholder="Emoji"
-                            className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
-                        </div>
-                        <div className="flex gap-1 flex-wrap">
-                          {emojiIcons.map(emoji => (
-                            <button
-                              key={emoji}
-                              onClick={() => {
-                                setEditIcon(emoji)
-                                setEditCustomIcon(null)
-                              }}
-                              className={`px-2 py-1 text-xs rounded transition-colors ${
-                                editIcon === emoji
-                                  ? 'bg-primary text-white'
-                                  : 'bg-background hover:bg-surface'
-                              }`}
-                              title={emoji}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveEdit}
-                      className="px-3 py-1 text-sm bg-primary text-white rounded hover:opacity-90"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-3 py-1 text-sm bg-background border border-border rounded hover:bg-surface"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                  <button onClick={handleSaveEdit} className="p-1 text-primary hover:bg-surface rounded" title="Save">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <button onClick={() => { setEditingBookmarkId(null); setEditUrl(''); setEditTitle(''); }} className="p-1 text-text-muted hover:bg-surface rounded" title="Cancel">
+                    <IconX className="w-4 h-4" />
+                  </button>
                 </div>
               ) : (
-                // Display mode
                 <>
-                  {/* Drag handle */}
-                  <span className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity text-text-secondary">
-                    ⋮⋮
+                  <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="9" cy="5" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="9" cy="19" r="1.5" />
+                      <circle cx="15" cy="5" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="15" cy="19" r="1.5" />
+                    </svg>
                   </span>
-                  {(() => {
-                    const iconDisplay = getBookmarkIconDisplay(bookmark.url, bookmark.icon)
-                    if (iconDisplay.type === 'emoji' || iconDisplay.type === 'fallback') {
-                      return <span className="text-xl flex-shrink-0">{iconDisplay.content}</span>
-                    } else {
-                      return (
-                        <img
-                          src={iconDisplay.content}
-                          alt=""
-                          className="w-5 h-5 flex-shrink-0 object-contain rounded"
-                          onError={(e) => {
-                            // Fallback to default icon if favicon fails to load
-                            const target = e.target as HTMLImageElement
-                            target.style.display = 'none'
-                            const parent = target.parentElement
-                            if (parent && !parent.querySelector('.fallback-icon')) {
-                              const fallback = document.createElement('span')
-                              fallback.className = 'text-xl flex-shrink-0 fallback-icon'
-                              fallback.textContent = '🔗'
-                              parent.insertBefore(fallback, target.nextSibling)
-                            }
-                          }}
-                        />
-                      )
-                    }
-                  })()}
+                  {renderIcon(bookmark)}
                   <a
                     href={bookmark.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 text-sm font-medium text-text hover:text-primary transition-colors truncate"
-                    title={`${bookmark.title}\n${bookmark.url}`}
+                    title={bookmark.url}
                   >
                     {bookmark.title}
                   </a>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleStartEdit(bookmark)}
-                      className="p-1 text-xs text-text-secondary hover:text-primary transition-colors"
-                      title="Edit"
-                    >
-                      ✏️
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-text-muted hover:text-primary hover:bg-surface rounded transition-all" title="Edit">
+                      <IconEdit className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDeleteBookmark(bookmark.id)}
-                      className="p-1 text-xs text-text-secondary hover:text-red-500 transition-colors"
-                      title="Delete"
-                    >
-                      🗑️
+                    <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-all" title="Delete">
+                      <IconTrash className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </>
@@ -491,152 +228,57 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
         )}
       </div>
 
-      {/* Add Bookmark Section */}
       {showAddForm ? (
-        <div className="pt-2 border-t border-border space-y-2">
+        <div className="pt-2 border-t border-border-subtle space-y-2">
           <input
             type="url"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             onBlur={handleUrlBlur}
-            placeholder="URL (e.g., https://example.com)"
-            className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="https://example.com"
+            className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
             disabled={isFetching}
+            autoFocus
           />
           <input
             type="text"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Title (auto-fetched from URL)"
-            className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Title"
+            className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
           />
-
-          {/* Icon Selection */}
-          <div className="space-y-2">
-            {/* Custom Icon Upload */}
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 px-2 py-1 text-sm bg-background border border-border rounded hover:bg-surface cursor-pointer transition-colors">
-                <span>📷</span>
-                <span>Upload Image</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/gif,image/webp"
-                  onChange={(e) => handleIconUpload(e, false)}
-                  className="hidden"
-                />
-              </label>
-              {newCustomIcon && (
-                <button
-                  onClick={() => handleClearCustomIcon(false)}
-                  className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                  title="Remove custom icon"
-                >
-                  ✕ Clear
-                </button>
-              )}
-            </div>
-
-            {/* Custom Icon Preview */}
-            {newCustomIcon && (
-              <div className="flex items-center gap-2 p-2 bg-surface rounded">
-                <img
-                  src={newCustomIcon}
-                  alt="Custom icon preview"
-                  className="w-8 h-8 object-contain rounded"
-                />
-                <span className="text-xs text-text-secondary">Custom icon selected</span>
-              </div>
-            )}
-
-            {/* Or Emoji Selection */}
-            {!newCustomIcon && (
-              <>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={newIcon}
-                    onChange={(e) => setNewIcon(e.target.value)}
-                    placeholder="Emoji"
-                    className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <span className="text-xs text-text-secondary">or pick one:</span>
-                </div>
-                <div className="flex gap-1 flex-wrap">
-                  {emojiIcons.map(emoji => (
-                    <button
-                      key={emoji}
-                      onClick={() => {
-                        setNewIcon(emoji)
-                        setNewCustomIcon(null)
-                      }}
-                      className={`px-2 py-1 text-sm rounded transition-colors ${
-                        newIcon === emoji
-                          ? 'bg-primary text-white'
-                          : 'bg-background hover:bg-surface'
-                      }`}
-                      title={emoji}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {isFetching && (
-            <p className="text-xs text-text-secondary">Fetching page title...</p>
-          )}
+          {isFetching && <p className="text-xs text-text-muted">Fetching title...</p>}
           <div className="flex gap-2">
-            <button
-              onClick={handleAddBookmark}
-              disabled={!newUrl.trim() || isFetching}
-              className="flex-1 px-3 py-1 text-sm bg-primary text-white rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Add Bookmark
+            <button onClick={handleAddBookmark} disabled={!newUrl.trim() || isFetching} className="flex-1 btn-primary text-sm disabled:opacity-50">
+              Add
             </button>
-            <button
-              onClick={() => {
-                setShowAddForm(false)
-                setNewUrl('')
-                setNewTitle('')
-                setNewIcon('🔗')
-                setNewCustomIcon(null)
-              }}
-              className="px-3 py-1 text-sm bg-background border border-border rounded hover:bg-surface"
-            >
+            <button onClick={() => { setShowAddForm(false); setNewUrl(''); setNewTitle(''); }} className="btn-secondary text-sm">
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="w-full mt-2 px-3 py-2 text-sm bg-primary text-white rounded hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-        >
-          <span>+ Add Bookmark</span>
+        <button onClick={() => setShowAddForm(true)} className="w-full mt-2 btn-secondary text-sm flex items-center justify-center gap-1.5">
+          <IconPlus className="w-3.5 h-3.5" />
+          Add
         </button>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background border border-border rounded-lg shadow-lg p-6 max-w-sm mx-4">
-            <h3 className="text-lg font-semibold text-text mb-2">Delete Bookmark</h3>
-            <p className="text-sm text-text-secondary mb-4">
-              Are you sure you want to delete this bookmark? This action cannot be undone.
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="glass-modal rounded-lg p-5 max-w-xs mx-4 animate-slide-up">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                <IconAlert className="w-4 h-4 text-red-500" />
+              </div>
+              <h3 className="font-semibold">Delete bookmark?</h3>
+            </div>
+            <p className="text-sm text-text-secondary mb-4">This cannot be undone.</p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={handleCancelDelete}
-                className="px-4 py-2 text-sm bg-background border border-border rounded hover:bg-surface transition-colors"
-              >
+              <button onClick={() => { setShowDeleteConfirm(false); setBookmarkToDelete(null); }} className="btn-secondary text-sm">
                 Cancel
               </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-              >
+              <button onClick={handleConfirmDelete} className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-button hover:bg-red-600 transition-colors">
                 Delete
               </button>
             </div>

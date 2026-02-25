@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { AIChatWidgetConfig, ChatMessage } from '../types'
 import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse, validateApiKeyFormat, RateLimitInfo } from '../utils/ai'
 import { decodeApiKey } from '../utils/security'
+import { IconAlert, IconTimer, IconSend } from '../components/Icons'
 
 interface AIChatWidgetProps {
   title: string
@@ -266,13 +267,13 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
 
       {/* Error Message */}
       {error && (
-        <div className={`mb-3 p-3 border rounded-lg text-sm ${
+        <div className={`mb-3 p-3 glass-card rounded-lg text-sm ${
           rateLimitInfo?.isRateLimited
-            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400'
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+            ? 'bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400'
+            : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
         }`}>
           <div className="flex items-start gap-2">
-            <span className="text-lg">{rateLimitInfo?.isRateLimited ? '⏱️' : '⚠️'}</span>
+            <IconAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-medium">{rateLimitInfo?.isRateLimited ? 'Rate Limit Exceeded' : 'Error'}</p>
               <p className="text-xs mt-1 opacity-90">{error}</p>
@@ -338,7 +339,7 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
           <button
             onClick={handleSend}
             disabled={!input.trim() || !hasApiKey || !hasModel || isLoading}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
           >
             {isLoading ? (
               <>
@@ -347,9 +348,7 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                <IconSend className="w-4 h-4" />
                 Send
               </>
             )}

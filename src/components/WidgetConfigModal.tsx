@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Widget, WidgetType, ChatMessage, AIChatWidgetConfig } from '../types'
 import { fetchStraicoModels, validateOpenAIKey, validateStraicoKey, validateApiKeyFormat } from '../utils/ai'
 import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
+import { IconAlert, IconX, IconLoader } from './Icons'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
@@ -333,8 +334,9 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 <option value="straico">Straico</option>
               </select>
               {hasExistingMessages && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                  ⚠️ Changing provider will clear chat history
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                  <IconAlert className="w-3 h-3" />
+                  Changing provider will clear chat history
                 </p>
               )}
             </div>
@@ -365,8 +367,9 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   Select the OpenAI model to use for chat completions
                 </p>
                 {hasExistingMessages && config.model && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    ⚠️ Changing model will clear chat history
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                    <IconAlert className="w-3 h-3" />
+                    Changing model will clear chat history
                   </p>
                 )}
               </div>
@@ -395,8 +398,8 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   />
                   {apiKeyValidation.straico && (
                     <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                      <span>⚠️</span>
-                      <span>{apiKeyValidation.straico}</span>
+                      <IconAlert className="w-3 h-3" />
+                      {apiKeyValidation.straico}
                     </p>
                   )}
                   {!apiKeyValidation.straico && (
@@ -446,17 +449,19 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                       ? 'Click "Fetch Models" to load available models'
                       : `${(config.straicoModels || []).length} models available`}
                   </p>
-                  {hasExistingMessages && config.model && (
-                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                      ⚠️ Changing model will clear chat history
-                    </p>
-                  )}
-                </div>
-                {modelFetchError && (
-                  <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-                    ⚠️ {modelFetchError}
-                  </div>
+                {hasExistingMessages && config.model && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                    <IconAlert className="w-3 h-3" />
+                    Changing model will clear chat history
+                  </p>
                 )}
+              </div>
+                  {modelFetchError && (
+                    <div className="p-2 glass-card rounded text-sm text-red-600 flex items-center gap-2">
+                      <IconAlert className="w-4 h-4" />
+                      {modelFetchError}
+                    </div>
+                  )}
                 {config.straicoApiKey && (config.straicoModels || []).length === 0 && (
                   <button
                     type="button"
@@ -499,8 +504,8 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 />
                   {apiKeyValidation.openai && (
                     <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                      <span>⚠️</span>
-                      <span>{apiKeyValidation.openai}</span>
+                      <IconAlert className="w-3 h-3" />
+                      {apiKeyValidation.openai}
                     </p>
                   )}
                   {!apiKeyValidation.openai && (

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
+import { applyTheme } from './utils/theme'
+import { IconLoader, IconPlus, IconEdit, IconTrash, IconGripVertical, IconPackage, IconAlert } from './components/Icons'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
@@ -116,8 +118,10 @@ function App() {
 
       // Handle settings
       if (settingsResult.data) {
-        console.log('Loaded settings from Chrome storage')
+        console.log('Loaded settings from Chrome storage:', settingsResult.data)
+        console.log('Theme to apply:', settingsResult.data.theme)
         setSettings(settingsResult.data)
+        applyTheme(settingsResult.data.theme)
       } else {
         // Create default settings
         const defaultSettings: Settings = {
@@ -132,6 +136,7 @@ function App() {
         if (settingsSaveResult.success) {
           console.log('✓ Created default settings in Chrome storage')
           setSettings(defaultSettings)
+          applyTheme(defaultSettings.theme)
         }
       }
 
@@ -147,9 +152,17 @@ function App() {
   // Listen for storage changes from other contexts
   useEffect(() => {
     const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === 'local' && changes.pages) {
-        console.log('Storage changed, reloading pages')
-        setPages((changes.pages.newValue ?? []) as any[])
+      if (areaName === 'local') {
+        if (changes.pages) {
+          console.log('Storage changed, reloading pages')
+          setPages((changes.pages.newValue ?? []) as any[])
+        }
+        if (changes.settings) {
+          const newSettings = changes.settings.newValue as Settings
+          console.log('Settings changed, updating theme')
+          setSettings(newSettings)
+          applyTheme(newSettings.theme)
+        }
       }
     }
 
@@ -806,20 +819,17 @@ function App() {
 
   const handleSettingsChange = (newSettings: Settings) => {
     setSettings(newSettings)
-    // Apply theme to document
-    if (newSettings.theme === 'dark-elegance') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    applyTheme(newSettings.theme)
   }
 
   // Show loading state during initialization
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-background text-text flex items-center justify-center">
+      <div className="min-h-screen bg-background text-text flex items-center justify-center bg-gradient-mesh">
         <div className="text-center">
-          <div className="animate-spin text-6xl mb-4">⚙️</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <IconLoader className="w-8 h-8 text-primary animate-spin" />
+          </div>
           <p className="text-text-secondary">Loading Browser Launchpad...</p>
         </div>
       </div>
@@ -891,7 +901,7 @@ function App() {
                       className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors"
                       title="Rename page (double-click)"
                     >
-                      ✏️
+                      <IconEdit className="w-4 h-4" />
                     </button>
                     {pages.length > 1 && (
                       <button
@@ -902,7 +912,7 @@ function App() {
                         className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors hover:text-red-500"
                         title="Delete page"
                       >
-                        🗑️
+                        <IconTrash className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -914,18 +924,20 @@ function App() {
             <button
               onClick={handleAddPage}
               disabled={pages.length >= MAX_PAGES}
-              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out ${
+              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out flex items-center gap-2 ${
                 pages.length >= MAX_PAGES
-                  ? 'bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed opacity-50'
-                  : 'bg-background text-text hover:bg-surface border border-border'
+                  ? 'bg-surface text-text-muted border border-border cursor-not-allowed opacity-50'
+                  : 'btn-secondary'
               }`}
               title={pages.length >= MAX_PAGES ? `Maximum ${MAX_PAGES} pages allowed` : 'Add a new page'}
             >
-              + Add Page
+              <IconPlus className="w-4 h-4" />
+              Add Page
             </button>
             {showLimitMessage && (
-              <div className="absolute top-full mt-2 left-0 bg-yellow-50 border border-yellow-300 text-yellow-800 px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap">
-                ⚠️ Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
+              <div className="absolute top-full mt-2 left-0 glass-card px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap flex items-center gap-2 text-amber-600 border-amber-500/20">
+                <IconAlert className="w-4 h-4" />
+                Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
               </div>
             )}
           </div>
@@ -933,9 +945,14 @@ function App() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md mx-4">
-              <h3 className="text-lg font-semibold mb-2">Delete Page?</h3>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-slide-up">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <IconTrash className="w-5 h-5 text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold">Delete Page?</h3>
+              </div>
               <p className="text-text-secondary mb-6">
                 Are you sure you want to delete this page? This action cannot be undone.
                 {pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets &&
@@ -945,13 +962,13 @@ function App() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={handleCancelDelete}
-                  className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600"
+                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-colors"
                 >
                   Delete Page
                 </button>
@@ -965,14 +982,17 @@ function App() {
         <div className="animate-fade-in" key={pages[activePage]?.id}>
           {pages[activePage] && pages[activePage].widgets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-center">
-              <div className="text-6xl mb-4">📦</div>
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <IconPackage className="w-8 h-8 text-primary" />
+              </div>
               <h2 className="text-xl font-semibold mb-2">No widgets yet</h2>
               <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
               <button
                 onClick={handleAddWidget}
-                className="px-6 py-3 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
+                className="btn-primary flex items-center gap-2"
               >
-                + Add Widget
+                <IconPlus className="w-4 h-4" />
+                Add Widget
               </button>
             </div>
           ) : (
@@ -980,9 +1000,9 @@ function App() {
               <div className="flex justify-end mb-4">
                 <button
                   onClick={handleAddWidget}
-                  className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
+                  className="btn-primary flex items-center gap-2"
                 >
-                  <span className="text-lg">+</span>
+                  <IconPlus className="w-4 h-4" />
                   Add Widget
                 </button>
               </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { WeatherWidgetConfig } from '../types'
 import { fetchWeather, getWeatherIconUrl, getWeatherEmoji, formatTemperature, formatCondition } from '../utils/weather'
+import { IconWeather, IconAlert, IconRefresh, IconSettings } from '../components/Icons'
 
 interface WeatherWidgetProps {
   title: string
@@ -65,56 +66,59 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     }
   }
 
-  // Fetch weather on mount and when city/units/apiKey change
   useEffect(() => {
     fetchWeatherData()
   }, [config.city, config.units, config.apiKey])
 
-  // Auto-refresh every 10 minutes
   useEffect(() => {
     if (!config.city || config.city.trim() === '') return
 
     const interval = setInterval(() => {
       fetchWeatherData()
-    }, 10 * 60 * 1000) // 10 minutes
+    }, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [config.city, config.units, config.apiKey])
 
-  // Show configuration prompt if no city is set
   if (!config.city || config.city.trim() === '') {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-4xl mb-2">🌤️</div>
-        <h3 className="text-lg font-semibold mb-1">{title}</h3>
-        <p className="text-text-secondary text-sm text-center">Click ⚙️ to configure city</p>
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+          <IconWeather className="w-6 h-6 text-primary" />
+        </div>
+        <h3 className="text-sm font-semibold mb-1">{title}</h3>
+        <p className="text-text-muted text-xs flex items-center gap-1">
+          <IconSettings className="w-3 h-3" />
+          Configure city
+        </p>
       </div>
     )
   }
 
-  // Show loading state
   if (weather.loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-4xl mb-2 animate-pulse">🌤️</div>
-        <h3 className="text-lg font-semibold mb-1">{title}</h3>
-        <p className="text-text-secondary text-sm">Loading weather data...</p>
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+          <IconWeather className="w-6 h-6 text-primary animate-pulse" />
+        </div>
+        <h3 className="text-sm font-semibold mb-1">{title}</h3>
+        <p className="text-text-muted text-xs">Loading...</p>
       </div>
     )
   }
 
-  // Show error state
   if (weather.error) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-2">
-        <div className="text-4xl mb-2">⚠️</div>
-        <h3 className="text-lg font-semibold mb-1">{title}</h3>
-        <p className="text-text-secondary text-xs text-center text-red-500">{weather.error}</p>
+        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
+          <IconAlert className="w-6 h-6 text-red-500" />
+        </div>
+        <h3 className="text-sm font-semibold mb-1">{title}</h3>
+        <p className="text-text-muted text-xs text-center text-red-500">{weather.error}</p>
       </div>
     )
   }
 
-  // Show weather data
   const emoji = weather.icon ? getWeatherEmoji(weather.condition, weather.icon) : '🌤️'
 
   return (
@@ -126,28 +130,15 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
       <h3 className="text-sm font-semibold text-text capitalize mb-1">
         {formatCondition(weather.condition)}
       </h3>
-      <p className="text-text-secondary text-xs mb-2">{weather.location}</p>
+      <p className="text-text-muted text-xs mb-3">{weather.location}</p>
 
-      {/* Refresh Button */}
       <button
         onClick={() => fetchWeatherData(true)}
         disabled={refreshing}
-        className="text-text-secondary hover:text-primary transition-colors disabled:opacity-50"
+        className="p-2 text-text-muted hover:text-primary hover:bg-surface rounded-button transition-all duration-200 disabled:opacity-50"
         title="Refresh weather data"
       >
-        <svg
-          className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-          />
-        </svg>
+        <IconRefresh className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
       </button>
     </div>
   )

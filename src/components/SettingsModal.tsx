@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { settingsStorage } from '../services/storage'
 import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
+import { applyTheme, type ThemeName } from '../utils/theme'
 import type { Settings } from '../types'
 
 interface SettingsModalProps {
@@ -56,18 +57,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Apply theme immediately to document (for feature #125)
-  const applyThemeToDocument = (themeName: 'modern-light' | 'dark-elegance') => {
-    if (themeName === 'dark-elegance') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
-
-  // Apply theme immediately when theme state changes (for feature #125)
   useEffect(() => {
-    applyThemeToDocument(theme)
+    applyTheme(theme)
   }, [theme])
 
   // Load settings when modal opens
@@ -87,7 +78,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         setGridColumns(newSettings.grid_columns)
         setTheme(newSettings.theme)
         // Apply theme immediately when settings change from another context (for feature #126)
-        applyThemeToDocument(newSettings.theme)
+        applyTheme(newSettings.theme)
       }
     }
 
@@ -103,14 +94,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setGridGap(result.data.grid_gap)
       setTheme(result.data.theme)
       // Apply loaded theme immediately to document (for feature #125, #126)
-      applyThemeToDocument(result.data.theme)
+      applyTheme(result.data.theme)
     } else {
       // Create default settings
       const saveResult = await settingsStorage.set(DEFAULT_SETTINGS)
       if (saveResult.success) {
         console.log('✓ Default settings created in Chrome storage')
         setSettings(DEFAULT_SETTINGS)
-        applyThemeToDocument(DEFAULT_SETTINGS.theme)
+        applyTheme(DEFAULT_SETTINGS.theme)
       }
     }
   }
@@ -538,18 +529,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
+      <div className="glass-modal rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-slide-up scrollbar-thin">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Settings</h2>
+          <h2 className="text-2xl font-bold text-gradient">Settings</h2>
           <button
             onClick={handleCancel}
-            className="text-text-secondary hover:text-text transition-colors text-2xl"
+            className="p-2 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-200"
             aria-label="Close settings"
           >
-            ×
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -558,36 +551,48 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           <h3 className="text-lg font-semibold mb-3">Theme</h3>
           <div className="grid grid-cols-2 gap-4">
             <button
-              onClick={() => setTheme('modern-light')}
-              className={`p-4 rounded-card border-2 transition-all ${
+              onClick={async () => {
+                setTheme('modern-light')
+                const updatedSettings = { ...settings, theme: 'modern-light' as const, updated_at: new Date().toISOString() }
+                await settingsStorage.set(updatedSettings)
+                setSettings(updatedSettings)
+                onSettingsChange(updatedSettings)
+              }}
+              className={`p-4 rounded-card border-2 transition-all duration-200 text-left ${
                 theme === 'modern-light'
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/5 shadow-glow-primary'
+                  : 'border-border hover:border-primary/40 hover:bg-surface/50'
               }`}
             >
               <div className="font-semibold mb-1">Modern Light</div>
               <div className="text-sm text-text-secondary">Clean, minimal light theme</div>
-              <div className="mt-2 flex gap-1">
-                <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-                <div className="w-4 h-4 rounded-full bg-white border"></div>
-                <div className="w-4 h-4 rounded-full bg-gray-100 border"></div>
+              <div className="mt-3 flex gap-1.5">
+                <div className="w-5 h-5 rounded-full bg-indigo-500 shadow-sm"></div>
+                <div className="w-5 h-5 rounded-full bg-white border border-gray-200 shadow-sm"></div>
+                <div className="w-5 h-5 rounded-full bg-slate-100 border border-gray-200 shadow-sm"></div>
               </div>
             </button>
 
             <button
-              onClick={() => setTheme('dark-elegance')}
-              className={`p-4 rounded-card border-2 transition-all ${
+              onClick={async () => {
+                setTheme('dark-elegance')
+                const updatedSettings = { ...settings, theme: 'dark-elegance' as const, updated_at: new Date().toISOString() }
+                await settingsStorage.set(updatedSettings)
+                setSettings(updatedSettings)
+                onSettingsChange(updatedSettings)
+              }}
+              className={`p-4 rounded-card border-2 transition-all duration-200 text-left ${
                 theme === 'dark-elegance'
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/5 shadow-glow-primary'
+                  : 'border-border hover:border-primary/40 hover:bg-surface/50'
               }`}
             >
               <div className="font-semibold mb-1">Dark Elegance</div>
               <div className="text-sm text-text-secondary">Sleek dark theme</div>
-              <div className="mt-2 flex gap-1">
-                <div className="w-4 h-4 rounded-full bg-purple-500"></div>
-                <div className="w-4 h-4 rounded-full bg-gray-900 border border-gray-700"></div>
-                <div className="w-4 h-4 rounded-full bg-gray-800 border border-gray-600"></div>
+              <div className="mt-3 flex gap-1.5">
+                <div className="w-5 h-5 rounded-full bg-teal-500 shadow-sm"></div>
+                <div className="w-5 h-5 rounded-full bg-slate-900 border border-slate-700 shadow-sm"></div>
+                <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-600 shadow-sm"></div>
               </div>
             </button>
           </div>
@@ -653,14 +658,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           </p>
 
           {/* OpenAI Configuration */}
-          <div className="mb-4 p-4 bg-background rounded-card border border-border">
+          <div className="mb-4 p-4 glass-card rounded-card">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-green-600"></div>
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600"></div>
               <h4 className="font-semibold">OpenAI</h4>
             </div>
 
             <div className="mb-3">
-              <label htmlFor="openai-key" className="block text-sm font-medium mb-1">
+              <label htmlFor="openai-key" className="block text-sm font-medium mb-1.5">
                 API Key
               </label>
               <div className="flex gap-2">
@@ -670,28 +675,37 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                   value={aiConfig.openai.apiKey}
                   onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, apiKey: e.target.value } }))}
                   placeholder="sk-..."
-                  className="flex-1 px-3 py-2 bg-surface border border-border rounded-button text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="input-base flex-1"
                 />
                 <button
                   type="button"
                   onClick={() => setShowApiKeys(prev => ({ ...prev, openai: !prev.openai }))}
-                  className="px-3 py-2 bg-surface border border-border rounded-button text-text-secondary hover:text-text text-sm"
+                  className="btn-secondary px-3"
                   title={showApiKeys.openai ? 'Hide API key' : 'Show API key'}
                 >
-                  {showApiKeys.openai ? '🙈' : '👁️'}
+                  {showApiKeys.openai ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="openai-model" className="block text-sm font-medium mb-1">
+              <label htmlFor="openai-model" className="block text-sm font-medium mb-1.5">
                 Model
               </label>
               <select
                 id="openai-model"
                 value={aiConfig.openai.model}
                 onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, model: e.target.value } }))}
-                className="w-full px-3 py-2 bg-surface border border-border rounded-button text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="input-base"
               >
                 <option value="gpt-4o-mini">GPT-4o Mini (Fast & Economical)</option>
                 <option value="gpt-4o">GPT-4o (Balanced)</option>
@@ -704,14 +718,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           </div>
 
           {/* Straico Configuration */}
-          <div className="p-4 bg-background rounded-card border border-border">
+          <div className="p-4 glass-card rounded-card">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600"></div>
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-violet-600"></div>
               <h4 className="font-semibold">Straico</h4>
             </div>
 
             <div className="mb-3">
-              <label htmlFor="straico-key" className="block text-sm font-medium mb-1">
+              <label htmlFor="straico-key" className="block text-sm font-medium mb-1.5">
                 API Key
               </label>
               <div className="flex gap-2">
@@ -721,21 +735,30 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                   value={aiConfig.straico.apiKey}
                   onChange={(e) => setAIConfig(prev => ({ ...prev, straico: { ...prev.straico, apiKey: e.target.value } }))}
                   placeholder="Enter your Straico API key"
-                  className="flex-1 px-3 py-2 bg-surface border border-border rounded-button text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="input-base flex-1"
                 />
                 <button
                   type="button"
                   onClick={() => setShowApiKeys(prev => ({ ...prev, straico: !prev.straico }))}
-                  className="px-3 py-2 bg-surface border border-border rounded-button text-text-secondary hover:text-text text-sm"
+                  className="btn-secondary px-3"
                   title={showApiKeys.straico ? 'Hide API key' : 'Show API key'}
                 >
-                  {showApiKeys.straico ? '🙈' : '👁️'}
+                  {showApiKeys.straico ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="straico-model" className="block text-sm font-medium mb-1">
+              <label htmlFor="straico-model" className="block text-sm font-medium mb-1.5">
                 Model
               </label>
               <input
@@ -744,11 +767,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 value={aiConfig.straico.model}
                 onChange={(e) => setAIConfig(prev => ({ ...prev, straico: { ...prev.straico, model: e.target.value } }))}
                 placeholder="Model will be fetched from API"
-                className="w-full px-3 py-2 bg-surface border border-border rounded-button text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-opacity-50"
+                className="input-base bg-opacity-50 cursor-not-allowed"
                 disabled
                 title="Model is fetched automatically from Straico API"
               />
-              <p className="text-xs text-text-secondary mt-1">
+              <p className="text-xs text-text-muted mt-1.5">
                 Models are fetched automatically from Straico API when you add an AI chat widget.
               </p>
             </div>
@@ -756,31 +779,37 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         </div>
 
         {/* Import/Export Section */}
-        <div className="border-t border-border pt-6 mt-6">
+        <div className="border-t border-border-subtle pt-6 mt-6">
           <h3 className="text-lg font-semibold mb-3">Data Management</h3>
-          <div className="flex gap-3 mb-3">
+          <div className="flex flex-wrap gap-3 mb-4">
             <button
               onClick={handleExportData}
-              className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
+              className="btn-primary flex items-center gap-2"
               title="Export all data to JSON file"
             >
-              <span className="text-lg">📤</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
               <span>Export Data</span>
             </button>
             <button
               onClick={handleImportClick}
-              className="px-4 py-2 bg-surface text-text rounded-button hover:bg-background border border-border transition-colors flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2"
               title="Import data from JSON file"
             >
-              <span className="text-lg">📥</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
               <span>Import Data</span>
             </button>
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="px-4 py-2 bg-surface text-text rounded-button hover:bg-background border border-border transition-colors flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2"
               title="Reset all settings to defaults"
             >
-              <span className="text-lg">🔄</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
               <span>Reset to Defaults</span>
             </button>
             <input
@@ -834,33 +863,33 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         </div>
 
         {/* About Section */}
-        <div className="border-t border-border pt-6 mt-6">
+        <div className="border-t border-border-subtle pt-6 mt-6">
           <h3 className="text-lg font-semibold mb-2">About</h3>
-          <p className="text-text-secondary mb-1">
-            <strong>Browser Launchpad</strong>
-          </p>
-          <p className="text-text-secondary text-sm mb-4">
-            A modern Chrome extension that replaces the new tab page with a customizable, widget-based dashboard.
-          </p>
-          <p className="text-text-secondary text-sm">
-            Version: <strong>1.0.0</strong>
-          </p>
-          <p className="text-text-secondary text-sm">
-            Created by <strong>Dennis Rongo</strong>
-          </p>
+          <div className="glass-card rounded-card p-4">
+            <p className="text-text font-semibold mb-1">
+              Browser Launchpad
+            </p>
+            <p className="text-text-secondary text-sm mb-3">
+              A modern Chrome extension that replaces the new tab page with a customizable, widget-based dashboard.
+            </p>
+            <div className="flex gap-4 text-sm text-text-muted">
+              <span>Version: <strong className="text-text-secondary">1.0.0</strong></span>
+              <span>Created by <strong className="text-text-secondary">Dennis Rongo</strong></span>
+            </div>
+          </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border-subtle">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-colors"
+            className="btn-secondary"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
+            className="btn-primary"
           >
             Save Settings
           </button>
@@ -869,34 +898,50 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
-          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+          <div className="glass-modal rounded-lg p-6 max-w-md w-full mx-4 animate-slide-up">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-4xl">⚠️</span>
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
               <h3 className="text-xl font-bold">Reset to Defaults?</h3>
             </div>
             <p className="text-text-secondary mb-4">
               This will reset all settings to their default values:
             </p>
-            <ul className="list-disc list-inside text-sm text-text-secondary mb-6 space-y-1">
-              <li>Theme will be set to <strong>Modern Light</strong></li>
-              <li>Grid columns will be set to <strong>3</strong></li>
-              <li>Grid gap will be set to <strong>24px</strong></li>
-              <li>All API keys will be <strong>cleared</strong></li>
+            <ul className="text-sm text-text-secondary mb-6 space-y-2">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+                Theme will be set to <strong>Modern Light</strong>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+                Grid columns will be set to <strong>3</strong>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+                Grid gap will be set to <strong>24px</strong>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+                All API keys will be <strong>cleared</strong>
+              </li>
             </ul>
-            <p className="text-sm text-text-secondary mb-6">
-              Your pages and widgets will <strong>not</strong> be affected.
+            <p className="text-sm text-text-muted mb-6">
+              Your pages and widgets will not be affected.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-colors"
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetToDefaults}
-                className="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-500 text-white font-medium rounded-button hover:bg-red-600 transition-colors"
               >
                 Reset to Defaults
               </button>
@@ -907,10 +952,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
       {/* Import Confirmation Modal */}
       {showImportConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
-          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+          <div className="glass-modal rounded-lg p-6 max-w-md w-full mx-4 animate-slide-up">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-4xl">📥</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
               <h3 className="text-xl font-bold">Import Data</h3>
             </div>
             <p className="text-text-secondary mb-4">
@@ -921,10 +970,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => setImportMode('replace')}
-                className={`w-full p-4 rounded-card border-2 text-left transition-all ${
+                className={`w-full p-4 rounded-card border-2 text-left transition-all duration-200 ${
                   importMode === 'replace'
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/5 shadow-glow-primary'
+                    : 'border-border hover:border-primary/40 hover:bg-surface/50'
                 }`}
               >
                 <div className="font-semibold mb-1">Replace All Data</div>
@@ -935,10 +984,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
               <button
                 onClick={() => setImportMode('merge')}
-                className={`w-full p-4 rounded-card border-2 text-left transition-all ${
+                className={`w-full p-4 rounded-card border-2 text-left transition-all duration-200 ${
                   importMode === 'merge'
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/5 shadow-glow-primary'
+                    : 'border-border hover:border-primary/40 hover:bg-surface/50'
                 }`}
               >
                 <div className="font-semibold mb-1">Merge with Existing Data</div>
@@ -951,13 +1000,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleCancelImport}
-                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-colors"
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmImport}
-                className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
+                className="btn-primary"
               >
                 Import ({importMode === 'replace' ? 'Replace' : 'Merge'})
               </button>
