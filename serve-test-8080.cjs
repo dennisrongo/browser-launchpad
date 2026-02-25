@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const server = http.createServer((req, res) => {
-  let filePath = req.url === '/' ? '/test-regression.html' : req.url;
-  const distPath = path.join(__dirname, 'dist', filePath);
+  let filePath = req.url === '/' ? '/test-extension-core-13-14-15.html' : req.url;
+  const distPath = path.join(__dirname, filePath);
   const ext = path.extname(filePath);
   let contentType = 'text/html';
   if (ext === '.js') contentType = 'text/javascript';
@@ -21,7 +21,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const PORT = 8080;
+const PORT = 9080;
 server.listen(PORT, () => {
   console.log('Test server running on http://localhost:' + PORT);
 });

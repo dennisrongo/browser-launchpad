@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Core Features Test #13, #14, #15</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #555;
+      font-size: 18px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #3b82f6;
+      padding-bottom: 8px;
+    }
+    .test {
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 6px;
+      background: #f9f9f9;
+    }
+    .test.pass {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+    }
+    .test.fail {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+    }
+    .test-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .test-details {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .summary {
+      background: #e7f3ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .manifest-display {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      margin: 10px 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .badge-success { background: #28a745; color: white; }
+    .badge-danger { background: #dc3545; color: white; }
+    .badge-warning { background: #ffc107; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>Extension Core Features Test #13, #14, #15</h1>
+  <p>Testing Chrome Extension permissions, CORS configuration, and Error Boundary implementation</p>
+
+  <div id="results"></div>
+
+  <script>
+    const results = [];
+
+    function addTest(feature, title, passed, details) {
+      results.push({ feature, title, passed, details });
+    }
+
+    function renderResults() {
+      const container = document.getElementById('results');
+      const features = ['Feature #13: Permissions', 'Feature #14: CORS', 'Feature #15: Error Boundary'];
+
+      let html = '';
+      let totalPassing = 0;
+      let totalTests = 0;
+
+      features.forEach(feature => {
+        const featureResults = results.filter(r => r.feature === feature);
+        if (featureResults.length === 0) return;
+
+        html += `<div class="test-section">
+          <h2>${feature}</h2>`;
+
+        featureResults.forEach(test => {
+          totalTests++;
+          if (test.passed) totalPassing++;
+
+          html += `
+            <div class="test ${test.passed ? 'pass' : 'fail'}">
+              <div class="test-title">
+                ${test.passed ? '✅' : '❌'} ${test.title}
+                <span class="badge ${test.passed ? 'badge-success' : 'badge-danger'}">
+                  ${test.passed ? 'PASS' : 'FAIL'}
+                </span>
+              </div>
+              ${test.details ? `<div class="test-details">${test.details}</div>` : ''}
+            </div>`;
+        });
+
+        html += '</div>';
+      });
+
+      const passRate = totalTests > 0 ? ((totalPassing / totalTests) * 100).toFixed(1) : 0;
+      html += `
+        <div class="summary">
+          Overall: ${totalPassing}/${totalTests} tests passing (${passRate}%)
+          ${totalPassing === totalTests ? '✅ ALL TESTS PASSING!' : ''}
+        </div>`;
+
+      container.innerHTML = html;
+    }
+
+    async function runTests() {
+      // Feature #13: Permissions
+      try {
+        const manifestResp = await fetch('/manifest.json');
+        const manifest = await manifestResp.json();
+
+        addTest('Feature #13: Permissions',
+          'manifest.json exists and is valid JSON',
+          manifest && manifest.manifest_version === 3,
+          'Found manifest version ' + (manifest?.manifest_version)
+        );
+
+        const hasStorage = manifest.permissions?.includes('storage');
+        addTest('Feature #13: Permissions',
+          'storage permission is included',
+          hasStorage,
+          hasStorage ? '✓ Storage permission found' : '✗ Storage permission missing'
+        );
+
+        const unnecessaryPerms = manifest.permissions?.filter(p => p !== 'storage') || [];
+        addTest('Feature #13: Permissions',
+          'No unnecessary permissions',
+          unnecessaryPerms.length === 0,
+          unnecessaryPerms.length === 0
+            ? '✓ Only storage permission (minimal)'
+            : `✗ Unnecessary permissions: ${unnecessaryPerms.join(', ')}`
+        );
+
+        const requiredHosts = [
+          'https://api.openai.com/*',
+          'https://api.straico.com/*',
+          'https://api.openweathermap.org/*'
+        ];
+        const missingHosts = requiredHosts.filter(h => !manifest.host_permissions?.includes(h));
+        addTest('Feature #13: Permissions',
+          'Required API hosts in host_permissions',
+          missingHosts.length === 0,
+          missingHosts.length === 0
+            ? '✓ All API hosts present'
+            : `✗ Missing: ${missingHosts.join(', ')}`
+        );
+
+        addTest('Feature #13: Permissions',
+          'Minimal permission count',
+          manifest.permissions?.length <= 2,
+          `Permission count: ${manifest.permissions?.length || 0}`
+        );
+
+        const excessivePerms = ['tabs', 'history', 'bookmarks', '<all_urls>', '*://*/*'];
+        const foundExcessive = manifest.permissions?.filter(p => excessivePerms.includes(p)) || [];
+        addTest('Feature #13: Permissions',
+          'No excessive/broad permissions',
+          foundExcessive.length === 0,
+          foundExcessive.length === 0
+            ? '✓ No excessive permissions'
+            : `✗ Excessive: ${foundExcessive.join(', ')}`
+        );
+
+      } catch (error) {
+        addTest('Feature #13: Permissions', 'Load manifest.json', false, error.message);
+      }
+
+      // Feature #14: CORS
+      try {
+        const manifestResp = await fetch('/manifest.json');
+        const manifest = await manifestResp.json();
+
+        addTest('Feature #14: CORS',
+          'api.openai.com in host_permissions',
+          manifest.host_permissions?.includes('https://api.openai.com/*'),
+          manifest.host_permissions?.includes('https://api.openai.com/*')
+            ? '✓ OpenAI API accessible'
+            : '✗ Missing OpenAI host permission'
+        );
+
+        addTest('Feature #14: CORS',
+          'api.straico.com in host_permissions',
+          manifest.host_permissions?.includes('https://api.straico.com/*'),
+          manifest.host_permissions?.includes('https://api.straico.com/*')
+            ? '✓ Straico API accessible'
+            : '✗ Missing Straico host permission'
+        );
+
+        addTest('Feature #14: CORS',
+          'api.openweathermap.org in host_permissions',
+          manifest.host_permissions?.includes('https://api.openweathermap.org/*'),
+          manifest.host_permissions?.includes('https://api.openweathermap.org/*')
+            ? '✓ Weather API accessible'
+            : '✗ Missing Weather API host permission'
+        );
+
+        const csp = manifest.content_security_policy?.extension_pages || '';
+        addTest('Feature #14: CORS',
+          'CSP configured appropriately',
+          csp.includes('script-src') && csp.includes('self'),
+          csp ? `CSP: ${csp}` : 'Using default CSP'
+        );
+
+        // Check if API code exists in built bundle
+        const jsResp = await fetch('/newtab.js');
+        const jsText = await jsResp.text();
+        const hasOpenAI = jsText.includes('openai') || jsText.includes('api.openai.com');
+        const hasStraico = jsText.includes('straico') || jsText.includes('api.straico.com');
+        const hasWeather = jsText.includes('weather') || jsText.includes('openweathermap');
+
+        addTest('Feature #14: CORS',
+          'Source code contains API call logic',
+          hasOpenAI || hasStraico || hasWeather,
+          `APIs found: ${[
+            hasOpenAI ? 'OpenAI' : null,
+            hasStraico ? 'Straico' : null,
+            hasWeather ? 'Weather' : null
+          ].filter(Boolean).join(', ') || 'None'}`
+        );
+
+        const hasWildcard = manifest.host_permissions?.some(h =>
+          h.includes('<all_urls>') || h.includes('*://*/*')
+        );
+        addTest('Feature #14: CORS',
+          'No wildcard host permissions',
+          !hasWildcard,
+          hasWildcard ? '✗ Wildcard permissions present' : '✓ Specific domains only'
+        );
+
+      } catch (error) {
+        addTest('Feature #14: CORS', 'CORS configuration check', false, error.message);
+      }
+
+      // Feature #15: Error Boundary
+      try {
+        const jsResp = await fetch('/newtab.js');
+        const jsText = await jsResp.text();
+
+        const hasErrorBoundary = jsText.includes('ErrorBoundary');
+        addTest('Feature #15: Error Boundary',
+          'ErrorBoundary component exists',
+          hasErrorBoundary,
+          hasErrorBoundary ? '✓ ErrorBoundary found in bundle' : '✗ ErrorBoundary not found'
+        );
+
+        const hasStrictMode = jsText.includes('StrictMode');
+        addTest('Feature #15: Error Boundary',
+          'React.StrictMode is used',
+          hasStrictMode,
+          hasStrictMode ? '✓ StrictMode active (error detection)' : '✗ StrictMode not found'
+        );
+
+        const hasErrorHandling = jsText.includes('console.error');
+        addTest('Feature #15: Error Boundary',
+          'Error logging present',
+          hasErrorHandling,
+          hasErrorHandling ? '✓ Error logging found (console.error)' : '✗ No error logging'
+        );
+
+        const hasCatchBlock = jsText.includes('catch') && jsText.includes('error');
+        addTest('Feature #15: Error Boundary',
+          'Error handling logic',
+          hasCatchBlock,
+          hasCatchBlock ? '✓ Error handling patterns found' : '✗ No obvious error handling'
+        );
+
+        const hasComponentDidCatch = jsText.includes('componentDidCatch') || jsText.includes('getDerivedStateFromError');
+        addTest('Feature #15: Error Boundary',
+          'Error boundary lifecycle methods',
+          hasComponentDidCatch,
+          hasComponentDidCatch ? '✓ Error boundary lifecycle found' : '⚠️ Lifecycle methods not obvious in minified code'
+        );
+
+      } catch (error) {
+        addTest('Feature #15: Error Boundary', 'Error boundary check', false, error.message);
+      }
+
+      renderResults();
+    }
+
+    runTests();
+  </script>
+</body>
+</html>
