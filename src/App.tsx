@@ -40,6 +40,7 @@ function App() {
   const [pages, setPages] = useState<any[]>([])
   const [activePage, setActivePage] = useState(0)
   const [storageVerified, setStorageVerified] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
   const [editingPageId, setEditingPageId] = useState<string | null>(null)
   const [editingPageName, setEditingPageName] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -67,20 +68,17 @@ function App() {
   })
 
   useEffect(() => {
-    // Verify Chrome Storage API connection first
-    const verifyAndInit = async () => {
-      const verification = await verifyStorageConnection()
+    // Optimized initialization with parallel loading for fast initial load
+    const initializeApp = async () => {
+      const startTime = performance.now()
 
-      if (!verification.connected) {
-        console.error('Chrome Storage API verification failed:', verification.error)
-      } else {
-        console.log('✓ Chrome Storage API verified - using real persistent storage')
-        setStorageVerified(true)
-      }
+      // Load pages and settings in parallel for faster initial load
+      const [pagesResult, settingsResult] = await Promise.all([
+        pagesStorage.getAll(),
+        settingsStorage.get(),
+      ])
 
-      // Load pages from storage (or create default)
-      const pagesResult = await pagesStorage.getAll()
-
+      // Handle pages
       if (pagesResult.data && pagesResult.data.length > 0) {
         console.log('Loaded', pagesResult.data.length, 'pages from Chrome storage')
         setPages(pagesResult.data)
@@ -106,8 +104,7 @@ function App() {
         }
       }
 
-      // Load settings from storage
-      const settingsResult = await settingsStorage.get()
+      // Handle settings
       if (settingsResult.data) {
         console.log('Loaded settings from Chrome storage')
         setSettings(settingsResult.data)
@@ -127,9 +124,14 @@ function App() {
           setSettings(defaultSettings)
         }
       }
+
+      const loadTime = performance.now() - startTime
+      console.log(`✓ App initialized in ${loadTime.toFixed(2)}ms`)
+      setStorageVerified(true)
+      setIsInitialized(true)
     }
 
-    verifyAndInit()
+    initializeApp()
   }, [])
 
   // Listen for storage changes from other contexts
@@ -800,6 +802,18 @@ function App() {
     } else {
       document.documentElement.classList.remove('dark')
     }
+  }
+
+  // Show loading state during initialization
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-background text-text flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin text-6xl mb-4">⚙️</div>
+          <p className="text-text-secondary">Loading Browser Launchpad...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

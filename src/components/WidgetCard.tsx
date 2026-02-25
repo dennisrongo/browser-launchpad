@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Widget } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
@@ -26,7 +26,7 @@ interface WidgetCardProps {
   onDragEnd?: () => void
 }
 
-export function WidgetCard({
+function WidgetCardComponent({
   widget,
   onEdit,
   onEditTitle,
@@ -205,3 +205,19 @@ export function WidgetCard({
     </div>
   )
 }
+
+// Memoize WidgetCard for efficient rendering with many widgets
+// Only re-render when props change, preventing unnecessary updates
+export const WidgetCard = memo(WidgetCardComponent, (prevProps, nextProps) => {
+  // Custom comparison for props that matter for rendering
+  return (
+    prevProps.widget.id === nextProps.widget.id &&
+    prevProps.widget.type === nextProps.widget.type &&
+    prevProps.widget.title === nextProps.widget.title &&
+    prevProps.widget.order === nextProps.widget.order &&
+    prevProps.editingWidgetId === nextProps.editingWidgetId &&
+    prevProps.draggedWidgetId === nextProps.draggedWidgetId &&
+    prevProps.dragOverWidgetId === nextProps.dragOverWidgetId &&
+    JSON.stringify(prevProps.widget.config) === JSON.stringify(nextProps.widget.config)
+  )
+})

@@ -28,17 +28,12 @@
   body {
     @apply bg-background text-text;
     font-family: 'Inter', system-ui, sans-serif;
-    /* Smooth theme transitions on all color-related properties */
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    /* Removed global transitions for better performance - apply per-component */
   }
 
-  /* Smooth transitions for all themed elements */
-  h1, h2, h3, h4, h5, h6 {
-    transition: color 0.3s ease;
-  }
-
-  p, span, div, button, input, select, textarea {
-    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+  /* Smooth transitions only for interactive elements */
+  button, input, select, textarea {
+    @apply transition-colors duration-300;
   }
 }
 
