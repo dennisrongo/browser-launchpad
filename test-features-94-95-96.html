@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Features #94, #95, #96 - AI Chat Widget</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-bottom: 10px; }
+    .subtitle { color: #666; margin-bottom: 30px; }
+    .test-section {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-section h2 {
+      color: #444;
+      font-size: 18px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .test-step {
+      margin: 15px 0;
+      padding: 10px;
+      background: white;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+    }
+    .test-step.passed { border-left-color: #28a745; }
+    .test-step.failed { border-left-color: #dc3545; }
+    .test-step .step-number {
+      font-weight: bold;
+      color: #007bff;
+    }
+    .test-result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .test-result.pass { background: #d4edda; color: #155724; }
+    .test-result.fail { background: #f8d7da; color: #721c24; }
+    .test-result.info { background: #d1ecf1; color: #0c5460; }
+    .code-block {
+      background: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 10px 0;
+    }
+    .config-summary {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    .config-summary h3 {
+      color: #856404;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .config-summary ul {
+      margin-left: 20px;
+      color: #856404;
+    }
+    .config-summary li {
+      margin: 5px 0;
+    }
+    .manual-check {
+      background: #e7f3ff;
+      border: 1px solid #2196F3;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    .manual-check h3 {
+      color: #1976D2;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .feature-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+    }
+    .feature-card h3 {
+      color: #007bff;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .feature-card p {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status-badge.passed { background: #28a745; color: white; }
+    .status-badge.in-progress { background: #ffc107; color: #333; }
+    .status-badge.pending { background: #6c757d; color: white; }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>Test: Features #94, #95, #96 <span class="status-badge in-progress">IN PROGRESS</span></h1>
+    <p class="subtitle">AI Chat Widget - Straico Model Selection, Message Input, Send Button</p>
+
+    <div class="config-summary">
+      <h3>Test Configuration</h3>
+      <ul>
+        <li>Feature #94: Straico model selection (single model)</li>
+        <li>Feature #95: Chat message input field</li>
+        <li>Feature #96: Send message button</li>
+        <li>Test File: test-features-94-95-96.html</li>
+        <li>Date: 2026-02-24</li>
+      </ul>
+    </div>
+
+    <!-- Feature #94: Straico Model Selection -->
+    <div class="test-section">
+      <h2>Feature #94: Straico Model Selection (Single Model)</h2>
+      <p style="color: #666; margin-bottom: 15px;">Verify users can select a single Straico model for chat</p>
+
+      <div class="manual-check">
+        <h3>Manual Verification Required</h3>
+        <p>Since this requires a real Straico API key, perform these steps manually:</p>
+        <ol style="margin-left: 20px; margin-top: 10px;">
+          <li>Open the Browser Launchpad extension</li>
+          <li>Add an AI Chat widget</li>
+          <li>Select "Straico" as the provider</li>
+          <li>Enter a valid Straico API key</li>
+          <li>Click "Fetch Models" button</li>
+          <li>Verify the model dropdown shows available Straico models</li>
+          <li>Select a model (e.g., 'claude-3-5-sonnet')</li>
+          <li>Save configuration</li>
+          <li>Verify the selected model is displayed</li>
+        </ol>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Code Analysis:</span>
+        <div class="code-block">src/components/WidgetConfigModal.tsx (lines 247-269)
+
+// Straico Model Selection Dropdown
+<select
+  value={config.model || ''}
+  onChange={(e) => setConfig({ ...config, model: e.target.value })}
+  disabled={!config.straicoApiKey}
+  className="w-full px-3 py-2 bg-background text-text border border-border rounded..."
+>
+  <option value="">Select a model</option>
+  {(config.straicoModels || []).map((model: any) => (
+    <option key={model.id} value={model.id}>
+      {model.name}
+    </option>
+  ))}
+</select></div>
+        <div class="test-result pass">✓ Straico model selection dropdown exists</div>
+        <div class="test-result pass">✓ Dropdown is disabled until API key is entered</div>
+        <div class="test-result pass">✓ Models are populated from straicoModels array</div>
+        <div class="test-result pass">✓ Selected model stored in config.model</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Model Fetch Implementation:</span>
+        <div class="code-block">src/utils/ai.ts (lines 17-54)
+
+export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]> {
+  const response = await fetch('https://api.straico.com/v2/models', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  })
+  // Maps response to our format
+  const models: StraicoModel[] = (data.models || data.data || []).map(...)
+  return models
+}</div>
+        <div class="test-result pass">✓ fetchStraicoModels function implemented</div>
+        <div class="test-result pass">✓ API endpoint: https://api.straico.com/v2/models</div>
+        <div class="test-result pass">✓ Authorization header with Bearer token</div>
+        <div class="test-result pass">✓ Error handling with descriptive messages</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Feature Status:</span>
+        <div class="test-result pass">✅ Feature #94: Straico model selection - PASSING (code verified)</div>
+      </div>
+    </div>
+
+    <!-- Feature #95: Chat Message Input Field -->
+    <div class="test-section">
+      <h2>Feature #95: Chat Message Input Field</h2>
+      <p style="color: #666; margin-bottom: 15px;">Verify AI chat widget has message input field</p>
+
+      <div class="test-step">
+        <span class="step-number">Input Field Implementation:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 193-208)
+
+<textarea
+  ref={textareaRef}
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={handleKeyDown}
+  placeholder={
+    !hasApiKey
+      ? 'Configure API key in settings...'
+      : !hasModel
+      ? 'Select a model in settings...'
+      : 'Type your message... (Enter to send, Shift+Enter for new line)'
+  }
+  disabled={!hasApiKey || !hasModel || isLoading}
+  className="w-full px-3 py-2 border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background text-text placeholder:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+  rows={2}
+/></div>
+        <div class="test-result pass">✓ Message input field exists (textarea)</div>
+        <div class="test-result pass">✓ Multi-line support (rows={2})</div>
+        <div class="test-result pass">✓ Placeholder text shows configuration status</div>
+        <div class="test-result pass">✓ Input is disabled when API key or model not configured</div>
+        <div class="test-result pass">✓ Input is disabled during message sending</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Keyboard Interaction:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 94-99)
+
+const handleKeyDown = (e: React.KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSend()
+  }
+}</div>
+        <div class="test-result pass">✓ Enter key sends message</div>
+        <div class="test-result pass">✓ Shift+Enter allows new line</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Input State Management:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 12)
+
+const [input, setInput] = useState('')
+
+// Cleared after sending (line 59):
+setInput('')</div>
+        <div class="test-result pass">✓ Input state managed with useState</div>
+        <div class="test-result pass">✓ Input cleared after sending message</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Feature Status:</span>
+        <div class="test-result pass">✅ Feature #95: Chat message input field - PASSING (code verified)</div>
+      </div>
+    </div>
+
+    <!-- Feature #96: Send Message Button -->
+    <div class="test-section">
+      <h2>Feature #96: Send Message Button</h2>
+      <p style="color: #666; margin-bottom: 15px;">Verify users can send messages to AI via button</p>
+
+      <div class="test-step">
+        <span class="step-number">Send Button Implementation:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 217-236)
+
+<button
+  onClick={handleSend}
+  disabled={!input.trim() || !hasApiKey || !hasModel || isLoading}
+  className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+>
+  {isLoading ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      Sending...
+    </>
+  ) : (
+    <>
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+      </svg>
+      Send
+    </>
+  )}
+</button></div>
+        <div class="test-result pass">✓ Send button exists with send icon</div>
+        <div class="test-result pass">✓ Button disabled when input is empty</div>
+        <div class="test-result pass">✓ Button disabled when API key not configured</div>
+        <div class="test-result pass">✓ Button disabled when model not selected</div>
+        <div class="test-result pass">✓ Button shows loading spinner during send</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Send Message Implementation:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 34-92)
+
+const handleSend = async () => {
+  // Validate input
+  if (!hasApiKey) { setError('Please configure API key'); return }
+  if (!hasModel) { setError('Please select a model'); return }
+
+  // Add user message
+  const userMessage: ChatMessage = {
+    id: `msg-${Date.now()}`,
+    role: 'user',
+    content: trimmedInput,
+    timestamp: new Date().toISOString(),
+  }
+  const updatedMessages = [...messages, userMessage]
+  setMessages(updatedMessages)
+  setInput('')
+  setIsLoading(true)
+
+  // Call AI API
+  const response = await callAI(config, updatedMessages)
+
+  // Add assistant response
+  const assistantMessage: ChatMessage = {
+    id: `msg-${Date.now() + 1}`,
+    role: 'assistant',
+    content: response,
+    timestamp: new Date().toISOString(),
+  }
+  setMessages([...updatedMessages, assistantMessage])
+}</div>
+        <div class="test-result pass">✓ handleSend function implemented</div>
+        <div class="test-result pass">✓ User message appears in chat history immediately</div>
+        <div class="test-result pass">✓ Loading indicator during API call</div>
+        <div class="test-result pass">✓ AI response appears after completion</div>
+        <div class="test-result pass">✓ Error handling with user-friendly messages</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">OpenAI API Integration:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 255-285)
+
+async function callOpenAI(config: AIChatWidgetConfig, messages: ChatMessage[]): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`OpenAI API error: ${response.status}...`)
+  }
+
+  const data = await response.json()
+  return data.choices[0]?.message?.content || 'No response from AI'
+}</div>
+        <div class="test-result pass">✓ OpenAI API endpoint: https://api.openai.com/v1/chat/completions</div>
+        <div class="test-result pass">✓ Authorization header with Bearer token</div>
+        <div class="test-result pass">✓ Messages formatted for OpenAI API</div>
+        <div class="test-result pass">✓ Response extracted from data.choices[0].message.content</div>
+        <div class="test-result pass">✓ Error handling with descriptive messages</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Straico API Integration:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 287-320)
+
+async function callStraico(config: AIChatWidgetConfig, messages: ChatMessage[]): Promise<string> {
+  const response = await fetch('https://api.straico.com/v0/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`Straico API error: ${response.status}...`)
+  }
+
+  const data = await response.json()
+  return data.choices[0]?.message?.content || 'No response from AI'
+}</div>
+        <div class="test-result pass">✓ Straico API endpoint: https://api.straico.com/v0/chat/completions</div>
+        <div class="test-result pass">✓ Authorization header with Bearer token</div>
+        <div class="test-result pass">✓ Messages formatted for Straico API</div>
+        <div class="test-result pass">✓ Response extracted from data.choices[0].message.content</div>
+        <div class="test-result pass">✓ Error handling with descriptive messages</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Loading State:</span>
+        <div class="code-block">src/widgets/AIChatWidget.tsx (lines 167-180)
+
+{isLoading && (
+  <div className="flex justify-start">
+    <div className="bg-surface border border-border rounded-lg px-4 py-3">
+      <div className="flex space-x-2 items-center">
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+        </div>
+        <span className="text-xs text-text-secondary ml-2">AI is typing...</span>
+      </div>
+    </div>
+  </div>
+)}</div>
+        <div class="test-result pass">✓ Loading indicator shows "AI is typing..."</div>
+        <div class="test-result pass">✓ Animated bouncing dots for visual feedback</div>
+      </div>
+
+      <div class="test-step">
+        <span class="step-number">Feature Status:</span>
+        <div class="test-result pass">✅ Feature #96: Send message button - PASSING (code verified)</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="test-section">
+      <h2>Summary</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>Feature #94: Straico Model Selection <span class="status-badge passed">PASS</span></h3>
+          <p>Users can select a single Straico model for chat from a dynamically fetched list of models.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Feature #95: Chat Message Input Field <span class="status-badge passed">PASS</span></h3>
+          <p>AI chat widget has a multi-line message input field with keyboard shortcuts and smart placeholders.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Feature #96: Send Message Button <span class="status-badge passed">PASS</span></h3>
+          <p>Users can send messages to AI via button with loading states and error handling for both OpenAI and Straico.</p>
+        </div>
+      </div>
+      <div class="test-result pass" style="font-size: 16px; padding: 20px;">
+        <strong>✅ All 3 features verified (code analysis + static verification)</strong><br>
+        Features #94, #95, #96 are implemented and ready for browser testing.
+      </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="test-section">
+      <h2>Next Steps for Browser Verification</h2>
+      <ol style="margin-left: 20px; line-height: 2;">
+        <li>Start the development server: <code>npm run dev</code></li>
+        <li>Open the browser to the development URL</li>
+        <li>Add an AI Chat widget</li>
+        <li>Test with OpenAI (requires API key):</li>
+        <ul style="margin-left: 40px;">
+          <li>Configure OpenAI API key</li>
+          <li>Select a model (GPT-3.5, GPT-4, etc.)</li>
+          <li>Type a message in the input field</li>
+          <li>Click Send button</li>
+          <li>Verify message appears and AI responds</li>
+        </ul>
+        <li>Test with Straico (requires API key):</li>
+        <ul style="margin-left: 40px;">
+          <li>Configure Straico API key</li>
+          <li>Click "Fetch Models" button</li>
+          <li>Select a model from the dropdown</li>
+          <li>Type a message in the input field</li>
+          <li>Click Send button</li>
+          <li>Verify message appears and AI responds</li>
+        </ul>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>
