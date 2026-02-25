@@ -48,7 +48,22 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Apply theme immediately to document (for feature #125)
+  const applyThemeToDocument = (themeName: 'modern-light' | 'dark-elegance') => {
+    if (themeName === 'dark-elegance') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }
+
+  // Apply theme immediately when theme state changes (for feature #125)
+  useEffect(() => {
+    applyThemeToDocument(theme)
+  }, [theme])
 
   // Load settings when modal opens
   useEffect(() => {
@@ -66,6 +81,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         setSettings(newSettings)
         setGridColumns(newSettings.grid_columns)
         setTheme(newSettings.theme)
+        // Apply theme immediately when settings change from another context (for feature #126)
+        applyThemeToDocument(newSettings.theme)
       }
     }
 
@@ -79,12 +96,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setSettings(result.data)
       setGridColumns(result.data.grid_columns)
       setTheme(result.data.theme)
+      // Apply loaded theme immediately to document (for feature #125, #126)
+      applyThemeToDocument(result.data.theme)
     } else {
       // Create default settings
       const saveResult = await settingsStorage.set(DEFAULT_SETTINGS)
       if (saveResult.success) {
         console.log('✓ Default settings created in Chrome storage')
         setSettings(DEFAULT_SETTINGS)
+        applyThemeToDocument(DEFAULT_SETTINGS.theme)
       }
     }
   }
@@ -191,15 +211,38 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       // Get all data from Chrome storage
       const allData = await chrome.storage.local.get(null)
 
+      // Optionally exclude API keys from export
+      let exportData = { ...allData }
+
+      if (!includeApiKeysInExport && exportData.ai_config) {
+        // Create a copy with API keys removed
+        const aiConfig = exportData.ai_config as AIProviderConfig
+        exportData = {
+          ...exportData,
+          ai_config: {
+            ...aiConfig,
+            openai: {
+              ...aiConfig.openai,
+              apiKey: ''
+            },
+            straico: {
+              ...aiConfig.straico,
+              apiKey: ''
+            }
+          }
+        }
+        console.log('⚠️ API keys excluded from export')
+      }
+
       // Create export data object with timestamp
-      const exportData = {
+      const finalExportData = {
         version: '1.0.0',
         exportDate: new Date().toISOString(),
-        data: allData
+        data: exportData
       }
 
       // Convert to JSON
-      const jsonString = JSON.stringify(exportData, null, 2)
+      const jsonString = JSON.stringify(finalExportData, null, 2)
 
       // Create blob and download link
       const blob = new Blob([jsonString], { type: 'application/json' })
@@ -528,6 +571,22 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               className="hidden"
             />
           </div>
+
+          {/* API Key Export Option */}
+          <div className="mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeApiKeysInExport}
+                onChange={(e) => setIncludeApiKeysInExport(e.target.checked)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-0"
+              />
+              <span className="text-sm text-text-secondary">
+                Include API keys in export (⚠️ Security risk: uncheck to exclude API keys)
+              </span>
+            </label>
+          </div>
+
           {importStatus.type && (
             <div className={`p-3 rounded-button text-sm mb-3 ${
               importStatus.type === 'success'
