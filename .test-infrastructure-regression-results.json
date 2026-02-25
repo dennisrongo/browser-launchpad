@@ -1,0 +1,38 @@
+{
+  "feature1": {
+    "passed": true,
+    "details": {
+      "chromeStorageLocal": true,
+      "chromeStorageGet": true,
+      "chromeStorageSet": true,
+      "storageConnection": true
+    }
+  },
+  "feature2": {
+    "passed": true,
+    "details": {
+      "pagesSchema": true,
+      "widgetsSchema": true,
+      "settingsSchema": true,
+      "chatHistorySchema": false,
+      "pagesArray": true,
+      "widgetsArray": true,
+      "settingsObject": true
+    }
+  },
+  "feature3": {
+    "passed": false,
+    "details": {
+      "usesChromeStorage": true,
+      "noLocalStorage": true,
+      "noSessionStorage": true,
+      "noInMemoryVars": false,
+      "persistenceVerification": true,
+      "storageOnChanged": true
+    }
+  },
+  "noMockData": {
+    "passed": true,
+    "foundMocks": []
+  }
+}
