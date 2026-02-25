@@ -1,7 +1,37 @@
 import { useState, useEffect } from 'react'
 import { pagesStorage, verifyStorageConnection } from './services/storage'
+import { WidgetTypeSelector, WidgetType } from './components/WidgetTypeSelector'
+import { WidgetCard } from './components/WidgetCard'
+import type { Widget } from './types'
 
 const MAX_PAGES = 10
+
+// Default configurations for each widget type
+const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
+  clock: {
+    timezone: '',
+    format12Hour: true,
+    showSeconds: false,
+  },
+  weather: {
+    city: '',
+    units: 'celsius',
+  },
+  'ai-chat': {
+    provider: 'openai',
+    model: '',
+  },
+  bookmark: {
+    bookmarks: [],
+  },
+}
+
+const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
+  clock: 'Clock',
+  weather: 'Weather',
+  'ai-chat': 'AI Chat',
+  bookmark: 'Bookmarks',
+}
 
 function App() {
   const [pages, setPages] = useState<any[]>([])
@@ -14,6 +44,11 @@ function App() {
   const [showLimitMessage, setShowLimitMessage] = useState(false)
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null)
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null)
+  const [showWidgetSelector, setShowWidgetSelector] = useState(false)
+  const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null)
+  const [showWidgetDeleteConfirm, setShowWidgetDeleteConfirm] = useState(false)
+  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
+  const [editingWidgetTitle, setEditingWidgetTitle] = useState('')
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -294,6 +329,145 @@ function App() {
     setDragOverPageId(null)
   }
 
+  // Widget handlers
+  const handleAddWidget = () => {
+    setShowWidgetSelector(true)
+  }
+
+  const handleSelectWidgetType = async (type: WidgetType) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const newWidget: Widget = {
+      id: 'widget-' + Date.now(),
+      type,
+      page_id: currentPage.id,
+      order: currentPage.widgets.length,
+      title: DEFAULT_WIDGET_TITLES[type],
+      config: DEFAULT_WIDGET_CONFIGS[type],
+      created_at: new Date().toISOString(),
+    }
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: [...currentPage.widgets, newWidget],
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widget added to Chrome storage')
+    } else {
+      console.error('Failed to add widget:', result.error)
+    }
+
+    setShowWidgetSelector(false)
+  }
+
+  const handleCancelWidgetSelector = () => {
+    setShowWidgetSelector(false)
+  }
+
+  const handleDeleteWidget = (widgetId: string) => {
+    setWidgetToDelete(widgetId)
+    setShowWidgetDeleteConfirm(true)
+  }
+
+  const handleConfirmDeleteWidget = async () => {
+    if (!widgetToDelete) return
+
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const updatedWidgets = currentPage.widgets.filter((w: Widget) => w.id !== widgetToDelete)
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widget deleted from Chrome storage')
+    } else {
+      console.error('Failed to delete widget:', result.error)
+    }
+
+    setShowWidgetDeleteConfirm(false)
+    setWidgetToDelete(null)
+  }
+
+  const handleCancelDeleteWidget = () => {
+    setShowWidgetDeleteConfirm(false)
+    setWidgetToDelete(null)
+  }
+
+  const handleEditWidget = (widgetId: string) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const widget = currentPage.widgets.find((w: Widget) => w.id === widgetId)
+    if (!widget) return
+
+    setEditingWidgetId(widgetId)
+    setEditingWidgetTitle(widget.title)
+  }
+
+  const handleSaveWidgetTitle = async (widgetId: string) => {
+    if (!editingWidgetTitle.trim()) {
+      setEditingWidgetId(null)
+      return
+    }
+
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const updatedWidgets = currentPage.widgets.map((w: Widget) =>
+      w.id === widgetId
+        ? { ...w, title: editingWidgetTitle.trim() }
+        : w
+    )
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Widget title updated in Chrome storage')
+    } else {
+      console.error('Failed to update widget title:', result.error)
+    }
+
+    setEditingWidgetId(null)
+    setEditingWidgetTitle('')
+  }
+
+  const handleCancelWidgetEdit = () => {
+    setEditingWidgetId(null)
+    setEditingWidgetTitle('')
+  }
+
+  const handleWidgetTitleKeyDown = (e: React.KeyboardEvent, widgetId: string) => {
+    if (e.key === 'Enter') {
+      handleSaveWidgetTitle(widgetId)
+    } else if (e.key === 'Escape') {
+      handleCancelWidgetEdit()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-text">
       <header className="border-b border-border bg-surface px-6 py-4">
@@ -444,22 +618,76 @@ function App() {
               <div className="text-6xl mb-4">📦</div>
               <h2 className="text-xl font-semibold mb-2">No widgets yet</h2>
               <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
-              <button className="px-6 py-3 bg-primary text-white rounded-button hover:opacity-90">
+              <button
+                onClick={handleAddWidget}
+                className="px-6 py-3 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
+              >
                 + Add Widget
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-6">
-              {/* Widgets will be rendered here */}
-              <div className="border border-border rounded-card p-6 bg-surface shadow-card">
-                <div className="text-4xl mb-2">👋</div>
-                <h3 className="text-lg font-semibold">Welcome!</h3>
-                <p className="text-text-secondary">Start customizing your dashboard</p>
+            <>
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleAddWidget}
+                  className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity flex items-center gap-2"
+                >
+                  <span className="text-lg">+</span>
+                  Add Widget
+                </button>
               </div>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {pages[activePage]?.widgets.map((widget: Widget) => (
+                  <WidgetCard
+                    key={widget.id}
+                    widget={widget}
+                    onEdit={handleEditWidget}
+                    onDelete={handleDeleteWidget}
+                    editingWidgetId={editingWidgetId}
+                    editingWidgetTitle={editingWidgetTitle}
+                    onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
+                    onSaveTitle={handleSaveWidgetTitle}
+                    onTitleKeyDown={handleWidgetTitleKeyDown}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </main>
+
+      {/* Widget Type Selector Modal */}
+      <WidgetTypeSelector
+        isOpen={showWidgetSelector}
+        onSelect={handleSelectWidgetType}
+        onCancel={handleCancelWidgetSelector}
+      />
+
+      {/* Widget Delete Confirmation Modal */}
+      {showWidgetDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md mx-4 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-2">Delete Widget?</h3>
+            <p className="text-text-secondary mb-6">
+              Are you sure you want to delete this widget? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelDeleteWidget}
+                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteWidget}
+                className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600"
+              >
+                Delete Widget
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
