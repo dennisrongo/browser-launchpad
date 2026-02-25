@@ -36,15 +36,34 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text mb-1">Timezone</label>
-              <input
-                type="text"
-                value={config.timezone || ''}
-                onChange={(e) => setConfig({ ...config, timezone: e.target.value })}
-                placeholder="e.g., America/New_York (leave empty for local time)"
+              <select
+                value={config.timezone || 'local'}
+                onChange={(e) => setConfig({ ...config, timezone: e.target.value === 'local' ? '' : e.target.value })}
                 className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              >
+                <option value="local">Local Time</option>
+                <option value="UTC">UTC</option>
+                <option value="America/New_York">New York (EST/EDT)</option>
+                <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                <option value="America/Chicago">Chicago (CST/CDT)</option>
+                <option value="America/Denver">Denver (MST/MDT)</option>
+                <option value="America/Phoenix">Phoenix (MST)</option>
+                <option value="Europe/London">London (GMT/BST)</option>
+                <option value="Europe/Paris">Paris (CET/CEST)</option>
+                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                <option value="Europe/Moscow">Moscow (MSK)</option>
+                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                <option value="Asia/Shanghai">Shanghai (CST)</option>
+                <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+                <option value="Asia/Singapore">Singapore (SGT)</option>
+                <option value="Asia/Dubai">Dubai (GST)</option>
+                <option value="Asia/Kolkata">Kolkata (IST)</option>
+                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+              </select>
               <p className="text-xs text-text-secondary mt-1">
-                Leave empty to use your local timezone. Example: America/New_York, Europe/London
+                Select a timezone to display. Leave as "Local Time" to use your browser's timezone.
               </p>
             </div>
             <div>
@@ -60,7 +79,6 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
               </label>
             </div>
             <div>
-              <label className="block text-sm font-medium text-text mb-2">Display Options</label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -70,6 +88,32 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 />
                 <span className="text-sm">Show seconds</span>
               </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Font Style</label>
+              <select
+                value={config.fontStyle || 'modern'}
+                onChange={(e) => setConfig({ ...config, fontStyle: e.target.value })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="modern">Modern (Sans-serif, Bold)</option>
+                <option value="classic">Classic (Serif)</option>
+                <option value="digital">Digital (Monospace)</option>
+                <option value="elegant">Elegant (Light)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Font Size</label>
+              <select
+                value={config.fontSize || 'large'}
+                onChange={(e) => setConfig({ ...config, fontSize: e.target.value })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large (Default)</option>
+                <option value="xlarge">Extra Large</option>
+              </select>
             </div>
           </div>
         )

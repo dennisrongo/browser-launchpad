@@ -42,9 +42,54 @@ export function ClockWidget({ config }: ClockWidgetProps) {
     return parts[parts.length - 1].replace(/_/g, ' ')
   }
 
+  // Get font style classes
+  const getFontStyleClasses = (): string => {
+    const style = config.fontStyle || 'modern'
+    switch (style) {
+      case 'classic':
+        return 'font-serif'
+      case 'digital':
+        return "font-mono tracking-wider"
+      case 'elegant':
+        return 'font-light'
+      case 'modern':
+      default:
+        return 'font-sans'
+    }
+  }
+
+  // Get font size classes
+  const getFontSizeClasses = (): string => {
+    const size = config.fontSize || 'large'
+    switch (size) {
+      case 'small':
+        return 'text-3xl'
+      case 'medium':
+        return 'text-4xl'
+      case 'xlarge':
+        return 'text-6xl'
+      case 'large':
+      default:
+        return 'text-5xl'
+    }
+  }
+
+  const getFontWeight = (): string => {
+    const style = config.fontStyle || 'modern'
+    switch (style) {
+      case 'elegant':
+        return 'font-light'
+      case 'digital':
+        return 'font-medium'
+      case 'modern':
+      default:
+        return 'font-bold'
+    }
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full">
-      <div className="text-5xl font-bold text-primary mb-2 tabular-nums">
+      <div className={`${getFontSizeClasses()} ${getFontStyleClasses()} ${getFontWeight()} text-primary mb-2 tabular-nums`}>
         {formatTime(time)}
       </div>
       <div className="text-text-secondary text-sm">

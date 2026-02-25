@@ -2,12 +2,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+const PORT = process.env.PORT || 7777;
+
 const server = http.createServer((req, res) => {
   let filePath = req.url === '/' ? '/newtab.html' : req.url;
-
-  // First try dist, then fall back to root
   const distPath = path.join(__dirname, 'dist', filePath);
-  const rootPath = path.join(__dirname, filePath);
 
   const ext = path.extname(filePath);
   let contentType = 'text/html';
@@ -16,16 +15,8 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(distPath, (err, content) => {
     if (err) {
-      // Try root path
-      fs.readFile(rootPath, (err2, content2) => {
-        if (err2) {
-          res.writeHead(404);
-          res.end('File not found');
-          return;
-        }
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content2);
-      });
+      res.writeHead(404);
+      res.end('File not found');
       return;
     }
     res.writeHead(200, { 'Content-Type': contentType });
@@ -33,7 +24,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`Test server running on http://localhost:${PORT}`);
 });

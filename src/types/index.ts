@@ -51,6 +51,8 @@ export interface ClockWidgetConfig {
   timezone: string
   format12Hour: boolean
   showSeconds: boolean
+  fontStyle?: 'modern' | 'classic' | 'digital' | 'elegant'
+  fontSize?: 'small' | 'medium' | 'large' | 'xlarge'
 }
 
 export interface Settings {
