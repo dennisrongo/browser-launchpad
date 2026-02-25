@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "exportDate": "2025-02-25T00:00:00.000Z",
+  "data": {
+    "pages": [
+      {
+        "id": "test-page-1",
+        "name": "Test Page 1",
+        "order": 0,
+        "widgets": [
+          {
+            "id": "test-widget-1",
+            "type": "bookmark",
+            "page_id": "test-page-1",
+            "order": 0,
+            "title": "Bookmarks",
+            "config": { "bookmarks": [] },
+            "created_at": "2025-02-25T00:00:00.000Z"
+          },
+          {
+            "id": "test-widget-2",
+            "type": "clock",
+            "page_id": "test-page-1",
+            "order": 1,
+            "title": "Clock",
+            "config": { "timezone": "UTC", "format12Hour": false, "showSeconds": true },
+            "created_at": "2025-02-25T00:00:00.000Z"
+          }
+        ],
+        "created_at": "2025-02-25T00:00:00.000Z",
+        "updated_at": "2025-02-25T00:00:00.000Z"
+      },
+      {
+        "id": "test-page-2",
+        "name": "Test Page 2",
+        "order": 1,
+        "widgets": [
+          {
+            "id": "test-widget-3",
+            "type": "weather",
+            "page_id": "test-page-2",
+            "order": 0,
+            "title": "Weather",
+            "config": { "city": "London", "units": "celsius" },
+            "created_at": "2025-02-25T00:00:00.000Z"
+          }
+        ],
+        "created_at": "2025-02-25T00:00:00.000Z",
+        "updated_at": "2025-02-25T00:00:00.000Z"
+      }
+    ],
+    "settings": {
+      "id": "global-settings",
+      "theme": "dark-elegance",
+      "grid_columns": 4,
+      "grid_gap": 20,
+      "created_at": "2025-02-25T00:00:00.000Z",
+      "updated_at": "2025-02-25T00:00:00.000Z"
+    },
+    "ai_config": {
+      "openai": { "apiKey": "sk-test-key", "model": "gpt-4o-mini" },
+      "straico": { "apiKey": "test-straico-key", "model": "claude-3" }
+    }
+  }
+}

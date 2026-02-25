@@ -47,9 +47,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false })
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [showImportConfirm, setShowImportConfirm] = useState(false)
-  const [pendingImportData, setPendingImportData] = useState<any>(null)
-  const [importMode, setImportMode] = useState<'merge' | 'replace'>('replace')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -294,32 +291,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         throw new Error(`Incompatible version: ${importData.version}`)
       }
 
-      // Generate summary before import
-      const data = importData.data
-      const pageCount = Array.isArray(data.pages) ? data.pages.length : 0
-      const widgetCount = Array.isArray(data.pages)
-        ? data.pages.reduce((sum: number, page: any) => sum + (Array.isArray(page.widgets) ? page.widgets.length : 0), 0)
-        : 0
-      const hasSettings = !!data.settings
-      const hasAIConfig = !!data.ai_config
-
       // Import data to Chrome storage
       await chrome.storage.local.clear()
       await chrome.storage.local.set(importData.data)
 
       console.log('✓ Data imported successfully')
-
-      // Build detailed summary message
-      const summaryParts: string[] = []
-      if (pageCount > 0) summaryParts.push(`${pageCount} page${pageCount > 1 ? 's' : ''}`)
-      if (widgetCount > 0) summaryParts.push(`${widgetCount} widget${widgetCount > 1 ? 's' : ''}`)
-      if (hasSettings) summaryParts.push('settings')
-      if (hasAIConfig) summaryParts.push('AI config')
-
-      const summaryText = summaryParts.length > 0 ? summaryParts.join(', ') : 'data'
-      const message = `✅ Successfully imported: ${summaryText}. Reloading...`
-
-      setImportStatus({ type: 'success', message })
+      setImportStatus({ type: 'success', message: 'Data imported successfully! Reloading...' })
 
       // Reload after short delay
       setTimeout(() => {

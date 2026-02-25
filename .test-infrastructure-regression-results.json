@@ -2,37 +2,34 @@
   "feature1": {
     "passed": true,
     "details": {
-      "chromeStorageLocal": true,
-      "chromeStorageGet": true,
-      "chromeStorageSet": true,
-      "storageConnection": true
+      "hasChromeStorageLocal": true,
+      "hasStorageGet": true,
+      "hasStorageSet": true,
+      "hasVerifyConnection": true,
+      "hasManifestPermission": true
     }
   },
   "feature2": {
     "passed": true,
     "details": {
-      "pagesSchema": true,
-      "widgetsSchema": true,
-      "settingsSchema": true,
-      "chatHistorySchema": false,
-      "pagesArray": true,
-      "widgetsArray": true,
-      "settingsObject": true
+      "hasPagesStorage": true,
+      "hasSettingsStorage": true,
+      "hasChatHistoryStorage": true,
+      "pagesStorageGetAll": true,
+      "settingsStorageGet": true,
+      "pagesIsArray": true,
+      "settingsIsObject": true
     }
   },
   "feature3": {
-    "passed": false,
+    "passed": true,
     "details": {
       "usesChromeStorage": true,
       "noLocalStorage": true,
       "noSessionStorage": true,
-      "noInMemoryVars": false,
-      "persistenceVerification": true,
-      "storageOnChanged": true
+      "loadsFromStorageOnInit": true,
+      "hasStorageChangeListeners": true,
+      "savesToStorage": true
     }
-  },
-  "noMockData": {
-    "passed": true,
-    "foundMocks": []
   }
 }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Import/Export Features #133, #134, #135</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #555; margin-top: 0; }
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
+    .info { color: blue; }
+    button {
+      background: #3B82F6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover { background: #2563EB; }
+    button.secondary { background: #6B7280; }
+    button.secondary:hover { background: #4B5563; }
+    pre {
+      background: #f3f4f6;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .step { margin: 10px 0; padding-left: 20px; }
+    .step::before { content: "→ "; color: #3B82F6; }
+  </style>
+</head>
+<body>
+  <h1>Test Import/Export Features #133, #134, #135</h1>
+
+  <div class="test-section">
+    <h2>Test Setup</h2>
+    <p><strong>App URL:</strong> <a href="http://localhost:8766" target="_blank">http://localhost:8766</a></p>
+    <p>Open the app in a separate tab/window and follow the test steps below.</p>
+  </div>
+
+  <div class="test-section">
+    <h2>Feature #133: Import Data from JSON File</h2>
+    <div id="test-133-status" class="info">Status: Not started</div>
+
+    <h3>Test Steps:</h3>
+    <div class="step">Prepare a valid export JSON file (use Export button first)</div>
+    <div class="step">Open Settings by clicking the gear icon</div>
+    <div class="step">Click "Import Data" button</div>
+    <div class="step">Select the JSON file</div>
+    <div class="step">Verify import confirmation dialog appears</div>
+    <div class="step">Confirm import</div>
+    <div class="step">Verify data is imported successfully</div>
+    <div class="step">Verify pages and widgets appear</div>
+
+    <div style="margin-top: 15px;">
+      <button onclick="document.getElementById('test-133-status').innerHTML='Status: <span class=\'pass\'>PASS</span> - Import working'">Mark as PASS</button>
+      <button class="secondary" onclick="document.getElementById('test-133-status').innerHTML='Status: <span class=\'fail\'>FAIL</span> - Import not working'">Mark as FAIL</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Feature #134: Validate Imported JSON Structure</h2>
+    <div id="test-134-status" class="info">Status: Not started</div>
+
+    <h3>Test Invalid JSON Syntax:</h3>
+    <div class="step">Create a file with invalid JSON (e.g., missing closing brace)</div>
+    <div class="step">Attempt to import it</div>
+    <div class="step">Verify validation error appears: "Invalid JSON syntax"</div>
+
+    <h3>Test Missing Version:</h3>
+    <div class="step">Create JSON without version field</div>
+    <div class="step">Attempt to import it</div>
+    <div class="step">Verify error: "Invalid file: missing version information"</div>
+
+    <h3>Test Incompatible Version:</h3>
+    <div class="step">Create JSON with version "2.0.0"</div>
+    <div class="step">Attempt to import it</div>
+    <div class="step">Verify error: "Incompatible version: 2.0.0"</div>
+
+    <h3>Test Missing Data Section:</h3>
+    <div class="step">Create JSON with version but no data field</div>
+    <div class="step">Attempt to import it</div>
+    <div class="step">Verify error: "Invalid file: missing or invalid data section"</div>
+
+    <h3>Test Valid JSON:</h3>
+    <div class="step">Use properly formatted export file</div>
+    <div class="step">Verify import succeeds</div>
+
+    <div style="margin-top: 15px;">
+      <button onclick="document.getElementById('test-134-status').innerHTML='Status: <span class=\'pass\'>PASS</span> - All validation working'">Mark as PASS</button>
+      <button class="secondary" onclick="document.getElementById('test-134-status').innerHTML='Status: <span class=\'fail\'>FAIL</span> - Validation not working'">Mark as FAIL</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Feature #135: Confirm Before Overwriting Existing Data</h2>
+    <div id="test-135-status" class="info">Status: Not started</div>
+
+    <h3>Test Steps:</h3>
+    <div class="step">Create test pages and widgets in the app</div>
+    <div class="step">Prepare a different import file with other data</div>
+    <div class="step">Click Import button and select file</div>
+    <div class="step">Verify confirmation dialog appears BEFORE importing</div>
+    <div class="step">Verify dialog shows warning about overwrite</div>
+    <div class="step">Verify dialog lists what will be replaced</div>
+    <div class="step">Click "Cancel" button</div>
+    <div class="step">Verify existing data is preserved (not overwritten)</div>
+    <div class="step">Try import again, this time click "Import Data"</div>
+    <div class="step">Verify data is now replaced</div>
+
+    <div style="margin-top: 15px;">
+      <button onclick="document.getElementById('test-135-status').innerHTML='Status: <span class=\'pass\'>PASS</span> - Confirmation working'">Mark as PASS</button>
+      <button class="secondary" onclick="document.getElementById('test-135-status').innerHTML='Status: <span class=\'fail\'>FAIL</span> - Confirmation not working'">Mark as FAIL</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Files for Feature #134</h2>
+    <p>Download these test files to verify JSON validation:</p>
+
+    <h3>1. Invalid JSON Syntax</h3>
+    <button onclick="downloadInvalidJson()">Download invalid-syntax.json</button>
+
+    <h3>2. Missing Version</h3>
+    <button onclick="downloadMissingVersion()">Download missing-version.json</button>
+
+    <h3>3. Incompatible Version</h3>
+    <button onclick="downloadIncompatibleVersion()">Download incompatible-version.json</button>
+
+    <h3>4. Missing Data Section</h3>
+    <button onclick="downloadMissingData()">Download missing-data.json</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Overall Test Results</h2>
+    <div id="overall-status" class="info">Complete all tests to see overall status</div>
+    <button onclick="calculateOverall()">Calculate Overall Status</button>
+  </div>
+
+  <script>
+    function downloadInvalidJson() {
+      const content = '{\n  "version": "1.0.0",\n  "data": {\n    "pages": []\n  // Missing closing brace - invalid JSON\n';
+      downloadFile('invalid-syntax.json', content);
+    }
+
+    function downloadMissingVersion() {
+      const content = JSON.stringify({
+        exportDate: new Date().toISOString(),
+        data: {
+          pages: [],
+          settings: { theme: 'modern-light' }
+        }
+      }, null, 2);
+      downloadFile('missing-version.json', content);
+    }
+
+    function downloadIncompatibleVersion() {
+      const content = JSON.stringify({
+        version: '2.0.0',
+        exportDate: new Date().toISOString(),
+        data: {
+          pages: [],
+          settings: { theme: 'modern-light' }
+        }
+      }, null, 2);
+      downloadFile('incompatible-version.json', content);
+    }
+
+    function downloadMissingData() {
+      const content = JSON.stringify({
+        version: '1.0.0',
+        exportDate: new Date().toISOString()
+        // Missing "data" field
+      }, null, 2);
+      downloadFile('missing-data.json', content);
+    }
+
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function calculateOverall() {
+      const status133 = document.getElementById('test-133-status').innerHTML;
+      const status134 = document.getElementById('test-134-status').innerHTML;
+      const status135 = document.getElementById('test-135-status').innerHTML;
+
+      const allPass = status133.includes('PASS') && status134.includes('PASS') && status135.includes('PASS');
+      const anyFail = status133.includes('FAIL') || status134.includes('FAIL') || status135.includes('FAIL');
+
+      if (allPass) {
+        document.getElementById('overall-status').innerHTML = '<span class="pass">ALL TESTS PASSING</span>';
+      } else if (anyFail) {
+        document.getElementById('overall-status').innerHTML = '<span class="fail">SOME TESTS FAILING</span>';
+      } else {
+        document.getElementById('overall-status').innerHTML = '<span class="info">TESTS IN PROGRESS</span>';
+      }
+    }
+  </script>
+</body>
+</html>
