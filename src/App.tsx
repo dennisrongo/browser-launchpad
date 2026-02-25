@@ -96,6 +96,14 @@ function App() {
   }, [pages.length])
 
   const handleAddPage = async () => {
+    // Check if limit is reached
+    if (pages.length >= MAX_PAGES) {
+      setShowLimitMessage(true)
+      // Auto-hide the message after 5 seconds
+      setTimeout(() => setShowLimitMessage(false), 5000)
+      return
+    }
+
     const newPage = {
       id: 'page-' + Date.now(),
       name: 'New Page',
@@ -283,12 +291,25 @@ function App() {
               )}
             </div>
           ))}
-          <button
-            onClick={handleAddPage}
-            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-all duration-200 ease-in-out"
-          >
-            + Add Page
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleAddPage}
+              disabled={pages.length >= MAX_PAGES}
+              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out ${
+                pages.length >= MAX_PAGES
+                  ? 'bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed opacity-50'
+                  : 'bg-background text-text hover:bg-surface border border-border'
+              }`}
+              title={pages.length >= MAX_PAGES ? `Maximum ${MAX_PAGES} pages allowed` : 'Add a new page'}
+            >
+              + Add Page
+            </button>
+            {showLimitMessage && (
+              <div className="absolute top-full mt-2 left-0 bg-yellow-50 border border-yellow-300 text-yellow-800 px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap">
+                ⚠️ Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Delete Confirmation Modal */}
