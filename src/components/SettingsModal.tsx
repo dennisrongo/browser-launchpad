@@ -299,12 +299,45 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const handleConfirmImport = async () => {
     if (!pendingImportData) return
     try {
-      const data = pendingImportData.data
-      await chrome.storage.local.clear()
-      await chrome.storage.local.set(pendingImportData.data)
-      console.log('Data imported successfully')
-      setImportStatus({ type: 'success', message: 'Data imported successfully! Reloading...' })
+      if (importMode === 'replace') {
+        // Clear all data and import
+        await chrome.storage.local.clear()
+        await chrome.storage.local.set(pendingImportData)
+        console.log('✓ Data imported successfully (replace mode)')
+      } else {
+        // Merge mode: get existing data and merge
+        const existingData = await chrome.storage.local.get(null)
+
+        // Merge pages
+        const existingPages = (existingData.pages as any[]) || []
+        const importPages = (pendingImportData.pages as any[]) || []
+
+        // Create a map of existing pages by ID to avoid duplicates
+        const existingPageMap = new Map(existingPages.map((p: any) => [p.id, p]))
+        const mergedPages = [...existingPages]
+
+        // Add import pages that don't exist (by checking ID)
+        for (const importPage of importPages) {
+          if (!existingPageMap.has(importPage.id)) {
+            mergedPages.push(importPage)
+          }
+        }
+
+        // Merge settings (import takes precedence)
+        const mergedData = {
+          ...existingData,
+          ...pendingImportData,
+          pages: mergedPages,
+        }
+
+        await chrome.storage.local.clear()
+        await chrome.storage.local.set(mergedData)
+        console.log('✓ Data imported successfully (merge mode)')
+      }
+
+      setImportStatus({ type: 'success', message: `Data imported successfully! (${importMode} mode) Reloading...` })
       setShowImportConfirm(false)
+
       setTimeout(() => {
         window.location.reload()
       }, 1500)
@@ -315,11 +348,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     }
     setPendingImportData(null)
+    setImportMode('replace')
   }
 
   const handleCancelImport = () => {
     setShowImportConfirm(false)
     setPendingImportData(null)
+    setImportMode('replace')
   }
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -721,23 +756,44 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
           <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-4xl"></span>
-              <h3 className="text-xl font-bold">Import Data?</h3>
+              <span className="text-4xl">📥</span>
+              <h3 className="text-xl font-bold">Import Data</h3>
             </div>
             <p className="text-text-secondary mb-4">
-              You are about to import data from a backup file. This will:
+              Choose how you want to import the data:
             </p>
-            <ul className="list-disc list-inside text-sm text-text-secondary mb-6 space-y-1">
-              <li><strong>Replace all existing pages and widgets</strong></li>
-              <li>Replace your current settings (theme, grid layout)</li>
-              <li>Replace AI provider configurations</li>
-              <li>This action <strong>cannot be undone</strong></li>
-            </ul>
-            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-button mb-6">
-              <p className="text-sm text-yellow-600 font-medium">
-                Warning: All current data will be lost. Consider exporting a backup first if you want to keep it.
-              </p>
+
+            {/* Import Mode Selection */}
+            <div className="space-y-3 mb-6">
+              <button
+                onClick={() => setImportMode('replace')}
+                className={`w-full p-4 rounded-card border-2 text-left transition-all ${
+                  importMode === 'replace'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="font-semibold mb-1">Replace All Data</div>
+                <div className="text-sm text-text-secondary">
+                  Clear all existing data and use only the imported data. This will replace your current pages, widgets, and settings.
+                </div>
+              </button>
+
+              <button
+                onClick={() => setImportMode('merge')}
+                className={`w-full p-4 rounded-card border-2 text-left transition-all ${
+                  importMode === 'merge'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="font-semibold mb-1">Merge with Existing Data</div>
+                <div className="text-sm text-text-secondary">
+                  Combine imported pages with your existing pages. Duplicate pages (by ID) will be skipped. Settings from import will be applied.
+                </div>
+              </button>
             </div>
+
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleCancelImport}
@@ -749,7 +805,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 onClick={handleConfirmImport}
                 className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
               >
-                Import Data
+                Import ({importMode === 'replace' ? 'Replace' : 'Merge'})
               </button>
             </div>
           </div>
