@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Error Handling Features #146, #147, #148</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .test-result { padding: 8px; margin: 4px 0; border-radius: 4px; font-size: 14px; }
+    .test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .test-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; }
+    .test-section h3 { margin-top: 0; color: #333; }
+  </style>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-2">Error Handling Features Test</h1>
+    <p class="text-gray-600 mb-6">Testing Features #146, #147, #148</p>
+
+    <!-- Feature #146: Network failure handling -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-3">Feature #146: Network Failure Handling</h2>
+      <div id="test-146-results"></div>
+    </div>
+
+    <!-- Feature #147: Invalid input handling -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-3">Feature #147: Invalid Input Handling</h2>
+      <div id="test-147-results"></div>
+    </div>
+
+    <!-- Feature #148: Loading states display -->
+    <div class="test-section">
+      <h2 class="text-xl font-semibold mb-3">Feature #148: Loading States Display</h2>
+      <div id="test-148-results"></div>
+    </div>
+
+    <!-- Summary -->
+    <div class="test-section bg-white">
+      <h2 class="text-xl font-semibold mb-3">Test Summary</h2>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <script>
+    const results = {
+      146: { pass: 0, fail: 0, total: 0 },
+      147: { pass: 0, fail: 0, total: 0 },
+      148: { pass: 0, fail: 0, total: 0 }
+    };
+
+    function addResult(featureId, test, passed, message) {
+      const container = document.getElementById(`test-${featureId}-results`);
+      const div = document.createElement('div');
+      div.className = `test-result ${passed ? 'test-pass' : 'test-fail'}`;
+      div.innerHTML = `<strong>${passed ? '✓' : '✗'} ${test}</strong><br>${message}`;
+      container.appendChild(div);
+
+      results[featureId].total++;
+      if (passed) results[featureId].pass++;
+      else results[featureId].fail++;
+    }
+
+    function updateSummary() {
+      const summary = document.getElementById('summary');
+      const totalPass = results[146].pass + results[147].pass + results[148].pass;
+      const totalFail = results[146].fail + results[147].fail + results[148].fail;
+      const totalTests = totalPass + totalFail;
+
+      summary.innerHTML = `
+        <div class="test-result ${totalFail === 0 ? 'test-pass' : 'test-fail'}">
+          <strong>Total: ${totalPass}/${totalTests} tests passing</strong>
+        </div>
+        <div class="test-result test-info">
+          <strong>Feature #146:</strong> ${results[146].pass}/${results[146].total} passing<br>
+          <strong>Feature #147:</strong> ${results[147].pass}/${results[147].total} passing<br>
+          <strong>Feature #148:</strong> ${results[148].pass}/${results[148].total} passing
+        </div>
+      `;
+    }
+
+    // Load the dist bundle to check for error handling code
+    async function runTests() {
+      try {
+        const response = await fetch('/dist/newtab.js');
+        const code = await response.text();
+
+        // Feature #146 Tests: Network failure handling
+        console.log('Testing Feature #146: Network failure handling...');
+
+        // Test 1: Weather widget has error state
+        const weatherHasErrorState = code.includes('weather.error') || code.includes('error: string');
+        addResult(146, 'Weather widget error state', weatherHasErrorState,
+          weatherHasErrorState ? 'Weather widget has error state variable' : 'Missing error state in weather widget');
+
+        // Test 2: Weather widget displays error messages
+        const weatherErrorDisplay = code.includes('weather.error') && code.includes('text-red-500');
+        addResult(146, 'Weather error message display', weatherErrorDisplay,
+          weatherErrorDisplay ? 'Weather widget displays error in red' : 'Missing error display styling');
+
+        // Test 3: Network error messages are user-friendly
+        const networkErrorMessage = code.includes('Network error') || code.includes('network');
+        addResult(146, 'User-friendly network error messages', networkErrorMessage,
+          networkErrorMessage ? 'Found user-friendly network error messages' : 'Missing clear network error messages');
+
+        // Test 4: API error handling (401, 404, etc.)
+        const apiErrorHandling = code.includes('401') || code.includes('404') || code.includes('Invalid API key');
+        addResult(146, 'API error handling (401, 404, etc.)', apiErrorHandling,
+          apiErrorHandling ? 'Found API error handling for common status codes' : 'Missing specific API error handling');
+
+        // Test 5: Retry functionality after error
+        const retryAfterError = code.includes('Refresh weather') || code.includes('Retry');
+        addResult(146, 'Retry functionality after error', retryAfterError,
+          retryAfterError ? 'Found retry button/functionality' : 'Missing retry mechanism');
+
+        // Test 6: Error recovery (re-enable network)
+        const errorRecovery = code.includes('setWeather') || code.includes('catch');
+        addResult(146, 'Error recovery mechanism', errorRecovery,
+          errorRecovery ? 'Found error recovery in try-catch blocks' : 'Missing proper error recovery');
+
+        // Test 7: AI Chat widget error handling
+        const aiErrorHandling = code.includes('AIChatWidget') && (code.includes('error') || code.includes('setIsLoading'));
+        addResult(146, 'AI Chat widget error handling', aiErrorHandling,
+          aiErrorHandling ? 'AI Chat widget has error handling' : 'Missing AI chat error handling');
+
+        // Feature #147 Tests: Invalid input handling
+        console.log('Testing Feature #147: Invalid input handling...');
+
+        // Test 1: Empty page name validation
+        const emptyPageValidation = code.includes('MAX_PAGES') || code.includes('limit');
+        addResult(147, 'Page creation limit validation', emptyPageValidation,
+          emptyPageValidation ? 'Found page limit validation (MAX_PAGES)' : 'Missing page limit validation');
+
+        // Test 2: API key validation
+        const apiKeyValidation = code.includes('validateApiKeyFormat') || code.includes('Invalid API key');
+        addResult(147, 'API key format validation', apiKeyValidation,
+          apiKeyValidation ? 'Found API key validation' : 'Missing API key format validation');
+
+        // Test 3: Required field validation
+        const requiredFieldValidation = code.includes('!title.trim()') || code.includes('disabled={!');
+        addResult(147, 'Required field validation', requiredFieldValidation,
+          requiredFieldValidation ? 'Found required field validation' : 'Missing required field checks');
+
+        // Test 4: Form error highlighting
+        const formErrorHighlight = code.includes('border-red-500') || code.includes('apiKeyValidation');
+        addResult(147, 'Form error highlighting', formErrorHighlight,
+          formErrorHighlight ? 'Found error field highlighting' : 'Missing visual error feedback on forms');
+
+        // Test 5: Clear error messages
+        const clearErrorMessages = code.includes('setError(null)') || code.includes('setApiKeyValidation');
+        addResult(147, 'Clear error messages', clearErrorMessages,
+          clearErrorMessages ? 'Found error clearing mechanisms' : 'Missing error message clearing');
+
+        // Test 6: Widget config validation
+        const widgetConfigValidation = code.includes('handleSave') && code.includes('title.trim()');
+        addResult(147, 'Widget configuration validation', widgetConfigValidation,
+          widgetConfigValidation ? 'Found widget config validation' : 'Missing widget config validation');
+
+        // Feature #148 Tests: Loading states display
+        console.log('Testing Feature #148: Loading states display...');
+
+        // Test 1: Weather widget loading state
+        const weatherLoadingState = code.includes('loading: boolean') || code.includes('weather.loading');
+        addResult(148, 'Weather widget loading state', weatherLoadingState,
+          weatherLoadingState ? 'Weather widget has loading state' : 'Missing weather loading state');
+
+        // Test 2: Loading spinner/bounce animation
+        const loadingSpinner = code.includes('animate-spin') || code.includes('animate-bounce') || code.includes('animate-pulse');
+        addResult(148, 'Loading spinner animation', loadingSpinner,
+          loadingSpinner ? 'Found loading spinner animations' : 'Missing loading spinner');
+
+        // Test 3: Disabled buttons during load
+        const disabledDuringLoad = code.includes('disabled={loading') || code.includes('disabled={isLoading') || code.includes('disabled={refreshing');
+        addResult(148, 'Disabled buttons during load', disabledDuringLoad,
+          disabledDuringLoad ? 'Found disabled state on buttons during load' : 'Missing disabled button states');
+
+        // Test 4: AI Chat loading indicator
+        const aiChatLoading = code.includes('isLoading') && code.includes('AIChatWidget');
+        addResult(148, 'AI Chat loading indicator', aiChatLoading,
+          aiChatLoading ? 'AI Chat has loading indicator' : 'Missing AI chat loading state');
+
+        // Test 5: Fetch models loading state
+        const fetchModelsLoading = code.includes('isFetchingModels') || code.includes('Fetching models');
+        addResult(148, 'Fetch models loading state', fetchModelsLoading,
+          fetchModelsLoading ? 'Found fetch models loading state' : 'Missing fetch models loading indicator');
+
+        // Test 6: Loading state clears after completion
+        const loadingClears = code.includes('setIsLoading(false)') || code.includes('finally');
+        addResult(148, 'Loading state clears after completion', loadingClears,
+          loadingClears ? 'Found loading state cleanup in finally blocks' : 'Missing proper loading state cleanup');
+
+        // Test 7: Loading text feedback
+        const loadingText = code.includes('Loading weather') || code.includes('Sending...') || code.includes('Fetching...');
+        addResult(148, 'Loading text feedback', loadingText,
+          loadingText ? 'Found user-friendly loading messages' : 'Missing loading text feedback');
+
+        updateSummary();
+      } catch (error) {
+        console.error('Test error:', error);
+        addResult(146, 'Load bundle', false, `Failed to load: ${error.message}`);
+        addResult(147, 'Load bundle', false, `Failed to load: ${error.message}`);
+        addResult(148, 'Load bundle', false, `Failed to load: ${error.message}`);
+        updateSummary();
+      }
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

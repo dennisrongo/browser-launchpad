@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 8768;
-const FILE = 'test-error-handling-149.html';
+const FILE = 'test-error-handling-146-147-148.html';
 
 const server = http.createServer((req, res) => {
   if (req.url === '/' || req.url === '/test') {
@@ -22,6 +22,10 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Test server running at http://localhost:${PORT}`);
-  console.log(`Testing Feature #149: User-friendly error messages`);
+  console.log(`\n========================================`);
+  console.log(`Error Handling Test Server running at:`);
+  console.log(`http://localhost:${PORT}`);
+  console.log(`========================================\n`);
+  console.log(`Testing Features #146, #147, #148`);
+  console.log(`Press Ctrl+C to stop\n`);
 });
