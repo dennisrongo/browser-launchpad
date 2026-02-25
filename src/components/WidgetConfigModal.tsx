@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Widget, WidgetType, ChatMessage } from '../types'
-import { fetchStraicoModels } from '../utils/ai'
+import { fetchStraicoModels, validateOpenAIKey, validateStraicoKey, validateApiKeyFormat } from '../utils/ai'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
@@ -18,6 +18,8 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
   const [pendingProviderChange, setPendingProviderChange] = useState<'openai' | 'straico' | null>(null)
   const [pendingModelChange, setPendingModelChange] = useState<string | null>(null)
   const previousMessagesRef = useRef<ChatMessage[]>([])
+  const [apiKeyValidation, setApiKeyValidation] = useState<{ openai?: string; straico?: string }>({})
+  const [isValidatingKey, setIsValidatingKey] = useState(false)
 
   useEffect(() => {
     if (widget) {
@@ -37,7 +39,42 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
     setShowClearChatConfirm(false)
     setPendingProviderChange(null)
     setPendingModelChange(null)
+    setApiKeyValidation({})
+    setIsValidatingKey(false)
   }, [widget])
+
+  // Validate API key on blur
+  const handleApiKeyBlur = async (provider: 'openai' | 'straico', apiKey: string) => {
+    if (!apiKey || apiKey.trim().length === 0) {
+      setApiKeyValidation(prev => ({ ...prev, [provider]: '' }))
+      return
+    }
+
+    // First do client-side format validation
+    const formatCheck = validateApiKeyFormat(provider, apiKey)
+    if (!formatCheck.valid) {
+      setApiKeyValidation(prev => ({ ...prev, [provider]: formatCheck.error || 'Invalid format' }))
+      return
+    }
+
+    // Then do server-side validation
+    setIsValidatingKey(true)
+    try {
+      const result = provider === 'openai'
+        ? await validateOpenAIKey(apiKey)
+        : await validateStraicoKey(apiKey)
+
+      if (result.valid) {
+        setApiKeyValidation(prev => ({ ...prev, [provider]: '' }))
+      } else {
+        setApiKeyValidation(prev => ({ ...prev, [provider]: result.error || 'Invalid API key' }))
+      }
+    } catch (error) {
+      setApiKeyValidation(prev => ({ ...prev, [provider]: 'Validation failed' }))
+    } finally {
+      setIsValidatingKey(false)
+    }
+  }
 
   const handleFetchModels = async () => {
     if (!config.straicoApiKey) {
@@ -321,21 +358,38 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   <input
                     type="password"
                     value={config.straicoApiKey || ''}
-                    onChange={(e) => setConfig({ ...config, straicoApiKey: e.target.value })}
+                    onChange={(e) => {
+                      setConfig({ ...config, straicoApiKey: e.target.value })
+                      // Clear validation when typing
+                      if (apiKeyValidation.straico) {
+                        setApiKeyValidation(prev => ({ ...prev, straico: '' }))
+                      }
+                    }}
+                    onBlur={() => handleApiKeyBlur('straico', config.straicoApiKey || '')}
                     placeholder="Enter your Straico API key"
-                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    className={`w-full px-3 py-2 bg-background text-text border rounded focus:outline-none focus:ring-2 focus:ring-primary ${
+                      apiKeyValidation.straico ? 'border-red-500' : 'border-border'
+                    }`}
                   />
-                  <p className="text-xs text-text-secondary mt-1">
-                    Get your API key from{' '}
-                    <a
-                      href="https://straico.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      straico.com
-                    </a>
-                  </p>
+                  {apiKeyValidation.straico && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{apiKeyValidation.straico}</span>
+                    </p>
+                  )}
+                  {!apiKeyValidation.straico && (
+                    <p className="text-xs text-text-secondary mt-1">
+                      Get your API key from{' '}
+                      <a
+                        href="https://straico.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        straico.com
+                      </a>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">Model</label>
@@ -404,17 +458,42 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
             {/* OpenAI API Key Input (optional override) */}
             {config.provider === 'openai' && (
               <div>
-                <label className="block text-sm font-medium text-text mb-1">OpenAI API Key (Optional)</label>
+                <label className="block text-sm font-medium text-text mb-1">OpenAI API Key</label>
                 <input
                   type="password"
                   value={config.openaiApiKey || ''}
-                  onChange={(e) => setConfig({ ...config, openaiApiKey: e.target.value })}
+                  onChange={(e) => {
+                    setConfig({ ...config, openaiApiKey: e.target.value })
+                    // Clear validation when typing
+                    if (apiKeyValidation.openai) {
+                      setApiKeyValidation(prev => ({ ...prev, openai: '' }))
+                    }
+                  }}
+                  onBlur={() => handleApiKeyBlur('openai', config.openaiApiKey || '')}
                   placeholder="Enter your OpenAI API key"
-                  className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={`w-full px-3 py-2 bg-background text-text border rounded focus:outline-none focus:ring-2 focus:ring-primary ${
+                    apiKeyValidation.openai ? 'border-red-500' : 'border-border'
+                  }`}
                 />
-                <p className="text-xs text-text-secondary mt-1">
-                  Optional: You can also set this in Settings
-                </p>
+                  {apiKeyValidation.openai && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{apiKeyValidation.openai}</span>
+                    </p>
+                  )}
+                  {!apiKeyValidation.openai && (
+                    <p className="text-xs text-text-secondary mt-1">
+                      Get your API key from{' '}
+                      <a
+                        href="https://platform.openai.com/api-keys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        platform.openai.com
+                      </a>
+                    </p>
+                  )}
               </div>
             )}
           </div>

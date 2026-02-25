@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { AIChatWidgetConfig, ChatMessage } from '../types'
-import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse } from '../utils/ai'
+import { sendOpenAIChatStream, sendStraicoChatStream, ChatCompletionResponse, validateApiKeyFormat } from '../utils/ai'
 
 interface AIChatWidgetProps {
   title: string
@@ -53,6 +53,16 @@ export function AIChatWidget({ title, config, onConfigChange }: AIChatWidgetProp
     if (!hasModel) {
       setError('Please select a model in widget settings')
       return
+    }
+
+    // Validate API key format before attempting to send
+    const apiKey = config.provider === 'openai' ? config.openaiApiKey : config.straicoApiKey
+    if (apiKey) {
+      const formatCheck = validateApiKeyFormat(config.provider, apiKey)
+      if (!formatCheck.valid) {
+        setError(`Invalid API key: ${formatCheck.error}`)
+        return
+      }
     }
 
     // Add user message

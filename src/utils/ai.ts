@@ -19,6 +19,64 @@ export interface ValidationResult {
   error?: string
 }
 
+export interface RateLimitInfo {
+  isRateLimited: boolean
+  retryAfter?: number // seconds to wait
+  limitType?: 'rpm' | 'rpd' | 'tpm' | 'unknown'
+  message?: string
+}
+
+/**
+ * Parse rate limit information from response headers and error data
+ */
+export function parseRateLimitInfo(response: Response, errorData: any): RateLimitInfo {
+  if (response.status !== 429) {
+    return { isRateLimited: false }
+  }
+
+  // Check for retry-after header
+  const retryAfter = response.headers.get('Retry-After')
+  let retryAfterSeconds: number | undefined
+
+  if (retryAfter) {
+    const parsed = parseInt(retryAfter, 10)
+    if (!isNaN(parsed)) {
+      retryAfterSeconds = parsed
+    }
+  }
+
+  // Parse error message for limit type
+  const errorMessage = errorData.error?.message || errorData.message || ''
+  let limitType: RateLimitInfo['limitType'] = 'unknown'
+
+  if (errorMessage.includes('requests per minute') || errorMessage.includes('rpm')) {
+    limitType = 'rpm'
+  } else if (errorMessage.includes('requests per day') || errorMessage.includes('rpd')) {
+    limitType = 'rpd'
+  } else if (errorMessage.includes('tokens per minute') || errorMessage.includes('tpm')) {
+    limitType = 'tpm'
+  }
+
+  // Build user-friendly message
+  let message = 'Rate limit exceeded. Please wait a moment before trying again.'
+  if (retryAfterSeconds) {
+    message = `Rate limit exceeded. Please wait ${retryAfterSeconds} seconds before trying again.`
+  }
+  if (limitType !== 'unknown') {
+    const limitName = limitType === 'rpm' ? 'requests per minute' :
+                      limitType === 'rpd' ? 'requests per day' :
+                      limitType === 'tpm' ? 'tokens per minute' : 'requests'
+    message = `Too many ${limitName}. Please wait before trying again.`
+  }
+
+  return {
+    isRateLimited: true,
+    retryAfter: retryAfterSeconds,
+    limitType,
+    message,
+  }
+}
+
 /**
  * Client-side validation for API key format
  * Checks basic format before making API calls
@@ -62,15 +120,27 @@ export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      const errorMessage = errorData.message || ''
+
+      // Provider-specific error messages for model fetching
+      if (response.status === 401) {
+        throw new Error('Straico: Invalid API key. Please check your API key in widget settings.')
+      }
+      if (response.status === 403) {
+        throw new Error('Straico: Access denied. Please verify your API key permissions.')
+      }
+      if (response.status === 429) {
+        throw new Error('Straico: Rate limit exceeded. Please wait a moment before trying again.')
+      }
+
       throw new Error(
-        errorData.message || `Failed to fetch models: ${response.status} ${response.statusText}`
+        errorMessage || `Failed to fetch models: ${response.status} ${response.statusText}`
       )
     }
 
     const data = await response.json()
 
     // Map Straico API response to our format
-    // Adjust based on actual Straico API response structure
     const models: StraicoModel[] = (data.models || data.data || []).map((model: any) => ({
       id: model.id || model.model,
       name: model.name || model.display_name || model.id || model.model,
@@ -80,6 +150,10 @@ export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]
     return models
   } catch (error) {
     if (error instanceof Error) {
+      // Add network error context
+      if (error.message.includes('fetch') || error.message.includes('network')) {
+        throw new Error('Straico: Network error. Please check your internet connection and try again.')
+      }
       throw error
     }
     throw new Error('Failed to fetch Straico models')
@@ -87,9 +161,15 @@ export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]
 }
 
 /**
- * Validate OpenAI API key
+ * Validate OpenAI API key by making a test API call
  */
-export async function validateOpenAIKey(apiKey: string): Promise<boolean> {
+export async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
+  // First check format
+  const formatCheck = validateApiKeyFormat('openai', apiKey)
+  if (!formatCheck.valid) {
+    return formatCheck
+  }
+
   try {
     const response = await fetch('https://api.openai.com/v1/models', {
       method: 'GET',
@@ -99,9 +179,72 @@ export async function validateOpenAIKey(apiKey: string): Promise<boolean> {
       },
     })
 
-    return response.ok
-  } catch {
-    return false
+    if (response.ok) {
+      return { valid: true }
+    }
+
+    // Handle specific error codes
+    if (response.status === 401) {
+      return { valid: false, error: 'Invalid API key. Please check your OpenAI API key.' }
+    } else if (response.status === 429) {
+      return { valid: false, error: 'Rate limited. Please try again later.' }
+    } else {
+      const errorData = await response.json().catch(() => ({}))
+      return {
+        valid: false,
+        error: errorData.error?.message || `API error: ${response.status} ${response.statusText}`
+      }
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : 'Network error. Please check your connection.'
+    }
+  }
+}
+
+/**
+ * Validate Straico API key by making a test API call
+ */
+export async function validateStraicoKey(apiKey: string): Promise<ValidationResult> {
+  // First check format
+  const formatCheck = validateApiKeyFormat('straico', apiKey)
+  if (!formatCheck.valid) {
+    return formatCheck
+  }
+
+  try {
+    const response = await fetch('https://api.straico.com/v2/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (response.ok) {
+      return { valid: true }
+    }
+
+    // Handle specific error codes
+    if (response.status === 401) {
+      return { valid: false, error: 'Invalid API key. Please check your Straico API key.' }
+    } else if (response.status === 403) {
+      return { valid: false, error: 'Access denied. Please check your API key permissions.' }
+    } else if (response.status === 429) {
+      return { valid: false, error: 'Rate limited. Please try again later.' }
+    } else {
+      const errorData = await response.json().catch(() => ({}))
+      return {
+        valid: false,
+        error: errorData.message || errorData.error?.message || `API error: ${response.status} ${response.statusText}`
+      }
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : 'Network error. Please check your connection.'
+    }
   }
 }
 
@@ -174,7 +317,8 @@ export async function sendOpenAIChat(
         throw new Error('OpenAI: Invalid API key. Please check your API key in widget settings.')
       }
       if (response.status === 429) {
-        throw new Error('OpenAI: Rate limit exceeded. Please wait a moment before trying again.')
+        const rateLimitInfo = parseRateLimitInfo(response, errorData)
+        throw new Error(`OpenAI: ${rateLimitInfo.message}`)
       }
       if (response.status === 500) {
         throw new Error('OpenAI: Service error. Please try again later.')
@@ -204,47 +348,6 @@ export async function sendOpenAIChat(
       if (error.message.includes('fetch') || error.message.includes('network')) {
         throw new Error('OpenAI: Network error. Please check your internet connection and try again.')
       }
-      throw error
-    }
-    throw new Error('Failed to send chat completion to OpenAI')
-  }
-}
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      const errorMessage = errorData.error?.message || ''
-
-      // Provide specific, actionable error messages for OpenAI
-      if (response.status === 401) {
-        throw new Error('OpenAI: Invalid API key. Please check your API key in widget settings.')
-      }
-      if (response.status === 429) {
-        throw new Error('OpenAI: Rate limit exceeded. Please wait a moment before trying again.')
-      }
-      if (response.status === 500) {
-        throw new Error('OpenAI: Service error. Please try again later.')
-      }
-      if (errorMessage.includes('insufficient_quota')) {
-        throw new Error('OpenAI: Insufficient quota. Please check your billing details.')
-      }
-      if (errorMessage.includes('model_not_found')) {
-        throw new Error('OpenAI: Model not found. Please select a valid model in settings.')
-      }
-
-      throw new Error(
-        errorMessage || `OpenAI API error (${response.status}): ${response.statusText}`
-      )
-    }
-
-    const data = await response.json()
-
-    return {
-      content: data.choices[0]?.message?.content || '',
-      model: data.model,
-      usage: data.usage,
-    }
-  } catch (error) {
-    if (error instanceof Error) {
       throw error
     }
     throw new Error('Failed to send chat completion to OpenAI')
@@ -284,7 +387,8 @@ export async function sendOpenAIChatStream(
         throw new Error('OpenAI: Invalid API key. Please check your API key in widget settings.')
       }
       if (response.status === 429) {
-        throw new Error('OpenAI: Rate limit exceeded. Please wait a moment before trying again.')
+        const rateLimitInfo = parseRateLimitInfo(response, errorData)
+        throw new Error(`OpenAI: ${rateLimitInfo.message}`)
       }
       if (response.status === 500) {
         throw new Error('OpenAI: Service error. Please try again later.')

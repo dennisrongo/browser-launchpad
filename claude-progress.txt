@@ -2905,3 +2905,88 @@ grep -rn "globalThis|devStore|dev-store|mockDb|mockData|fakeData|sampleData|dumm
   - #105: Token/cost display from Straico
   - #106: Model switching clears chat (confirmation)
 
+
+================================================================================
+SESSION 14B - AI Chat Features #103, #104, #105 - 2026-02-24
+================================================================================
+
+COMPLETED FEATURES:
+- Feature #103: Chat history persistence in storage ✅
+- Feature #104: Streaming response support (if available) ✅
+- Feature #105: Token/cost display from Straico ✅
+
+IMPLEMENTATION SUMMARY:
+
+Feature #103 - Chat History Persistence:
+- Already implemented in existing codebase
+- Messages stored in AIChatWidgetConfig.messages array
+- Auto-syncs with Chrome storage via onConfigChange callback
+- Survives page reload, extension reload, and browser restart
+- No mock data - all from real Chrome Storage API
+
+Feature #104 - Streaming Response Support:
+- Added sendOpenAIChatStream() function to src/utils/ai.ts
+- Added sendStraicoChatStream() function to src/utils/ai.ts
+- Implemented SSE (Server-Sent Events) parsing
+- Added StreamingChatCallback interface with onChunk, onComplete, onError
+- Updated AIChatWidget.tsx to use streaming by default
+- Real-time UI updates as chunks arrive
+- Text appears incrementally character-by-character
+- Loading indicator shows "AI is typing..." during streaming
+
+Feature #105 - Token/Cost Display:
+- Added TokenUsage interface to AIChatWidget.tsx
+- Added tokenUsage state to track API response metadata
+- Implemented UI component to display:
+  - Prompt tokens (input)
+  - Completion tokens (output)
+  - Total tokens (highlighted)
+  - Cost information (when available)
+- Display appears after message completion
+- Works for both OpenAI and Straico providers
+
+CODE CHANGES:
+- src/utils/ai.ts:
+  - Added StreamingChatCallback interface
+  - Added sendOpenAIChatStream() function
+  - Added sendStraicoChatStream() function
+  - Updated ChatMessage interface to include optional timestamp
+  - Updated sendStraicoChat() to return cost data
+
+- src/widgets/AIChatWidget.tsx:
+  - Added TokenUsage interface
+  - Added tokenUsage state
+  - Replaced callAI() with callAIStream()
+  - Updated handleSend() to use streaming with real-time updates
+  - Added token usage display component
+  - Improved error handling with specific messages
+
+BUILD VERIFICATION:
+✅ TypeScript compilation: No errors
+✅ Build successful: dist/newtab.js 205.61 kB (gzip: 61.13 kB)
+✅ No mock data patterns found in src/
+
+TEST FILES CREATED:
+- test-features-103-104-105.html: Comprehensive test for all three features
+- FEATURES_103_104_105_IMPLEMENTATION.md: Detailed implementation documentation
+
+VERIFICATION CHECKLIST:
+✅ Feature #103: Messages persist across reloads
+✅ Feature #104: Streaming works for both OpenAI and Straico
+✅ Feature #105: Token usage displays correctly
+
+UPDATED STATISTICS:
+- Features passing: 91/171 (53.2%)
+- Features in progress: 5/171
+- AI Chat Widget category: Significant progress
+
+NEXT SESSION:
+- Continue with remaining AI Chat Widget features
+- Model switching clears chat (with confirmation)
+- API key validation
+- Rate limiting handling
+- Provider-specific error messages
+- Multi-turn conversation context
+
+COMMIT: e58d637
+================================================================================
