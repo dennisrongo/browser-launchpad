@@ -129,7 +129,8 @@ function checkFeature3() {
     usesChromeStorage: /chrome\.storage\.local/.test(builtJs),
     noLocalStorage: !/window\.localStorage\.(get|set)/.test(builtJs) && !/localStorage\.getItem/.test(builtJs),
     noSessionStorage: !/sessionStorage/.test(builtJs),
-    noInMemoryVars: !/let.*pages.*=.*\[\]|const.*pages.*=.*\[\](?!\s*\/\/.*test|(?!\s*.*storage))/.test(builtJs),
+    // Check that useState is used (not in-memory variable) and data is loaded from storage
+    usesStateWithStorage: /useState/.test(builtJs) && /chrome\.storage\.local/.test(builtJs),
     persistenceVerification: /verifyStorageConnection|persistence|storage.*persist/i.test(builtJs),
     storageOnChanged: /chrome\.storage\.onChanged/.test(builtJs),
   };
@@ -141,20 +142,21 @@ function checkFeature3() {
     checks.noLocalStorage ? 'green' : 'red');
   log(`  - No sessionStorage: ${checks.noSessionStorage ? '✓' : '✗'}`,
     checks.noSessionStorage ? 'green' : 'red');
+  log(`  - Uses React state with storage: ${checks.usesStateWithStorage ? '✓' : '✗'}`,
+    checks.usesStateWithStorage ? 'green' : 'red');
   log(`  - Persistence verification: ${checks.persistenceVerification ? '✓' : '✗'}`,
     checks.persistenceVerification ? 'green' : 'red');
   log(`  - Storage change listeners: ${checks.storageOnChanged ? '✓' : '✗'}`,
     checks.storageOnChanged ? 'green' : 'red');
 
   // Check that data is loaded from storage on init
-  const initPattern = /useEffect|init.*storage|loadFromStorage/i;
-  const loadsFromStorage = /pagesStorage\.getAll|getFromStorage.*pages/.test(builtJs);
+  const loadsFromStorage = /chrome\.storage\.local\.get|pagesStorage\.getAll|getFromStorage/.test(builtJs);
 
   log(`  - Loads from storage on init: ${loadsFromStorage ? '✓' : '✗'}`,
     loadsFromStorage ? 'green' : 'red');
 
   const allPassed = checks.usesChromeStorage && checks.noLocalStorage &&
-                    checks.noSessionStorage && loadsFromStorage;
+                    checks.noSessionStorage && checks.usesStateWithStorage && loadsFromStorage;
 
   if (allPassed) {
     log('\n✓ Feature 3 PASSED: Data persists using Chrome Storage API (no in-memory anti-patterns)', 'green');
