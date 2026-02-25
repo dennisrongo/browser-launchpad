@@ -652,17 +652,22 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    const result = await pagesStorage.set(updatedPages)
-
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widget title updated in Chrome storage')
-    } else {
-      console.error('Failed to update widget title:', result.error)
-    }
-
+    // Optimistic UI update - show new title immediately
+    const previousPages = pages
+    setPages(updatedPages)
     setEditingWidgetId(null)
     setEditingWidgetTitle('')
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to update widget title, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Widget title updated in Chrome storage')
+    }
   }
 
   const handleCancelWidgetEdit = () => {
@@ -695,13 +700,19 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
+    // Optimistic UI update - show config change immediately
+    const previousPages = pages
+    setPages(updatedPages)
+
+    // Save to storage in background
     const result = await pagesStorage.set(updatedPages)
 
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widget config updated in Chrome storage')
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to update widget config, rolling back:', result.error)
+      setPages(previousPages)
     } else {
-      console.error('Failed to update widget config:', result.error)
+      console.log('✓ Widget config updated in Chrome storage')
     }
   }
 
@@ -758,17 +769,22 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    const result = await pagesStorage.set(updatedPages)
-
-    if (result.success) {
-      setPages(updatedPages)
-      console.log('✓ Widgets reordered in Chrome storage')
-    } else {
-      console.error('Failed to reorder widgets:', result.error)
-    }
-
+    // Optimistic UI update - show reorder immediately
+    const previousPages = pages
+    setPages(updatedPages)
     setDraggedWidgetId(null)
     setDragOverWidgetId(null)
+
+    // Save to storage in background
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      // Rollback on error
+      console.error('Failed to reorder widgets, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Widgets reordered in Chrome storage')
+    }
   }
 
   const handleWidgetDragEnd = () => {
