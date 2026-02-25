@@ -5,6 +5,10 @@ function App() {
   const [pages, setPages] = useState<any[]>([])
   const [activePage, setActivePage] = useState(0)
   const [storageVerified, setStorageVerified] = useState(false)
+  const [editingPageId, setEditingPageId] = useState<string | null>(null)
+  const [editingPageName, setEditingPageName] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [pageToDelete, setPageToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     // Verify Chrome Storage API connection first
@@ -110,6 +114,98 @@ function App() {
     }
   }
 
+  // Start editing page name
+  const handleStartRename = (pageId: string, currentName: string) => {
+    setEditingPageId(pageId)
+    setEditingPageName(currentName)
+  }
+
+  // Save page name
+  const handleSaveRename = async (pageId: string) => {
+    if (!editingPageName.trim()) {
+      setEditingPageId(null)
+      return
+    }
+
+    const updatedPages = pages.map((page) =>
+      page.id === pageId
+        ? { ...page, name: editingPageName.trim(), updated_at: new Date().toISOString() }
+        : page
+    )
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      setPages(updatedPages)
+      console.log('✓ Page renamed in Chrome storage')
+    } else {
+      console.error('Failed to rename page:', result.error)
+    }
+
+    setEditingPageId(null)
+    setEditingPageName('')
+  }
+
+  // Cancel editing
+  const handleCancelRename = () => {
+    setEditingPageId(null)
+    setEditingPageName('')
+  }
+
+  // Handle key press in rename input
+  const handleRenameKeyDown = (e: React.KeyboardEvent, pageId: string) => {
+    if (e.key === 'Enter') {
+      handleSaveRename(pageId)
+    } else if (e.key === 'Escape') {
+      handleCancelRename()
+    }
+  }
+
+  // Start delete page
+  const handleStartDelete = (pageId: string) => {
+    setPageToDelete(pageId)
+    setShowDeleteConfirm(true)
+  }
+
+  // Confirm delete page
+  const handleConfirmDelete = async () => {
+    if (!pageToDelete) return
+
+    // Don't allow deleting the last page
+    if (pages.length <= 1) {
+      console.warn('Cannot delete the last page')
+      setShowDeleteConfirm(false)
+      setPageToDelete(null)
+      return
+    }
+
+    const updatedPages = pages.filter((page) => page.id !== pageToDelete)
+    const result = await pagesStorage.set(updatedPages)
+
+    if (result.success) {
+      // If deleting active page, switch to another page
+      if (pages.findIndex((p) => p.id === pageToDelete) === activePage) {
+        setActivePage(0)
+      } else if (activePage >= updatedPages.length) {
+        setActivePage(updatedPages.length - 1)
+      }
+
+      setPages(updatedPages)
+      console.log('✓ Page deleted from Chrome storage')
+    } else {
+      console.error('Failed to delete page:', result.error)
+    }
+
+    setShowDeleteConfirm(false)
+    setPageToDelete(null)
+  }
+
+  // Cancel delete
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false)
+    setPageToDelete(null)
+  }
+
   return (
     <div className="min-h-screen bg-background text-text">
       <header className="border-b border-border bg-surface px-6 py-4">
@@ -130,9 +226,9 @@ function App() {
             <button
               key={page.id}
               onClick={() => setActivePage(index)}
-              className={`px-4 py-2 rounded-button ${
+              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out ${
                 activePage === index
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary text-white font-semibold shadow-md'
                   : 'bg-background text-text hover:bg-surface'
               }`}
             >
@@ -141,7 +237,7 @@ function App() {
           ))}
           <button
             onClick={handleAddPage}
-            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-all duration-200 ease-in-out"
           >
             + Add Page
           </button>
@@ -149,25 +245,27 @@ function App() {
       </header>
 
       <main className="p-6">
-        {pages[activePage] && pages[activePage].widgets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-96 text-center">
-            <div className="text-6xl mb-4">📦</div>
-            <h2 className="text-xl font-semibold mb-2">No widgets yet</h2>
-            <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
-            <button className="px-6 py-3 bg-primary text-white rounded-button hover:opacity-90">
-              + Add Widget
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-6">
-            {/* Widgets will be rendered here */}
-            <div className="border border-border rounded-card p-6 bg-surface shadow-card">
-              <div className="text-4xl mb-2">👋</div>
-              <h3 className="text-lg font-semibold">Welcome!</h3>
-              <p className="text-text-secondary">Start customizing your dashboard</p>
+        <div className="animate-fade-in" key={pages[activePage]?.id}>
+          {pages[activePage] && pages[activePage].widgets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+              <div className="text-6xl mb-4">📦</div>
+              <h2 className="text-xl font-semibold mb-2">No widgets yet</h2>
+              <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
+              <button className="px-6 py-3 bg-primary text-white rounded-button hover:opacity-90">
+                + Add Widget
+              </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="grid grid-cols-3 gap-6">
+              {/* Widgets will be rendered here */}
+              <div className="border border-border rounded-card p-6 bg-surface shadow-card">
+                <div className="text-4xl mb-2">👋</div>
+                <h3 className="text-lg font-semibold">Welcome!</h3>
+                <p className="text-text-secondary">Start customizing your dashboard</p>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )
