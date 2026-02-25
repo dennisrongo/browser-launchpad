@@ -1,0 +1,554 @@
+<project_specification>
+  <project_name>Browser Launchpad</project_name>
+
+  <overview>
+    A modern Chrome extension that replaces the new tab page with a customizable, widget-based dashboard.
+    Users can create multiple pages, add various widgets (bookmarks, weather, AI chat, clock), customize the layout,
+    choose themes, and export/import their data. The extension features a clean, modern interface and supports
+    multiple AI providers for chat functionality.
+  </overview>
+
+  <technology_stack>
+    <frontend>
+      <framework>React + TypeScript</framework>
+      <styling>Tailwind CSS</styling>
+      <build_tool>Vite</build_tool>
+      <architecture>Widget-based component architecture for extensibility</architecture>
+    </frontend>
+    <backend>
+      <runtime>Chrome Extension Manifest v3</runtime>
+      <database>Chrome Storage API (local storage)</database>
+      <export_format>JSON</export_format>
+    </backend>
+    <communication>
+      <api>OpenAI API for AI chat</api>
+      <api>Straico API for AI chat with dynamic model fetching</api>
+      <weather_api>OpenWeatherMap API (or similar)</weather_api>
+    </communication>
+  </technology_stack>
+
+  <prerequisites>
+    <environment_setup>
+      - Node.js and npm/pnpm installed
+      - Chrome browser for development and testing
+      - Chrome Extension Developer Mode enabled
+      - API keys for OpenAI and/or Straico (user-provided)
+      - Weather API key (user-provided for weather widget)
+    </environment_setup>
+  </prerequisites>
+
+  <feature_count>171</feature_count>
+
+  <security_and_access_control>
+    <user_roles>
+      <role name="User">
+        <permissions>
+          - Can create, edit, delete pages and widgets
+          - Can configure AI providers and models
+          - Can export/import their own data
+          - Can customize themes and grid layout
+          - Full access to all features
+        </permissions>
+        <protected_routes>
+          - Settings page (authenticated users)
+          - Data export/import functionality
+        </protected_routes>
+      </role>
+    </user_roles>
+    <authentication>
+      <method>None - local extension, no user accounts</method>
+      <session_timeout>none</session_timeout>
+      <password_requirements>N/A</password_requirements>
+    </authentication>
+    <sensitive_operations>
+      - API keys are stored locally in Chrome storage
+      - Exported data may contain API keys (option to exclude)
+      - Import validation to prevent malicious data injection
+    </sensitive_operations>
+  </security_and_access_control>
+
+  <core_features>
+    <Infrastructure>
+      - Database connection established using Chrome Storage API
+      - Database schema applied correctly for pages, widgets, settings
+      - Data persists across browser restart and extension reload
+      - No mock data patterns in codebase - all data from real storage
+      - Backend queries real Chrome storage (not in-memory mocks)
+    </Infrastructure>
+    <Extension_Core>
+      - Chrome Extension Manifest v3 configuration
+      - New tab override to show custom dashboard
+      - Chrome storage API integration
+      - React app initialization in extension context
+      - Extension icon and basic metadata
+      - Content security policies configured
+      - Hot module reloading for development
+      - Extension packaging and build process
+      - Background service worker (if needed)
+      - Chrome extension permissions management
+      - Cross-origin requests for external APIs
+      - Extension update handling
+      - Error boundary for React components
+      - Extension loading and initialization sequence
+      - Browser action (optional popup)
+    </Extension_Core>
+    <Page_Management>
+      - Create new pages
+      - Delete pages (with confirmation)
+      - Rename pages
+      - Reorder pages via drag-and-drop
+      - Navigate between pages using tab interface
+      - Navigate between pages using left/right arrow keys
+      - Page selection indicator
+      - Default page creation on first load
+      - Page persistence in storage
+      - Empty page state display
+      - Limit check for page creation (configurable)
+      - Page reordering visual feedback
+      - Active page highlighting
+      - Smooth page transitions
+    </Page_Management>
+    <Widget_System>
+      - Add new widget button on page
+      - Widget type selector (Bookmark, Weather, AI Chat, Clock)
+      - Create widget instance
+      - Edit widget configuration
+      - Delete widget with confirmation
+      - Drag-and-drop widget reordering
+      - Widget reordering visual feedback
+      - Widget persistence in storage
+      - Widget configuration modal
+      - Empty page state (no widgets)
+      - Widget grid layout rendering
+      - Responsive widget sizing
+      - Widget edit/remove controls
+      - Widget title display and editing
+    </Widget_System>
+    <Bookmark_Widgets>
+      - Add bookmark widget to page
+      - Add bookmarks to widget (1 to many per widget)
+      - Auto-fetch page title from URL
+      - Custom icon upload for bookmarks
+      - Emoji icon selection for bookmarks
+      - Edit bookmark URL
+      - Edit bookmark title (override auto-fetched)
+      - Edit bookmark icon
+      - Delete bookmark from widget
+      - Reorder bookmarks within widget
+      - Bookmark widget title customization
+      - Bookmark favicon fallback
+      - Open bookmark in new tab
+      - Bookmark hover preview
+      - Invalid URL detection
+    </Bookmark_Widgets>
+    <Weather_Widget>
+      - Add weather widget to page
+      - City configuration for weather
+      - Weather data fetching from API
+      - Current temperature display
+      - Weather condition display
+      - Weather icon/visual
+      - Location name display
+      - Refresh weather data button
+      - Error handling for failed API calls
+      - Loading state for weather data
+      - Celsius/Fahrenheit toggle
+      - Auto-refresh at intervals
+    </Weather_Widget>
+    <Clock_Widget>
+      - Add clock widget to page
+      - Real-time clock display
+      - City/timezone name display
+      - City configuration for clock
+      - 12-hour vs 24-hour format toggle
+      - Seconds display toggle
+      - Clock styling and font options
+      - Real-time updates (every second)
+    </Clock_Widget>
+    <AI_Chat_Widget>
+      - Add AI chat widget to page
+      - Provider selection dropdown (OpenAI, Straico)
+      - OpenAI API key input and storage
+      - OpenAI model selection dropdown
+      - Straico API key input and storage
+      - Fetch available models from Straico API
+      - Straico model selection (single model)
+      - Chat message input field
+      - Send message button
+      - Display chat conversation history
+      - User message styling
+      - AI response styling
+      - Loading indicator during API call
+      - Error handling for failed API calls
+      - Clear chat history button
+      - Chat history persistence in storage
+      - Streaming response support (if available)
+      - Token/cost display from Straico
+      - Model switching clears chat (confirmation)
+      - API key validation
+      - Rate limiting handling
+      - Provider-specific error messages
+      - Multi-turn conversation context
+    </AI_Chat_Widget>
+    <Settings_Page>
+      - Settings button/icon on main page
+      - Settings page/modal overlay
+      - Grid layout options (column count selector)
+      - Theme selection dropdown
+      - AI providers configuration section
+      - Import data functionality
+      - Export data functionality
+      - About section with credits (Dennis Rongo)
+      - Settings persistence
+      - Reset to defaults option
+      - Settings validation
+    </Settings_Page>
+    <Theme_System>
+      - Theme 1: Modern Light (clean, minimal light theme)
+      - Theme 2: Dark Elegance (sleek dark theme)
+      - Theme application across all components
+      - Theme switching in settings
+      - Theme persistence in storage
+      - Smooth theme transitions
+      - Extensible theme architecture for future themes
+      - CSS variables for colors
+      - Tailwind theme configuration
+    </Theme_System>
+    <Import_Export>
+      - Export all data to JSON file
+      - Export pages, widgets, settings
+      - Option to exclude API keys from export
+      - Import data from JSON file
+      - Validate imported JSON structure
+      - Confirm before overwriting existing data
+      - Merge vs replace import option
+      - Import error handling and feedback
+      - Export success notification
+      - Import success notification
+    </Import_Export>
+    <Grid_Layout>
+      - Configurable column count (1-6 columns)
+      - Responsive grid breakpoints
+      - Widget spacing/gap configuration
+      - Grid layout persistence
+      - Live preview of layout changes
+      - Mobile-responsive grid adjustments
+    </Grid_Layout>
+  </core_features>
+
+  <database_schema>
+    <tables>
+      <pages>
+        - id: string (unique identifier)
+        - name: string (page name)
+        - order: number (for page reordering)
+        - widgets: array of widget objects
+        - created_at: timestamp
+        - updated_at: timestamp
+      </pages>
+      <widgets>
+        - id: string (unique identifier)
+        - type: string ('bookmark', 'weather', 'ai-chat', 'clock')
+        - page_id: string (reference to parent page)
+        - order: number (for widget reordering)
+        - title: string (widget display title)
+        - config: object (widget-specific configuration)
+        - created_at: timestamp
+      </widgets>
+      <settings>
+        - id: string ('global-settings')
+        - theme: string (selected theme name)
+        - grid_columns: number (1-6)
+        - grid_gap: number (spacing in pixels)
+        - ai_providers: array of provider configurations
+        - created_at: timestamp
+        - updated_at: timestamp
+      </settings>
+      <ai_provider_config>
+        - provider: string ('openai', 'straico')
+        - api_key: string (encrypted)
+        - selected_model: string
+        - enabled: boolean
+      </ai_provider_config>
+      <chat_history>
+        - id: string (unique identifier)
+        - widget_id: string (reference to AI chat widget)
+        - messages: array of message objects
+        - model: string (model used)
+        - provider: string (provider used)
+        - created_at: timestamp
+      </chat_history>
+    </tables>
+  </database_schema>
+
+  <api_endpoints_summary>
+    <Chrome_Storage_API>
+      - chrome.storage.local.get()
+      - chrome.storage.local.set()
+      - chrome.storage.local.remove()
+      - chrome.storage.local.clear()
+      - chrome.storage.onChanged listener
+    </Chrome_Storage_API>
+    <AI_Providers>
+      - POST https://api.openai.com/v1/chat/completions
+      - GET https://api.straico.com/v2/models
+      - POST https://api.straico.com/v0/chat/completions
+    </AI_Providers>
+    <Weather_API>
+      - GET https://api.openweathermap.org/data/2.5/weather
+      - Query parameters: q={city}, appid={api_key}
+    </Weather_API>
+    <Bookmark_Metadata>
+      - GET {url} (fetch page title for bookmarks)
+    </Bookmark_Metadata>
+  </api_endpoints_summary>
+
+  <ui_layout>
+    <main_structure>
+      Header bar with settings button and page navigation tabs.
+      Main content area with responsive grid layout for widgets.
+      Each widget is a card with title, content, and edit controls.
+      Settings modal/page with organized sections for configuration.
+      Clean, minimal design with focus on content and usability.
+    </main_structure>
+    <page_navigation>
+      Horizontal tab bar below header.
+      Left/right arrow buttons for keyboard navigation.
+      Active tab highlighted with accent color.
+      Hover effects on tabs.
+    </page_navigation>
+    <widget_grid>
+      Responsive grid based on column count setting.
+      Consistent widget card sizing within grid.
+      Drag handles for reordering.
+      Gap between widgets for visual separation.
+    </widget_grid>
+    <widget_cards>
+      Header with title and edit/delete buttons.
+      Content area varies by widget type.
+      Hover effects for interactivity.
+      Consistent border radius and shadows.
+    </widget_cards>
+    <settings_page>
+      Sectioned layout with clear headings.
+      Form controls for each setting.
+      Save/cancel actions.
+      About section at bottom.
+    </settings_page>
+  </ui_layout>
+
+  <design_system>
+    <color_palette>
+      <theme_1_modern_light>
+        - Primary: #3B82F6 (blue)
+        - Background: #FFFFFF
+        - Surface: #F3F4F6
+        - Text: #1F2937
+        - Text Secondary: #6B7280
+        - Border: #E5E7EB
+      </theme_1_modern_light>
+      <theme_2_dark_elegance>
+        - Primary: #8B5CF6 (purple)
+        - Background: #111827
+        - Surface: #1F2937
+        - Text: #F9FAFB
+        - Text Secondary: #9CA3AF
+        - Border: #374151
+      </theme_2_dark_elegance>
+    </color_palette>
+    <typography>
+      <font_family>Inter, system-ui, sans-serif</font_family>
+      <headings>Font weight 600-700</headings>
+      <body_text>Font weight 400-500</body_text>
+      <code>Monospace font for code blocks</code>
+    </typography>
+    <spacing>
+      <base_unit>4px</base_unit>
+      <component_padding>16px</component_padding>
+      <section_gap>24px</section_gap>
+    </spacing>
+    <border_radius>
+      <cards>8px</cards>
+      <buttons>6px</buttons>
+      <inputs>6px</inputs>
+    </border_radius>
+    <shadows>
+      <card_shadow>0 1px 3px rgba(0,0,0,0.1)</card_shadow>
+      <card_hover_shadow>0 4px 6px rgba(0,0,0,0.15)</card_hover_shadow>
+    </shadows>
+  </design_system>
+
+  <implementation_steps>
+    <step number="1">
+      <title>Chrome Extension Setup & Infrastructure</title>
+      <tasks>
+        - Initialize Vite + React + TypeScript project
+        - Configure Chrome Extension Manifest v3
+        - Set up Chrome Storage API integration
+        - Create base database schema and storage functions
+        - Verify data persistence across extension reload
+        - Set up build and packaging scripts
+      </tasks>
+    </step>
+    <step number="2">
+      <title>Core UI Foundation & Theme System</title>
+      <tasks>
+        - Set up Tailwind CSS with theme configuration
+        - Create base layout components (header, main container)
+        - Implement theme system with 2 themes
+        - Create theme switcher in settings
+        - Ensure responsive design foundation
+      </tasks>
+    </step>
+    <step number="3">
+      <title>Page Management System</title>
+      <tasks>
+        - Implement page CRUD operations
+        - Create page navigation tabs
+        - Add keyboard navigation (arrow keys)
+        - Implement page reordering with drag-and-drop
+        - Add page persistence to storage
+      </tasks>
+    </step>
+    <step number="4">
+      <title>Widget System Foundation</title>
+      <tasks>
+        - Create widget base component architecture
+        - Implement add widget button and type selector
+        - Create widget grid layout with configurable columns
+        - Add widget persistence
+        - Implement widget drag-and-drop reordering
+      </tasks>
+    </step>
+    <step number="5">
+      <title>Bookmark Widget Implementation</title>
+      <tasks>
+        - Create bookmark widget component
+        - Implement add bookmark form
+        - Add URL title fetching
+        - Implement icon upload and emoji selection
+        - Add bookmark CRUD within widget
+        - Test bookmark persistence and functionality
+      </tasks>
+    </step>
+    <step number="6">
+      <title>Weather Widget Implementation</title>
+      <tasks>
+        - Create weather widget component
+        - Integrate weather API
+        - Implement city configuration
+        - Add weather data display
+        - Handle API errors and loading states
+        - Add refresh functionality
+      </tasks>
+    </step>
+    <step number="7">
+      <title>Clock Widget Implementation</title>
+      <tasks>
+        - Create clock widget component
+        - Implement real-time clock updates
+        - Add timezone/city configuration
+        - Implement 12/24 hour format toggle
+        - Style clock display
+      </tasks>
+    </step>
+    <step number="8">
+      <title>AI Chat Widget - OpenAI Integration</title>
+      <tasks>
+        - Create AI chat widget component
+        - Implement OpenAI API integration
+        - Add API key storage and validation
+        - Create chat interface (messages, input)
+        - Implement chat history persistence
+        - Handle loading and error states
+      </tasks>
+    </step>
+    <step number="9">
+      <title>AI Chat Widget - Straico Integration</title>
+      <tasks>
+        - Implement Straico API key storage
+        - Fetch available models from Straico API
+        - Create provider selection dropdown
+        - Implement model selection (single model for Straico)
+        - Integrate Straico chat completion API
+        - Handle provider-specific responses and errors
+      </tasks>
+    </step>
+    <step number="10">
+      <title>Settings Page & Configuration</title>
+      <tasks>
+        - Create settings page/modal
+        - Implement grid layout controls
+        - Add theme selection
+        - Create AI provider configuration section
+        - Add About section with credits
+        - Persist all settings
+      </tasks>
+    </step>
+    <step number="11">
+      <title>Import/Export Functionality</title>
+      <tasks>
+        - Implement JSON export of all data
+        - Add option to exclude API keys
+        - Create JSON import with validation
+        - Add merge vs replace options
+        - Implement confirmation dialogs
+        - Handle import/export errors
+      </tasks>
+    </step>
+    <step number="12">
+      <title>Polish & Testing</title>
+      <tasks>
+        - Test all features end-to-end
+        - Verify data persistence
+        - Test extension reload scenarios
+        - Check responsive design on different screen sizes
+        - Verify keyboard navigation
+        - Test drag-and-drop interactions
+        - Polish animations and transitions
+        - Add loading states for all async operations
+        - Verify error handling and user feedback
+      </tasks>
+    </step>
+  </implementation_steps>
+
+  <success_criteria>
+    <functionality>
+      - All widget types (Bookmark, Weather, AI Chat, Clock) fully functional
+      - Pages can be created, renamed, deleted, and reordered
+      - Widgets can be added, edited, deleted, and reordered
+      - AI chat works with both OpenAI and Straico providers
+      - Settings persist across browser sessions
+      - Import/export works correctly with validation
+      - Theme switching applies to all components
+      - Grid layout customization works
+    </functionality>
+    <user_experience>
+      - Clean, modern interface
+      - Intuitive navigation and controls
+      - Smooth animations and transitions
+      - Responsive design on different screen sizes
+      - Clear visual feedback for interactions
+      - Helpful error messages
+      - Loading indicators for async operations
+    </user_experience>
+    <technical_quality>
+      - No mock data - all data from Chrome storage
+      - Data persists across extension reload and browser restart
+      - Clean, maintainable code architecture
+      - Proper error handling throughout
+      - Efficient use of Chrome APIs
+      - No console errors in production
+      - Proper TypeScript typing
+    </technical_quality>
+    <design_polish>
+      - Two distinct, polished themes
+      - Consistent spacing and alignment
+      - Professional typography
+      - Subtle shadows and hover effects
+      - Smooth theme transitions
+      - Accessible color contrast
+      - Well-designed widget cards
+    </design_polish>
+  </success_criteria>
+</project_specification>

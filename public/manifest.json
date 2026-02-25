@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Browser Launchpad",
+  "version": "1.0.0",
+  "description": "A customizable, widget-based dashboard for your new tab page",
+  "author": "Dennis Rongo",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "Browser Launchpad"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.straico.com/*",
+    "https://api.openweathermap.org/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
