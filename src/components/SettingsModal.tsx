@@ -99,6 +99,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     if (result.data) {
       setSettings(result.data)
       setGridColumns(result.data.grid_columns)
+      setGridGap(result.data.grid_gap)
       setTheme(result.data.theme)
       // Apply loaded theme immediately to document (for feature #125, #126)
       applyThemeToDocument(result.data.theme)
@@ -134,6 +135,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     const updatedSettings: Settings = {
       ...settings,
       grid_columns: gridColumns,
+      grid_gap: gridGap,
       theme: theme,
       updated_at: new Date().toISOString(),
     }
@@ -162,6 +164,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const handleCancel = () => {
     // Reset to current saved values
     setGridColumns(settings.grid_columns)
+    setGridGap(settings.grid_gap)
     setTheme(settings.theme)
     loadAIConfig()
     setValidationError(null)
@@ -182,6 +185,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       console.log('✓ Settings reset to defaults')
       setSettings(defaultSettings)
       setGridColumns(defaultSettings.grid_columns)
+      setGridGap(defaultSettings.grid_gap)
       setTheme(defaultSettings.theme)
       setAIConfig(DEFAULT_AI_CONFIG)
       onSettingsChange(defaultSettings)
