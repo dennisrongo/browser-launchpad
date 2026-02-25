@@ -42,6 +42,7 @@ const DEFAULT_AI_CONFIG: AIProviderConfig = {
 export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsModalProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [gridColumns, setGridColumns] = useState(3)
+  const [gridGap, setGridGap] = useState(24)
   const [theme, setTheme] = useState<'modern-light' | 'dark-elegance'>('modern-light')
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false })
@@ -263,11 +264,17 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       URL.revokeObjectURL(url)
 
       console.log('✓ Data exported successfully')
-      setImportStatus({ type: 'success', message: 'Data exported successfully!' })
-      setTimeout(() => setImportStatus({ type: null, message: '' }), 3000)
+      const fileName = `browser-launchpad-export-${new Date().toISOString().split('T')[0]}.json`
+      setImportStatus({
+        type: 'success',
+        message: `✅ Data exported successfully as ${fileName}`
+      })
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     } catch (error) {
       console.error('Failed to export data:', error)
-      setImportStatus({ type: 'error', message: 'Failed to export data' })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export data'
+      setImportStatus({ type: 'error', message: `❌ Export failed: ${errorMessage}` })
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     }
   }
 
@@ -683,12 +690,19 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           </div>
 
           {importStatus.type && (
-            <div className={`p-3 rounded-button text-sm mb-3 ${
+            <div className={`p-3 rounded-button text-sm mb-3 flex items-center justify-between gap-2 ${
               importStatus.type === 'success'
                 ? 'bg-green-500/10 text-green-600 border border-green-500/20'
                 : 'bg-red-500/10 text-red-600 border border-red-500/20'
             }`}>
-              {importStatus.message}
+              <span className="flex-1">{importStatus.message}</span>
+              <button
+                onClick={() => setImportStatus({ type: null, message: '' })}
+                className="opacity-70 hover:opacity-100 transition-opacity"
+                title="Dismiss notification"
+              >
+                ×
+              </button>
             </div>
           )}
           {validationError && (
