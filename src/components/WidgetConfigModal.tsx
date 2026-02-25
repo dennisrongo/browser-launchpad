@@ -115,6 +115,27 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 </label>
               </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">OpenWeatherMap API Key (Optional)</label>
+              <input
+                type="password"
+                value={config.apiKey || ''}
+                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                placeholder="Enter your API key"
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-text-secondary mt-1">
+                Get a free API key at{' '}
+                <a
+                  href="https://openweathermap.org/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  openweathermap.org
+                </a>
+              </p>
+            </div>
           </div>
         )
 

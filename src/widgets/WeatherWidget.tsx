@@ -7,8 +7,6 @@ interface WeatherWidgetProps {
   config: WeatherWidgetConfig
 }
 
-// For now, use a demo key. Users should configure their own API key in settings
-const DEMO_API_KEY = 'demo'
 
 export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<{
@@ -26,8 +24,9 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     loading: false,
     error: null,
   })
+  const [refreshing, setRefreshing] = useState(false)
 
-  const fetchWeatherData = async () => {
+  const fetchWeatherData = async (showRefreshSpinner = false) => {
     if (!config.city || config.city.trim() === '') {
       setWeather((prev) => ({
         ...prev,
@@ -37,10 +36,14 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
       return
     }
 
-    setWeather((prev) => ({ ...prev, loading: true, error: null }))
+    if (showRefreshSpinner) {
+      setRefreshing(true)
+    } else {
+      setWeather((prev) => ({ ...prev, loading: true, error: null }))
+    }
 
     try {
-      const data = await fetchWeather(config.city, DEMO_API_KEY, config.units || 'celsius')
+      const data = await fetchWeather(config.city, config.apiKey || '', config.units || 'celsius')
       setWeather({
         temp: data.temperature,
         condition: data.condition,
@@ -55,13 +58,17 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch weather data',
       }))
+    } finally {
+      if (showRefreshSpinner) {
+        setRefreshing(false)
+      }
     }
   }
 
-  // Fetch weather on mount and when city/units change
+  // Fetch weather on mount and when city/units/apiKey change
   useEffect(() => {
     fetchWeatherData()
-  }, [config.city, config.units])
+  }, [config.city, config.units, config.apiKey])
 
   // Auto-refresh every 10 minutes
   useEffect(() => {
@@ -72,7 +79,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     }, 10 * 60 * 1000) // 10 minutes
 
     return () => clearInterval(interval)
-  }, [config.city, config.units])
+  }, [config.city, config.units, config.apiKey])
 
   // Show configuration prompt if no city is set
   if (!config.city || config.city.trim() === '') {
@@ -119,7 +126,29 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
       <h3 className="text-sm font-semibold text-text capitalize mb-1">
         {formatCondition(weather.condition)}
       </h3>
-      <p className="text-text-secondary text-xs">{weather.location}</p>
+      <p className="text-text-secondary text-xs mb-2">{weather.location}</p>
+
+      {/* Refresh Button */}
+      <button
+        onClick={() => fetchWeatherData(true)}
+        disabled={refreshing}
+        className="text-text-secondary hover:text-primary transition-colors disabled:opacity-50"
+        title="Refresh weather data"
+      >
+        <svg
+          className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      </button>
     </div>
   )
 }
