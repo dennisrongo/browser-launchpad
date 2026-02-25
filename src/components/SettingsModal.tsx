@@ -275,66 +275,81 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const validateImportData = (importData: any): { valid: boolean; error?: string } => {
+    if (!importData || typeof importData !== 'object') {
+      return { valid: false, error: 'Invalid file: not a valid JSON object' }
+    }
+    if (!importData.version) {
+      return { valid: false, error: 'Invalid file: missing version information' }
+    }
+    if (importData.version !== '1.0.0') {
+      return { valid: false, error: 'Incompatible version: ' + importData.version + '. This extension supports version 1.0.0' }
+    }
+    if (!importData.data || typeof importData.data !== 'object') {
+      return { valid: false, error: 'Invalid file: missing or invalid data section' }
+    }
+    const data = importData.data
+    const hasValidStructure = Array.isArray(data.pages) || (typeof data.settings === 'object' && data.settings !== null) || typeof data.ai_config === 'object'
+    if (!hasValidStructure) {
+      return { valid: false, error: 'Invalid file: data does not contain valid pages, settings, or configuration' }
+    }
+    return { valid: true }
+  }
 
+  const handleConfirmImport = async () => {
+    if (!pendingImportData) return
     try {
-      // Read file
-      const text = await file.text()
-      const importData = JSON.parse(text)
-
-      // Validate import structure
-      if (!importData.version || !importData.data) {
-        throw new Error('Invalid import file format')
-      }
-
-      // Validate version compatibility
-      if (importData.version !== '1.0.0') {
-        throw new Error(`Incompatible version: ${importData.version}`)
-      }
-
-      // Generate summary before import
-      const data = importData.data
-      const pageCount = Array.isArray(data.pages) ? data.pages.length : 0
-      const widgetCount = Array.isArray(data.pages)
-        ? data.pages.reduce((sum: number, page: any) => sum + (Array.isArray(page.widgets) ? page.widgets.length : 0), 0)
-        : 0
-      const hasSettings = !!data.settings
-      const hasAIConfig = !!data.ai_config
-
-      // Import data to Chrome storage
+      const data = pendingImportData.data
       await chrome.storage.local.clear()
-      await chrome.storage.local.set(importData.data)
-
-      console.log('✓ Data imported successfully')
-
-      // Build detailed summary message
-      const summaryParts: string[] = []
-      if (pageCount > 0) summaryParts.push(`${pageCount} page${pageCount > 1 ? 's' : ''}`)
-      if (widgetCount > 0) summaryParts.push(`${widgetCount} widget${widgetCount > 1 ? 's' : ''}`)
-      if (hasSettings) summaryParts.push('settings')
-      if (hasAIConfig) summaryParts.push('AI config')
-
-      const summaryText = summaryParts.length > 0 ? summaryParts.join(', ') : 'data'
-      const message = `✅ Successfully imported: ${summaryText}. Reloading...`
-
-      setImportStatus({ type: 'success', message })
-
-      // Reload after short delay
+      await chrome.storage.local.set(pendingImportData.data)
+      console.log('Data imported successfully')
+      setImportStatus({ type: 'success', message: 'Data imported successfully! Reloading...' })
+      setShowImportConfirm(false)
       setTimeout(() => {
         window.location.reload()
       }, 1500)
     } catch (error) {
       console.error('Failed to import data:', error)
+      setImportStatus({ type: 'error', message: error instanceof Error ? error.message : 'Failed to import data' })
+      setShowImportConfirm(false)
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
+    }
+    setPendingImportData(null)
+  }
+
+  const handleCancelImport = () => {
+    setShowImportConfirm(false)
+    setPendingImportData(null)
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      let importData
+      try {
+        importData = JSON.parse(text)
+      } catch (parseError) {
+        throw new Error('Invalid JSON syntax. Please check the file format.')
+      }
+      const validation = validateImportData(importData)
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Invalid import file format')
+      }
+      setPendingImportData(importData)
+      setShowImportConfirm(true)
+      setImportStatus({ type: null, message: '' })
+    } catch (error) {
+      console.error('Failed to validate import data:', error)
       setImportStatus({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to import data'
+        message: error instanceof Error ? error.message : 'Failed to validate import file'
       })
       setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     }
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -695,6 +710,46 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 className="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 transition-colors"
               >
                 Reset to Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Confirmation Modal */}
+      {showImportConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
+          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-4xl"></span>
+              <h3 className="text-xl font-bold">Import Data?</h3>
+            </div>
+            <p className="text-text-secondary mb-4">
+              You are about to import data from a backup file. This will:
+            </p>
+            <ul className="list-disc list-inside text-sm text-text-secondary mb-6 space-y-1">
+              <li><strong>Replace all existing pages and widgets</strong></li>
+              <li>Replace your current settings (theme, grid layout)</li>
+              <li>Replace AI provider configurations</li>
+              <li>This action <strong>cannot be undone</strong></li>
+            </ul>
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-button mb-6">
+              <p className="text-sm text-yellow-600 font-medium">
+                Warning: All current data will be lost. Consider exporting a backup first if you want to keep it.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelImport}
+                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 transition-opacity"
+              >
+                Import Data
               </button>
             </div>
           </div>
