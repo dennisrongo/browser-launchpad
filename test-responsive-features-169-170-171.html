@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Layout Features Test - #169, #170, #171</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f3f4f6;
+      padding: 20px;
+    }
+
+    .test-container {
+      max-width: 1920px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 24px;
+    }
+
+    h1 {
+      color: #1f2937;
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .test-section {
+      margin-bottom: 32px;
+      padding: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+
+    .test-section h2 {
+      color: #3b82f6;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .viewport-info {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .viewport-info strong {
+      color: #92400e;
+    }
+
+    .responsive-preview {
+      border: 2px dashed #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      background: #f9fafb;
+      transition: all 0.3s ease;
+    }
+
+    .responsive-preview.mobile {
+      max-width: 375px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .responsive-preview.tablet {
+      max-width: 768px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .responsive-preview.desktop {
+      max-width: 100%;
+    }
+
+    .mock-header {
+      background: #3b82f6;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .mock-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    .mock-tab {
+      padding: 8px 16px;
+      background: #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .mock-tab.active {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .mock-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .mock-grid.grid-1 {
+      grid-template-columns: 1fr;
+    }
+
+    .mock-grid.grid-2 {
+      grid-template-columns: 1fr;
+    }
+
+    .mock-grid.grid-3 {
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 768px) {
+      .mock-grid.grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .mock-grid.grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .mock-widget {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .mock-widget h3 {
+      color: #1f2937;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .mock-widget-content {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 12px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+
+    .checklist li {
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+
+    .checklist input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .test-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .test-btn {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .test-btn:hover {
+      background: #2563eb;
+    }
+
+    .test-btn:active {
+      transform: scale(0.98);
+    }
+
+    .status-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      font-size: 14px;
+      z-index: 1000;
+    }
+
+    .status-indicator.pass {
+      border-left: 4px solid #10b981;
+    }
+
+    .status-indicator.fail {
+      border-left: 4px solid #ef4444;
+    }
+
+    .current-viewport {
+      font-weight: 600;
+      color: #3b82f6;
+    }
+
+    .instructions {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .instructions strong {
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>Responsive Layout Features Test</h1>
+    <p class="subtitle">Features #169 (Desktop), #170 (Tablet), #171 (Mobile)</p>
+
+    <div class="instructions">
+      <strong>How to use this test page:</strong><br>
+      1. Open browser DevTools (F12)<br>
+      2. Toggle device toolbar (Ctrl+Shift+M / Cmd+Shift+M)<br>
+      3. Resize viewport to test different screen sizes<br>
+      4. Use the buttons below to quickly set common viewport sizes<br>
+      5. Verify the layout adapts correctly at each size
+    </div>
+
+    <div class="test-controls">
+      <button class="test-btn" onclick="setViewport(375, 667)">Mobile (375×667)</button>
+      <button class="test-btn" onclick="setViewport(768, 1024)">Tablet (768×1024)</button>
+      <button class="test-btn" onclick="setViewport(1920, 1080)">Desktop (1920×1080)</button>
+      <button class="test-btn" onclick="resetViewport()">Reset Viewport</button>
+    </div>
+
+    <div class="status-indicator pass">
+      <div>Current Viewport: <span class="current-viewport" id="viewport-size">Loading...</span></div>
+      <div id="layout-type">Layout: Loading...</div>
+    </div>
+
+    <!-- Feature #171: Mobile Layout (375px) -->
+    <div class="test-section">
+      <h2>Feature #171: Mobile Layout (375px)</h2>
+      <div class="viewport-info">
+        <strong>Target:</strong> 375px width (typical mobile device)<br>
+        <strong>Expected:</strong> Single column layout, full-width widgets
+      </div>
+
+      <ul class="checklist">
+        <li><input type="checkbox" id="m1"><label for="m1">Layout is single column (grid-cols-1)</label></li>
+        <li><input type="checkbox" id="m2"><label for="m2">Navigation is touch-friendly</label></li>
+        <li><input type="checkbox" id="m3"><label for="m3">Widgets stack vertically</label></li>
+        <li><input type="checkbox" id="m4"><label for="m4">Text is readable without zoom</label></li>
+        <li><input type="checkbox" id="m5"><label for="m5">All features remain accessible</label></li>
+        <li><input type="checkbox" id="m6"><label for="m6">No horizontal scroll</label></li>
+      </ul>
+
+      <div class="responsive-preview mobile">
+        <div class="mock-header">Browser Launchpad</div>
+        <div class="mock-tabs">
+          <div class="mock-tab active">My Page</div>
+          <div class="mock-tab">+</div>
+        </div>
+        <div class="mock-grid grid-1">
+          <div class="mock-widget">
+            <h3>Clock</h3>
+            <div class="mock-widget-content">12:00 PM</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Weather</h3>
+            <div class="mock-widget-content">72°F Sunny</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Bookmarks</h3>
+            <div class="mock-widget-content">3 bookmarks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature #170: Tablet Layout (768px) -->
+    <div class="test-section">
+      <h2>Feature #170: Tablet Layout (768px)</h2>
+      <div class="viewport-info">
+        <strong>Target:</strong> 768px width (typical tablet device)<br>
+        <strong>Expected:</strong> Two column grid (md:grid-cols-2)
+      </div>
+
+      <ul class="checklist">
+        <li><input type="checkbox" id="t1"><label for="t1">Layout adjusts to tablet (2 columns)</label></li>
+        <li><input type="checkbox" id="t2"><label for="t2">Grid adapts properly at 768px breakpoint</label></li>
+        <li><input type="checkbox" id="t3"><label for="t3">Navigation remains accessible</label></li>
+        <li><input type="checkbox" id="t4"><label for="t4">Widgets are readable</label></li>
+        <li><input type="checkbox" id="t5"><label for="t5">Touch targets are adequate (≥44px)</label></li>
+        <li><input type="checkbox" id="t6"><label for="t6">Spacing is balanced</label></li>
+      </ul>
+
+      <div class="responsive-preview tablet">
+        <div class="mock-header">Browser Launchpad</div>
+        <div class="mock-tabs">
+          <div class="mock-tab active">My Page</div>
+          <div class="mock-tab">Work</div>
+          <div class="mock-tab">+</div>
+        </div>
+        <div class="mock-grid grid-2">
+          <div class="mock-widget">
+            <h3>Clock</h3>
+            <div class="mock-widget-content">12:00 PM</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Weather</h3>
+            <div class="mock-widget-content">72°F Sunny</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Bookmarks</h3>
+            <div class="mock-widget-content">3 bookmarks</div>
+          </div>
+          <div class="mock-widget">
+            <h3>AI Chat</h3>
+            <div class="mock-widget-content">Start chatting</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature #169: Desktop Layout (1920px) -->
+    <div class="test-section">
+      <h2>Feature #169: Desktop Layout (1920px)</h2>
+      <div class="viewport-info">
+        <strong>Target:</strong> 1920px width (typical desktop monitor)<br>
+        <strong>Expected:</strong> Multi-column grid (lg:grid-cols-3, xl:grid-cols-4)
+      </div>
+
+      <ul class="checklist">
+        <li><input type="checkbox" id="d1"><label for="d1">All elements fit properly</label></li>
+        <li><input type="checkbox" id="d2"><label for="d2">No horizontal scroll</label></li>
+        <li><input type="checkbox" id="d3"><label for="d3">Spacing is appropriate</label></li>
+        <li><input type="checkbox" id="d4"><label for="d4">Text is readable</label></li>
+        <li><input type="checkbox" id="d5"><label for="d5">All interactive elements work</label></li>
+        <li><input type="checkbox" id="d6"><label for="d6">Grid shows 3-4 columns</label></li>
+      </ul>
+
+      <div class="responsive-preview desktop">
+        <div class="mock-header">Browser Launchpad</div>
+        <div class="mock-tabs">
+          <div class="mock-tab active">My Page</div>
+          <div class="mock-tab">Work</div>
+          <div class="mock-tab">Personal</div>
+          <div class="mock-tab">Projects</div>
+          <div class="mock-tab">+</div>
+        </div>
+        <div class="mock-grid grid-3">
+          <div class="mock-widget">
+            <h3>Clock</h3>
+            <div class="mock-widget-content">12:00 PM</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Weather</h3>
+            <div class="mock-widget-content">72°F Sunny</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Bookmarks</h3>
+            <div class="mock-widget-content">3 bookmarks</div>
+          </div>
+          <div class="mock-widget">
+            <h3>AI Chat</h3>
+            <div class="mock-widget-content">Start chatting</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Clock 2</h3>
+            <div class="mock-widget-content">12:00 PM</div>
+          </div>
+          <div class="mock-widget">
+            <h3>Bookmarks 2</h3>
+            <div class="mock-widget-content">5 bookmarks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real App Test -->
+    <div class="test-section">
+      <h2>Real App Test</h2>
+      <div class="viewport-info">
+        <strong>Instructions:</strong> Open <code>dist/newtab.html</code> in a new tab and test the actual application at different viewport sizes.
+      </div>
+
+      <ul class="checklist">
+        <li><input type="checkbox" id="r1"><label for="r1">Tested real app at 375px (mobile)</label></li>
+        <li><input type="checkbox" id="r2"><label for="r2">Tested real app at 768px (tablet)</label></li>
+        <li><input type="checkbox" id="r3"><label for="r3">Tested real app at 1920px (desktop)</label></li>
+        <li><input type="checkbox" id="r4"><label for="r4">Verified all widgets render correctly</label></li>
+        <li><input type="checkbox" id="r5"><label for="r5">Verified navigation works at all sizes</label></li>
+        <li><input type="checkbox" id="r6"><label for="r6">Verified no horizontal scroll at any size</label></li>
+      </ul>
+
+      <button class="test-btn" onclick="window.open('dist/newtab.html', '_blank')">
+        Open Real App in New Tab
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function updateViewportInfo() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      document.getElementById('viewport-size').textContent = `${width}×${height}`;
+
+      let layoutType = 'Mobile (1 column)';
+      if (width >= 1024) {
+        layoutType = 'Desktop (3-4 columns)';
+      } else if (width >= 768) {
+        layoutType = 'Tablet (2 columns)';
+      }
+
+      document.getElementById('layout-type').textContent = `Layout: ${layoutType}`;
+    }
+
+    function setViewport(width, height) {
+      // This won't work directly, but shows the intended viewport
+      alert(`Please resize your browser window to ${width}×${height}\n\nOr use DevTools device toolbar:\n1. Open DevTools (F12)\n2. Toggle device toolbar (Ctrl+Shift+M / Cmd+Shift+M)\n3. Enter dimensions: ${width}×${height}`);
+    }
+
+    function resetViewport() {
+      alert('Please reset your browser window to default size\n\nOr close DevTools device toolbar');
+    }
+
+    // Update viewport info on resize
+    window.addEventListener('resize', updateViewportInfo);
+    updateViewportInfo();
+
+    // Save checkbox states to localStorage
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+      // Load saved state
+      const saved = localStorage.getItem(checkbox.id);
+      if (saved === 'true') {
+        checkbox.checked = true;
+      }
+
+      // Save state on change
+      checkbox.addEventListener('change', () => {
+        localStorage.setItem(checkbox.id, checkbox.checked);
+        updateProgress();
+      });
+    });
+
+    function updateProgress() {
+      const total = checkboxes.length;
+      const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+      const percentage = Math.round((checked / total) * 100);
+
+      console.log(`Progress: ${checked}/${total} checks passed (${percentage}%)`);
+    }
+  </script>
+</body>
+</html>

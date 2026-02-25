@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-02-25T09:45:21.214Z",
+  "features": [
+    169,
+    170,
+    171
+  ],
+  "checks": {
+    "responsiveClasses": [
+      {
+        "name": "Mobile single column (grid-cols-1)",
+        "found": true
+      },
+      {
+        "name": "Tablet breakpoint (md:grid-cols-2)",
+        "found": true
+      },
+      {
+        "name": "Desktop breakpoint (lg:grid-cols-3)",
+        "found": true
+      },
+      {
+        "name": "Large desktop (xl:grid-cols-4)",
+        "found": true
+      },
+      {
+        "name": "Extra large desktop (2xl:grid-cols-5)",
+        "found": false
+      },
+      {
+        "name": "Ultra wide desktop (2xl:grid-cols-6)",
+        "found": true
+      }
+    ],
+    "tailwindBreakpoints": [
+      {
+        "name": "sm (640px)",
+        "found": true
+      },
+      {
+        "name": "md (768px)",
+        "found": true
+      },
+      {
+        "name": "lg (1024px)",
+        "found": true
+      },
+      {
+        "name": "xl (1280px)",
+        "found": true
+      },
+      {
+        "name": "2xl (1536px)",
+        "found": true
+      }
+    ],
+    "touchFriendlyElements": [
+      {
+        "name": "buttons",
+        "count": 11
+      },
+      {
+        "name": "inputs",
+        "count": 1
+      },
+      {
+        "name": "clickableElements",
+        "count": 11
+      }
+    ]
+  },
+  "overallPassed": true
+}
