@@ -109,6 +109,10 @@ export function validateApiKeyFormat(provider: 'openai' | 'straico', apiKey: str
  * Validate OpenAI API key by making a test API call
  */
 export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]> {
+  if (!apiKey || apiKey.trim().length === 0) {
+    throw new Error('Straico: API key is required')
+  }
+  
   try {
     const response = await fetch('https://api.straico.com/v2/models', {
       method: 'GET',
@@ -152,7 +156,7 @@ export async function fetchStraicoModels(apiKey: string): Promise<StraicoModel[]
   } catch (error) {
     if (error instanceof Error) {
       // Add network error context
-      if (error.message.includes('fetch') || error.message.includes('network')) {
+      if (error.message.includes('fetch') || error.message.includes('network') || error.name === 'TypeError') {
         throw new Error('Straico: Network error. Please check your internet connection and try again.')
       }
       throw error
@@ -607,14 +611,27 @@ export async function sendStraicoChatStream(
 
     const decoder = new TextDecoder()
     let fullContent = ''
+    let buffer = ''
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
-      const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split('\n')
+      buffer += decoder.decode(value, { stream: true })
+    }
 
+    // Straico returns the full response as JSON, not SSE chunks
+    // Try parsing as single JSON first
+    try {
+      const parsed = JSON.parse(buffer)
+      const content = parsed.choices?.[0]?.message?.content
+      if (content) {
+        fullContent = content
+        callbacks.onChunk(content)
+      }
+    } catch (e) {
+      // Fall back to SSE parsing
+      const lines = buffer.split('\n')
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6)
@@ -624,7 +641,7 @@ export async function sendStraicoChatStream(
 
           try {
             const parsed = JSON.parse(data)
-            const content = parsed.choices?.[0]?.delta?.content || parsed.message?.content
+            const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content
             if (content) {
               fullContent += content
               callbacks.onChunk(content)

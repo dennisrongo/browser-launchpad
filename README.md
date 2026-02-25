@@ -104,6 +104,18 @@ You can backup and restore your data:
 
 **Note**: By default, API keys are excluded from exports for security.
 
+### CSP Configuration
+
+The Content Security Policy is defined in **two places** and must be kept in sync:
+1. `public/manifest.json` - `content_security_policy.extension_pages`
+2. `newtab.html` - `<meta http-equiv="Content-Security-Policy">`
+
+When adding new API endpoints, update the `connect-src` directive in **both files**.
+
+### Development Notes
+
+⚠️ **Do not remove and re-add the extension during development** - this clears Chrome Storage and you will lose your API keys and widget configurations. Instead, use the **reload button** on the extension card in `chrome://extensions`.
+
 ## Credits
 
 Created by **Dennis Rongo**

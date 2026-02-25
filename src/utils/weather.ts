@@ -1,4 +1,4 @@
-// Weather API utility using OpenWeatherMap API
+// Weather API utility using OpenWeatherMap Current Weather API (free tier)
 
 export interface WeatherData {
   temperature: number
@@ -31,30 +31,33 @@ export interface WeatherApiResponse {
   }
 }
 
-// Default API key - users should provide their own
-const DEFAULT_API_KEY = 'demo' // This will fail, prompting users to add their own key
-
 export async function fetchWeather(
   city: string,
   apiKey: string,
   units: 'celsius' | 'fahrenheit' = 'celsius'
 ): Promise<WeatherData> {
-  if (!apiKey || apiKey === 'demo') {
+  const trimmedKey = apiKey?.trim()
+  if (!trimmedKey || trimmedKey === 'demo') {
     throw new Error('Please add your OpenWeatherMap API key in widget settings')
   }
 
   const unitParam = units === 'celsius' ? 'metric' : 'imperial'
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=${unitParam}`
+  
+  // Handle "City, State" format - extract just the city name
+  const cityName = city.split(',')[0].trim()
+  
+  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName)}&appid=${trimmedKey}&units=${unitParam}`
 
   const response = await fetch(url)
 
   if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
     if (response.status === 401) {
       throw new Error('Invalid API key. Please check your OpenWeatherMap API key')
     } else if (response.status === 404) {
       throw new Error(`City "${city}" not found. Please check the city name`)
     } else {
-      throw new Error(`Weather API error: ${response.status} ${response.statusText}`)
+      throw new Error(`Weather API error: ${response.status} ${errorData.message || response.statusText}`)
     }
   }
 
