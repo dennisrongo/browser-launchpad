@@ -343,9 +343,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       }, 1500)
     } catch (error) {
       console.error('Failed to import data:', error)
-      setImportStatus({ type: 'error', message: error instanceof Error ? error.message : 'Failed to import data' })
+      let errorMessage = 'Failed to import data'
+      if (error instanceof Error) {
+        // Provide more helpful error messages
+        if (error.message.includes('QuotaExceededError')) {
+          errorMessage = 'Storage quota exceeded. The data is too large to import. Try exporting some data first or use merge mode.'
+        } else if (error.message.includes('DataCloneError')) {
+          errorMessage = 'Invalid data format in import file. Some data could not be stored.'
+        } else {
+          errorMessage = `Import failed: ${error.message}`
+        }
+      }
+      setImportStatus({ type: 'error', message: errorMessage })
       setShowImportConfirm(false)
-      setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
+      setTimeout(() => setImportStatus({ type: null, message: '' }), 7000) // Show error for longer
     }
     setPendingImportData(null)
     setImportMode('replace')
@@ -362,6 +373,17 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     if (!file) return
 
     try {
+      // Check file size (limit to 10MB)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 10MB.`)
+      }
+
+      // Check file type
+      if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+        throw new Error('Invalid file type. Please select a JSON file (.json).')
+      }
+
       const text = await file.text()
       let importData
       try {
