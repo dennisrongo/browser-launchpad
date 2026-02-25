@@ -33,7 +33,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const PORT = 9999;
+const PORT = 8765;
 server.listen(PORT, () => {
   console.log(`Test server running on http://localhost:${PORT}`);
 });
