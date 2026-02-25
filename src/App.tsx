@@ -138,6 +138,85 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [pages.length])
 
+  // Handle Straico models fetched event
+  useEffect(() => {
+    const handleModelsFetched = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ widgetId: string; models: any[] }>
+      const { widgetId, models } = customEvent.detail
+      const currentPage = pages[activePage]
+      if (!currentPage) return
+
+      const updatedWidgets = currentPage.widgets.map((w: Widget) =>
+        w.id === widgetId
+          ? {
+              ...w,
+              config: {
+                ...w.config,
+                straicoModels: models,
+                fetchModels: false,
+              },
+            }
+          : w
+      )
+
+      const updatedPages = [...pages]
+      updatedPages[activePage] = {
+        ...currentPage,
+        widgets: updatedWidgets,
+        updated_at: new Date().toISOString(),
+      }
+
+      const result = await pagesStorage.set(updatedPages)
+
+      if (result.success) {
+        setPages(updatedPages)
+        console.log('✓ Straico models saved to Chrome storage')
+      } else {
+        console.error('Failed to save Straico models:', result.error)
+      }
+    }
+
+    const handleFetchComplete = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ widgetId: string }>
+      const { widgetId } = customEvent.detail
+      const currentPage = pages[activePage]
+      if (!currentPage) return
+
+      const updatedWidgets = currentPage.widgets.map((w: Widget) =>
+        w.id === widgetId
+          ? {
+              ...w,
+              config: {
+                ...w.config,
+                fetchModels: false,
+              },
+            }
+          : w
+      )
+
+      const updatedPages = [...pages]
+      updatedPages[activePage] = {
+        ...currentPage,
+        widgets: updatedWidgets,
+        updated_at: new Date().toISOString(),
+      }
+
+      const result = await pagesStorage.set(updatedPages)
+
+      if (result.success) {
+        setPages(updatedPages)
+      }
+    }
+
+    window.addEventListener('straico-models-fetched', handleModelsFetched)
+    window.addEventListener('straico-models-fetch-complete', handleFetchComplete)
+
+    return () => {
+      window.removeEventListener('straico-models-fetched', handleModelsFetched)
+      window.removeEventListener('straico-models-fetch-complete', handleFetchComplete)
+    }
+  }, [pages, activePage])
+
   const handleAddPage = async () => {
     // Check if limit is reached
     if (pages.length >= MAX_PAGES) {

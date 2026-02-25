@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature 1 Regression Test: Chrome Storage API Connection</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        h1 { color: #333; }
+        h2 { color: #555; margin-top: 0; }
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="summary">
+        <h1>🧪 Feature 1 Regression Test</h1>
+        <p><strong>Testing:</strong> Database Connection (Chrome Storage API)</p>
+        <p><strong>Verification Steps:</strong></p>
+        <ol>
+            <li>Load the Chrome extension in Developer Mode</li>
+            <li>Open Chrome DevTools and check the console</li>
+            <li>Verify Chrome Storage API connection message appears</li>
+            <li>Call chrome.storage.local.get() to test connection</li>
+            <li>Verify storage API returns valid response</li>
+            <li>Check that no connection errors appear in console</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="runFeature1Test()">▶ Run Feature 1 Test</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Feature 1: Database Connection (Chrome Storage API)</h2>
+        <div id="feature1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console-log" class="log"></div>
+    </div>
+
+    <script>
+        // Capture console.log to display in the page
+        const consoleLog = document.getElementById('console-log');
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleLog.textContent += args.join(' ') + '\n';
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            consoleLog.textContent += 'ERROR: ' + args.join(' ') + '\n';
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        };
+
+        function addResult(containerId, message, passed) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = 'test-result ' + (passed ? 'pass' : 'fail');
+            div.textContent = (passed ? '✓ ' : '✗ ') + message;
+            container.appendChild(div);
+        }
+
+        function addInfo(containerId, message) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = 'test-result info';
+            div.textContent = 'ℹ ' + message;
+            container.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('feature1-results').innerHTML = '';
+            consoleLog.textContent = '';
+        }
+
+        async function runFeature1Test() {
+            const resultsContainer = 'feature1-results';
+            clearResults();
+
+            console.log('=== Starting Feature 1: Database Connection Test ===\n');
+
+            // Step 1: Check if Chrome Storage API is available
+            console.log('Step 1: Checking Chrome Storage API availability...');
+            if (typeof chrome === 'undefined' || !chrome.storage) {
+                addResult(resultsContainer, 'Chrome Storage API not available - cannot test in regular browser context', false);
+                addInfo(resultsContainer, 'This test must be run in a Chrome extension context');
+                console.log('✗ Chrome Storage API not available\n');
+                return;
+            }
+            addResult(resultsContainer, 'Chrome Storage API is available', true);
+            console.log('✓ Chrome Storage API is available\n');
+
+            // Step 2: Check chrome.storage.local
+            console.log('Step 2: Checking chrome.storage.local...');
+            if (!chrome.storage.local) {
+                addResult(resultsContainer, 'chrome.storage.local not available - check extension permissions', false);
+                console.log('✗ chrome.storage.local not available\n');
+                return;
+            }
+            addResult(resultsContainer, 'chrome.storage.local is available', true);
+            console.log('✓ chrome.storage.local is available\n');
+
+            // Step 3: Test write operation
+            console.log('Step 3: Testing write operation...');
+            const testKey = 'feature1-connection-test';
+            const testData = {
+                timestamp: Date.now(),
+                test: 'feature1-connection-test',
+                verified: true
+            };
+
+            try {
+                const writeResult = await new Promise((resolve) => {
+                    chrome.storage.local.set({ [testKey]: testData }, () => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ success: true, error: null });
+                        }
+                    });
+                });
+
+                if (!writeResult.success) {
+                    addResult(resultsContainer, 'Failed to write to storage: ' + writeResult.error, false);
+                    console.log('✗ Write failed: ' + writeResult.error + '\n');
+                    return;
+                }
+                addResult(resultsContainer, 'Successfully wrote test data to storage', true);
+                console.log('✓ Write successful: ' + JSON.stringify(testData) + '\n');
+
+                // Step 4: Test read operation
+                console.log('Step 4: Testing read operation...');
+                const readResult = await new Promise((resolve) => {
+                    chrome.storage.local.get(testKey, (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ data: null, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ data: result[testKey] || null, error: null });
+                        }
+                    });
+                });
+
+                if (readResult.error) {
+                    addResult(resultsContainer, 'Failed to read from storage: ' + readResult.error, false);
+                    console.log('✗ Read failed: ' + readResult.error + '\n');
+                    return;
+                }
+
+                if (!readResult.data) {
+                    addResult(resultsContainer, 'Read returned null - data was not persisted', false);
+                    console.log('✗ Read returned null\n');
+                    return;
+                }
+
+                addResult(resultsContainer, 'Successfully read test data from storage', true);
+                console.log('✓ Read successful: ' + JSON.stringify(readResult.data) + '\n');
+
+                // Step 5: Verify data integrity
+                console.log('Step 5: Verifying data integrity...');
+                if (readResult.data.timestamp !== testData.timestamp) {
+                    addResult(resultsContainer, 'Data mismatch - timestamp does not match', false);
+                    console.log('✗ Data mismatch\n');
+                    return;
+                }
+                addResult(resultsContainer, 'Data integrity verified - written and read data match', true);
+                console.log('✓ Data integrity verified\n');
+
+                // Step 6: Check console for errors
+                console.log('Step 6: Checking for console errors...');
+                const consoleErrors = consoleLog.textContent.includes('ERROR');
+                if (consoleErrors) {
+                    addResult(resultsContainer, 'Errors found in console - check log below', false);
+                    console.log('✗ Errors detected in console\n');
+                } else {
+                    addResult(resultsContainer, 'No console errors detected', true);
+                    console.log('✓ No console errors\n');
+                }
+
+                // Step 7: Cleanup
+                console.log('Step 7: Cleaning up test data...');
+                await new Promise((resolve) => {
+                    chrome.storage.local.remove(testKey, () => {
+                        console.log('✓ Test data cleaned up\n');
+                        resolve();
+                    });
+                });
+
+                console.log('=== Feature 1 Test: PASSED ===\n');
+                addResult(resultsContainer, 'Feature 1: ALL TESTS PASSED ✓', true);
+
+            } catch (error) {
+                addResult(resultsContainer, 'Exception during test: ' + error.message, false);
+                console.log('✗ Exception: ' + error.message + '\n');
+                console.log('=== Feature 1 Test: FAILED ===\n');
+            }
+        }
+
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            console.log('Page loaded. Ready to run tests.\n');
+            addInfo('feature1-results', 'Click "Run Feature 1 Test" to begin testing');
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Widget, WidgetType } from '../types'
+import { fetchStraicoModels } from '../utils/ai'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
@@ -11,13 +12,37 @@ interface WidgetConfigModalProps {
 export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetConfigModalProps) {
   const [title, setTitle] = useState('')
   const [config, setConfig] = useState<any>({})
+  const [isFetchingModels, setIsFetchingModels] = useState(false)
+  const [modelFetchError, setModelFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     if (widget) {
       setTitle(widget.title)
       setConfig({ ...widget.config })
     }
+    // Reset state when widget changes
+    setModelFetchError(null)
+    setIsFetchingModels(false)
   }, [widget])
+
+  const handleFetchModels = async () => {
+    if (!config.straicoApiKey) {
+      setModelFetchError('Please enter your Straico API key first')
+      return
+    }
+
+    setIsFetchingModels(true)
+    setModelFetchError(null)
+
+    try {
+      const models = await fetchStraicoModels(config.straicoApiKey)
+      setConfig({ ...config, straicoModels: models })
+    } catch (error) {
+      setModelFetchError(error instanceof Error ? error.message : 'Failed to fetch models')
+    } finally {
+      setIsFetchingModels(false)
+    }
+  }
 
   if (!isOpen || !widget) {
     return null
@@ -249,7 +274,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   <select
                     value={config.model || ''}
                     onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                    disabled={!config.straicoApiKey}
+                    disabled={!config.straicoApiKey || isFetchingModels}
                     className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select a model</option>
@@ -262,21 +287,33 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                   <p className="text-xs text-text-secondary mt-1">
                     {!config.straicoApiKey
                       ? 'Enter your API key above to fetch available models'
+                      : isFetchingModels
+                      ? 'Fetching models...'
                       : (config.straicoModels || []).length === 0
                       ? 'Click "Fetch Models" to load available models'
                       : `${(config.straicoModels || []).length} models available`}
                   </p>
                 </div>
+                {modelFetchError && (
+                  <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+                    ⚠️ {modelFetchError}
+                  </div>
+                )}
                 {config.straicoApiKey && (config.straicoModels || []).length === 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      // This will be handled by the widget component
-                      setConfig({ ...config, fetchModels: true })
-                    }}
-                    className="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:opacity-90"
+                    onClick={handleFetchModels}
+                    disabled={isFetchingModels}
+                    className="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Fetch Models
+                    {isFetchingModels ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Fetching...
+                      </>
+                    ) : (
+                      'Fetch Models'
+                    )}
                   </button>
                 )}
               </>
