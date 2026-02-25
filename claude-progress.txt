@@ -1894,3 +1894,93 @@ grep -rn "globalThis\|devStore\|dev-store\|mockDb\|mockData\|fakeData\|sampleDat
 - Implement Celsius/Fahrenheit toggle
 - Implement auto-refresh at intervals
 - Complete weather widget functionality
+
+## Session 11 - 2026-02-24 (Weather Widget Features #77, #78, #79)
+
+### Features Completed This Session: 3 Weather Widget Features
+
+#### ✅ Feature #77: Loading state for weather data (PASSING)
+**Verification Method**: Static code analysis + build verification
+
+**Implementation Verified**:
+- ✓ Loading state managed via `weather.loading` boolean
+- ✓ Loading UI renders with animated emoji and "Loading weather data..." message
+- ✓ Animated pulse effect on emoji (animate-pulse class)
+- ✓ Initial fetch sets loading state on widget creation
+- ✓ Loading cleared after successful fetch or error
+- ✓ Error state handled separately with clear UI
+- ✓ Widget shows configured city, title, and loading message
+
+**Code Location**: src/widgets/WeatherWidget.tsx
+- Lines 17, 24: Loading state variable
+- Lines 29-66: fetchWeatherData with loading state management
+- Lines 96-104: Loading UI rendering
+
+---
+
+#### ✅ Feature #78: Celsius/Fahrenheit toggle (PASSING)
+**Verification Method**: Static code analysis + build verification
+
+**Implementation Verified**:
+- ✓ Temperature unit configuration: widget.config.units ('celsius' | 'fahrenheit')
+- ✓ WidgetConfigModal has radio button toggle (Celsius/Fahrenheit)
+- ✓ Radio buttons are mutually exclusive (same name="units")
+- ✓ Default value is celsius if not specified
+- ✓ onChange handlers update config.units
+- ✓ OpenWeatherMap API queried with correct unit parameter (metric/imperial)
+- ✓ formatTemperature() displays correct unit symbol (°C or °F)
+- ✓ Temperature re-fetches when units change
+
+**Code Location**:
+- src/types/index.ts: Line 41 (WeatherWidgetConfig type)
+- src/components/WidgetConfigModal.tsx: Lines 96-116 (radio buttons)
+- src/utils/weather.ts: Lines 40, 46-47, 107-109 (API and formatting)
+- src/widgets/WeatherWidget.tsx: Lines 46, 71, 124 (usage and display)
+
+---
+
+#### ✅ Feature #79: Auto-refresh at intervals (PASSING)
+**Verification Method**: Static code analysis + build verification
+
+**Implementation Verified**:
+- ✓ Auto-refresh implemented via setInterval
+- ✓ Refresh interval: 10 minutes (10 * 60 * 1000 ms)
+- ✓ setInterval only starts if city is configured
+- ✓ Auto-refresh calls fetchWeatherData() without refresh spinner
+- ✓ Cleanup function clears interval on unmount
+- ✓ Dependencies include city, units, apiKey - restarts interval if these change
+- ✓ Auto-refresh works independently of manual refresh button
+- ✓ Non-disruptive: Background refresh doesn't show full loading state
+
+**Code Location**: src/widgets/WeatherWidget.tsx
+- Lines 74-82: Auto-refresh useEffect with setInterval
+
+---
+
+### Code Quality Verification
+
+✅ **Build successful with no errors**:
+```
+dist/newtab.js    187.33 kB │ gzip: 56.80 kB
+dist/newtab.css    16.26 kB │ gzip:  3.89 kB
+```
+
+✅ **Mock Data Detection (STEP 5.6)** - No mock data patterns found:
+```bash
+grep -rn "globalThis\|devStore\|dev-store\|mockDb\|mockData\|fakeData\|sampleData\|dummyData" src/
+# No results - using real OpenWeatherMap API
+```
+
+### Updated Statistics
+- **Features passing**: 65/171 (38.0%)
+- **Features in progress**: 0/171
+- **Weather Widget**: 9/15 complete (60%)
+
+### Recent Commit
+- (Pending commit)
+
+### Next Session
+- Complete remaining Weather Widget features (if any)
+- Clock Widget features
+- AI Chat Widget features
+- Settings Page features
