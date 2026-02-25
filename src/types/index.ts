@@ -42,9 +42,18 @@ export interface WeatherWidgetConfig {
   apiKey?: string
 }
 
+export interface AIChatModel {
+  id: string
+  name: string
+}
+
 export interface AIChatWidgetConfig {
   provider: 'openai' | 'straico'
   model: string
+  openaiApiKey?: string
+  straicoApiKey?: string
+  straicoModels?: AIChatModel[]
+  messages: ChatMessage[]
 }
 
 export interface ClockWidgetConfig {

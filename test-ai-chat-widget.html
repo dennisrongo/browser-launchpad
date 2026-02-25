@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat Widget Test - Feature #88</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .test-info {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .test-info h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .test-info .feature-id {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .test-info .description {
+      color: #374151;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+    .test-steps {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .test-steps h3 {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .test-steps ol {
+      margin-left: 20px;
+    }
+    .test-steps li {
+      margin: 4px 0;
+    }
+    #app {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-info">
+    <h1>AI Chat Widget Test - Feature #88</h1>
+    <p class="feature-id">Feature ID: #88 - Add AI chat widget to page</p>
+    <p class="description">Verify users can add AI chat widget for AI conversations</p>
+    <div class="test-steps">
+      <h3>Test Steps:</h3>
+      <ol>
+        <li>Open browser DevTools (F12) and check for console errors</li>
+        <li>Click the "Add Widget" button on the page</li>
+        <li>Select "AI Chat Widget" from the widget type selector</li>
+        <li>Verify the AI chat widget is created with a default title "AI Chat"</li>
+        <li>Verify the widget shows a chat interface with input field and send button</li>
+        <li>Verify the widget prompts for provider setup (OpenAI/Straico)</li>
+        <li>Verify the widget configuration modal allows setting API keys and models</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="app"></div>
+
+  <script type="module">
+    // Import the built app
+    import { createApp } from './src/main.tsx';
+
+    // Log test start
+    console.log('=== AI Chat Widget Test - Feature #88 ===');
+    console.log('Test: Add AI chat widget to page');
+    console.log('Steps:');
+    console.log('1. Click "Add Widget" button');
+    console.log('2. Select "AI Chat Widget" from selector');
+    console.log('3. Verify widget is created with default title "AI Chat"');
+    console.log('4. Verify widget shows chat interface');
+    console.log('5. Verify widget prompts for provider setup');
+    console.log('=====================================\n');
+
+    // Start the app
+    const app = document.getElementById('app');
+    if (app) {
+      createApp(app);
+    }
+  </script>
+</body>
+</html>

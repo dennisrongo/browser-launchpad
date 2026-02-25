@@ -20,7 +20,8 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
   },
   'ai-chat': {
     provider: 'openai',
-    model: '',
+    model: 'gpt-3.5-turbo',
+    messages: [],
   },
   bookmark: {
     bookmarks: [],
@@ -525,7 +526,7 @@ function App() {
 
     const updatedWidgets = currentPage.widgets.map((w: Widget) =>
       w.id === widgetId
-        ? { ...w, config: newConfig }
+        ? { ...w, config: { ...w.config, ...newConfig } }
         : w
     )
 

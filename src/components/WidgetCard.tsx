@@ -65,7 +65,13 @@ export function WidgetCard({
       case 'weather':
         return <WeatherWidget title={widget.title} config={widget.config as any} />
       case 'ai-chat':
-        return <AIChatWidget title={widget.title} config={widget.config as any} />
+        return (
+          <AIChatWidget
+            title={widget.title}
+            config={widget.config as any}
+            onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+          />
+        )
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full">

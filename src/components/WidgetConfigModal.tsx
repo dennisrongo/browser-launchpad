@@ -190,34 +190,114 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
               <label className="block text-sm font-medium text-text mb-1">AI Provider</label>
               <select
                 value={config.provider || 'openai'}
-                onChange={(e) => setConfig({ ...config, provider: e.target.value })}
+                onChange={(e) => {
+                  const newProvider = e.target.value as 'openai' | 'straico'
+                  setConfig({ ...config, provider: newProvider, model: '' })
+                }}
                 className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="openai">OpenAI</option>
                 <option value="straico">Straico</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">Model</label>
-              <input
-                type="text"
-                value={config.model || ''}
-                onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                placeholder={config.provider === 'openai' ? 'e.g., gpt-4, gpt-3.5-turbo' : 'Model name'}
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <p className="text-xs text-text-secondary mt-1">
-                {config.provider === 'openai'
-                  ? 'Enter the OpenAI model name (e.g., gpt-4, gpt-3.5-turbo)'
-                  : 'The model will be fetched from Straico API'}
-              </p>
-            </div>
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-              <p className="font-medium mb-1">⚠️ API Key Required</p>
-              <p className="text-xs">
-                Configure your API keys in Settings before using this widget.
-              </p>
-            </div>
+
+            {/* OpenAI Model Selection Dropdown */}
+            {config.provider === 'openai' && (
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">Model</label>
+                <select
+                  value={config.model || 'gpt-3.5-turbo'}
+                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                  className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="gpt-4">GPT-4</option>
+                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </select>
+                <p className="text-xs text-text-secondary mt-1">
+                  Select the OpenAI model to use for chat completions
+                </p>
+              </div>
+            )}
+
+            {/* Straico API Key Input */}
+            {config.provider === 'straico' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">Straico API Key</label>
+                  <input
+                    type="password"
+                    value={config.straicoApiKey || ''}
+                    onChange={(e) => setConfig({ ...config, straicoApiKey: e.target.value })}
+                    placeholder="Enter your Straico API key"
+                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    Get your API key from{' '}
+                    <a
+                      href="https://straico.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      straico.com
+                    </a>
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1">Model</label>
+                  <select
+                    value={config.model || ''}
+                    onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                    disabled={!config.straicoApiKey}
+                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select a model</option>
+                    {(config.straicoModels || []).map((model: any) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {!config.straicoApiKey
+                      ? 'Enter your API key above to fetch available models'
+                      : (config.straicoModels || []).length === 0
+                      ? 'Click "Fetch Models" to load available models'
+                      : `${(config.straicoModels || []).length} models available`}
+                  </p>
+                </div>
+                {config.straicoApiKey && (config.straicoModels || []).length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // This will be handled by the widget component
+                      setConfig({ ...config, fetchModels: true })
+                    }}
+                    className="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:opacity-90"
+                  >
+                    Fetch Models
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* OpenAI API Key Input (optional override) */}
+            {config.provider === 'openai' && (
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">OpenAI API Key (Optional)</label>
+                <input
+                  type="password"
+                  value={config.openaiApiKey || ''}
+                  onChange={(e) => setConfig({ ...config, openaiApiKey: e.target.value })}
+                  placeholder="Enter your OpenAI API key"
+                  className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  Optional: You can also set this in Settings
+                </p>
+              </div>
+            )}
           </div>
         )
 
