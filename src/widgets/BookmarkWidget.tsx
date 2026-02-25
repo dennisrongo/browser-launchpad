@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { BookmarkWidgetConfig, Bookmark } from '../types'
+import { getBookmarkIconDisplay } from '../utils/favicon'
 
 interface BookmarkWidgetProps {
   title: string
@@ -409,15 +410,32 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                   <span className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity text-text-secondary">
                     ⋮⋮
                   </span>
-                  {bookmark.icon?.startsWith('data:') ? (
-                    <img
-                      src={bookmark.icon}
-                      alt=""
-                      className="w-5 h-5 flex-shrink-0 object-contain rounded"
-                    />
-                  ) : (
-                    <span className="text-xl flex-shrink-0">{bookmark.icon || '🔗'}</span>
-                  )}
+                  {(() => {
+                    const iconDisplay = getBookmarkIconDisplay(bookmark.url, bookmark.icon)
+                    if (iconDisplay.type === 'emoji' || iconDisplay.type === 'fallback') {
+                      return <span className="text-xl flex-shrink-0">{iconDisplay.content}</span>
+                    } else {
+                      return (
+                        <img
+                          src={iconDisplay.content}
+                          alt=""
+                          className="w-5 h-5 flex-shrink-0 object-contain rounded"
+                          onError={(e) => {
+                            // Fallback to default icon if favicon fails to load
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                            const parent = target.parentElement
+                            if (parent && !parent.querySelector('.fallback-icon')) {
+                              const fallback = document.createElement('span')
+                              fallback.className = 'text-xl flex-shrink-0 fallback-icon'
+                              fallback.textContent = '🔗'
+                              parent.insertBefore(fallback, target.nextSibling)
+                            }
+                          }}
+                        />
+                      )
+                    }
+                  })()}
                   <a
                     href={bookmark.url}
                     target="_blank"
