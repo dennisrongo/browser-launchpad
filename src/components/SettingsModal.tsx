@@ -46,6 +46,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false })
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' })
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load settings when modal opens
@@ -99,6 +101,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   }
 
   const handleSave = async () => {
+    // Validate settings before saving
+    if (gridColumns < 1 || gridColumns > 6) {
+      setValidationError('Grid columns must be between 1 and 6')
+      return
+    }
+
     const updatedSettings: Settings = {
       ...settings,
       grid_columns: gridColumns,
@@ -111,6 +119,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       console.log('✓ Settings saved to Chrome storage')
       setSettings(updatedSettings)
       onSettingsChange(updatedSettings)
+      setValidationError(null)
 
       // Save AI config
       try {
@@ -131,7 +140,50 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setGridColumns(settings.grid_columns)
     setTheme(settings.theme)
     loadAIConfig()
+    setValidationError(null)
     onClose()
+  }
+
+  const handleResetToDefaults = async () => {
+    // Reset to default settings
+    const defaultSettings: Settings = {
+      ...DEFAULT_SETTINGS,
+      id: settings.id, // Keep the same ID
+      created_at: settings.created_at, // Keep original creation date
+      updated_at: new Date().toISOString(),
+    }
+
+    const result = await settingsStorage.set(defaultSettings)
+    if (result.success) {
+      console.log('✓ Settings reset to defaults')
+      setSettings(defaultSettings)
+      setGridColumns(defaultSettings.grid_columns)
+      setTheme(defaultSettings.theme)
+      setAIConfig(DEFAULT_AI_CONFIG)
+      onSettingsChange(defaultSettings)
+
+      // Also clear AI config
+      try {
+        await chrome.storage.local.set({ ai_config: DEFAULT_AI_CONFIG })
+        console.log('✓ AI config reset to defaults')
+      } catch (error) {
+        console.error('Failed to reset AI config:', error)
+      }
+
+      setShowResetConfirm(false)
+      setValidationError(null)
+    } else {
+      console.error('Failed to reset settings:', result.error)
+    }
+  }
+
+  const handleGridColumnsChange = (value: number) => {
+    if (value < 1 || value > 6) {
+      setValidationError('Grid columns must be between 1 and 6')
+    } else {
+      setValidationError(null)
+    }
+    setGridColumns(value)
   }
 
   const handleExportData = async () => {
@@ -313,7 +365,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               min="1"
               max="6"
               value={gridColumns}
-              onChange={(e) => setGridColumns(parseInt(e.target.value))}
+              onChange={(e) => handleGridColumnsChange(parseInt(e.target.value))}
               className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-xs text-text-secondary mt-1">
@@ -460,6 +512,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               <span className="text-lg">📥</span>
               <span>Import Data</span>
             </button>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="px-4 py-2 bg-surface text-text rounded-button hover:bg-background border border-border transition-colors flex items-center gap-2"
+              title="Reset all settings to defaults"
+            >
+              <span className="text-lg">🔄</span>
+              <span>Reset to Defaults</span>
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -475,6 +535,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 : 'bg-red-500/10 text-red-600 border border-red-500/20'
             }`}>
               {importStatus.message}
+            </div>
+          )}
+          {validationError && (
+            <div className="p-3 rounded-button text-sm mb-3 bg-red-500/10 text-red-600 border border-red-500/20">
+              ⚠️ {validationError}
             </div>
           )}
           <p className="text-sm text-text-secondary">
@@ -515,6 +580,44 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           </button>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
+          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-4xl">⚠️</span>
+              <h3 className="text-xl font-bold">Reset to Defaults?</h3>
+            </div>
+            <p className="text-text-secondary mb-4">
+              This will reset all settings to their default values:
+            </p>
+            <ul className="list-disc list-inside text-sm text-text-secondary mb-6 space-y-1">
+              <li>Theme will be set to <strong>Modern Light</strong></li>
+              <li>Grid columns will be set to <strong>3</strong></li>
+              <li>Grid gap will be set to <strong>24px</strong></li>
+              <li>All API keys will be <strong>cleared</strong></li>
+            </ul>
+            <p className="text-sm text-text-secondary mb-6">
+              Your pages and widgets will <strong>not</strong> be affected.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetToDefaults}
+                className="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 transition-colors"
+              >
+                Reset to Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

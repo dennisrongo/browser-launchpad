@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Features Test - #122, #123, #124</title>
+  <link rel="stylesheet" href="./dist/newtab.css">
+  <script src="./dist/newtab.js" defer></script>
+  <style>
+    /* Test UI styles */
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--color-surface, #F3F4F6);
+      border: 1px solid var(--color-border, #E5E7EB);
+      border-radius: 8px;
+      padding: 16px;
+      z-index: 1000;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .test-controls h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .test-controls button {
+      display: block;
+      width: 100%;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border, #E5E7EB);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .test-controls button:hover {
+      opacity: 0.9;
+    }
+    .test-controls button.modern-light {
+      background: #3B82F6;
+      color: white;
+      border: none;
+    }
+    .test-controls button.dark-elegance {
+      background: #8B5CF6;
+      color: white;
+      border: none;
+    }
+    .color-check {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border, #E5E7EB);
+    }
+    .color-check-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      margin-right: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .test-component {
+      margin-bottom: 24px;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border, #E5E7EB);
+      background: var(--color-surface, #F3F4F6);
+    }
+    .test-component h4 {
+      margin: 0 0 12px 0;
+      color: var(--color-primary, #3B82F6);
+    }
+    .test-status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--color-background, #FFFFFF);
+      border: 1px solid var(--color-border, #E5E7EB);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      max-width: 300px;
+    }
+    .test-status h5 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+    }
+    .test-status-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    .test-status-item.pass::before {
+      content: "✅ ";
+    }
+    .test-status-item.fail::before {
+      content: "❌ ";
+    }
+  </style>
+</head>
+<body>
+  <!-- Test Controls -->
+  <div class="test-controls">
+    <h3>Theme Test Controls</h3>
+    <button class="modern-light" onclick="setTheme('modern-light')">Apply Modern Light</button>
+    <button class="dark-elegance" onclick="setTheme('dark-elegance')">Apply Dark Elegance</button>
+
+    <div class="color-check">
+      <div style="font-weight: 600; margin-bottom: 8px;">Current Theme Colors:</div>
+      <div class="color-check-item">
+        <div class="color-swatch" id="swatch-primary"></div>
+        <span>Primary: <code id="color-primary"></code></span>
+      </div>
+      <div class="color-check-item">
+        <div class="color-swatch" id="swatch-background"></div>
+        <span>Background: <code id="color-background"></code></span>
+      </div>
+      <div class="color-check-item">
+        <div class="color-swatch" id="swatch-surface"></div>
+        <span>Surface: <code id="color-surface"></code></span>
+      </div>
+      <div class="color-check-item">
+        <div class="color-swatch" id="swatch-text"></div>
+        <span>Text: <code id="color-text"></code></span>
+      </div>
+      <div class="color-check-item">
+        <div class="color-swatch" id="swatch-border"></div>
+        <span>Border: <code id="color-border"></code></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Status Panel -->
+  <div class="test-status">
+    <h5>Feature Verification Status</h5>
+    <div id="status-122" class="test-status-item">Feature #122: Modern Light theme</div>
+    <div id="status-123" class="test-status-item">Feature #123: Dark Elegance theme</div>
+    <div id="status-124" class="test-status-item">Feature #124: Theme across components</div>
+  </div>
+
+  <!-- Sample Components for Theme Testing -->
+  <div style="max-width: 800px; margin: 0 auto; padding-top: 60px;">
+    <h1 style="color: var(--color-primary, #3B82F6);">Theme System Test Page</h1>
+    <p style="color: var(--color-text-secondary, #6B7280);">
+      This page tests themes across all UI components for features #122, #123, #124.
+    </p>
+
+    <!-- Header Component -->
+    <div class="test-component">
+      <h4>Header Component</h4>
+      <div style="background: var(--color-surface, #F3F4F6); padding: 16px; border-radius: 6px; border: 1px solid var(--color-border, #E5E7EB);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; color: var(--color-primary, #3B82F6);">Browser Launchpad</h2>
+          <button style="background: var(--color-primary, #3B82F6); color: white; padding: 8px 16px; border-radius: 6px; border: none;">
+            Settings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page Tabs Component -->
+    <div class="test-component">
+      <h4>Page Navigation Tabs</h4>
+      <div style="display: flex; gap: 8px;">
+        <button style="background: var(--color-primary, #3B82F6); color: white; padding: 8px 16px; border-radius: 6px; border: none;">
+          My Page
+        </button>
+        <button style="background: var(--color-background, #FFFFFF); color: var(--color-text, #1F2937); padding: 8px 16px; border-radius: 6px; border: 1px solid var(--color-border, #E5E7EB);">
+          Work
+        </button>
+        <button style="background: var(--color-background, #FFFFFF); color: var(--color-text, #1F2937); padding: 8px 16px; border-radius: 6px; border: 1px solid var(--color-border, #E5E7EB);">
+          Personal
+        </button>
+      </div>
+    </div>
+
+    <!-- Widget Card Component -->
+    <div class="test-component">
+      <h4>Widget Card</h4>
+      <div style="background: var(--color-background, #FFFFFF); padding: 16px; border-radius: 8px; border: 1px solid var(--color-border, #E5E7EB); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <h3 style="margin: 0; color: var(--color-text, #1F2937);">Clock Widget</h3>
+          <div>
+            <button style="background: transparent; border: none; cursor: pointer; margin-right: 8px;">✏️</button>
+            <button style="background: transparent; border: none; cursor: pointer;">🗑️</button>
+          </div>
+        </div>
+        <div style="font-size: 48px; font-weight: 600; color: var(--color-text, #1F2937);">
+          12:34 PM
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Component -->
+    <div class="test-component">
+      <h4>Settings Modal</h4>
+      <div style="background: var(--color-surface, #F3F4F6); padding: 24px; border-radius: 8px; border: 1px solid var(--color-border, #E5E7EB);">
+        <h2 style="margin: 0 0 16px 0; color: var(--color-text, #1F2937);">Settings</h2>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; color: var(--color-text, #1F2937); font-weight: 500;">Theme</label>
+          <select style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--color-border, #E5E7EB); background: var(--color-background, #FFFFFF); color: var(--color-text, #1F2937);">
+            <option value="modern-light">Modern Light</option>
+            <option value="dark-elegance">Dark Elegance</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; color: var(--color-text, #1F2937); font-weight: 500;">Grid Columns: 3</label>
+          <input type="range" min="1" max="6" value="3" style="width: 100%;">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--color-border, #E5E7EB); background: var(--color-background, #FFFFFF); color: var(--color-text, #1F2937);">Cancel</button>
+          <button style="padding: 8px 16px; border-radius: 6px; border: none; background: var(--color-primary, #3B82F6); color: white;">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Component Test -->
+    <div class="test-component">
+      <h4>Empty State Component</h4>
+      <div style="text-align: center; padding: 48px; background: var(--color-background, #FFFFFF); border-radius: 8px; border: 1px solid var(--color-border, #E5E7EB);">
+        <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--color-text, #1F2937);">No widgets yet</h3>
+        <p style="margin: 0 0 16px 0; color: var(--color-text-secondary, #6B7280);">Add widgets to customize your dashboard</p>
+        <button style="padding: 12px 24px; border-radius: 6px; border: none; background: var(--color-primary, #3B82F6); color: white;">
+          + Add Widget
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme definitions from spec
+    const THEMES = {
+      'modern-light': {
+        primary: '#3B82F6',
+        background: '#FFFFFF',
+        surface: '#F3F4F6',
+        text: '#1F2937',
+        'text-secondary': '#6B7280',
+        border: '#E5E7EB'
+      },
+      'dark-elegance': {
+        primary: '#8B5CF6',
+        background: '#111827',
+        surface: '#1F2937',
+        text: '#F9FAFB',
+        'text-secondary': '#9CA3AF',
+        border: '#374151'
+      }
+    };
+
+    // Get computed style values
+    function getComputedColor(varName) {
+      const style = getComputedStyle(document.documentElement);
+      return style.getPropertyValue(varName).trim();
+    }
+
+    // Update color display
+    function updateColorDisplay() {
+      ['primary', 'background', 'surface', 'text', 'border'].forEach(color => {
+        const value = getComputedColor(`--color-${color}`);
+        const swatch = document.getElementById(`swatch-${color}`);
+        const code = document.getElementById(`color-${color}`);
+
+        if (swatch) swatch.style.backgroundColor = value;
+        if (code) code.textContent = value || 'not set';
+      });
+    }
+
+    // Set theme
+    function setTheme(themeName) {
+      if (themeName === 'dark-elegance') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Update color display after theme change
+      setTimeout(updateColorDisplay, 50);
+
+      // Verify theme colors
+      setTimeout(() => verifyTheme(themeName), 100);
+    }
+
+    // Verify theme colors match spec
+    function verifyTheme(themeName) {
+      const expected = THEMES[themeName];
+      const actual = {};
+
+      // Get actual values
+      Object.keys(expected).forEach(key => {
+        actual[key] = getComputedColor(`--color-${key}`);
+      });
+
+      // Compare and log results
+      console.log(`\n=== Verifying ${themeName} theme ===`);
+      console.log('Expected:', expected);
+      console.log('Actual:  ', actual);
+
+      let allMatch = true;
+      Object.keys(expected).forEach(key => {
+        const matches = actual[key] === expected[key];
+        if (!matches) {
+          console.log(`❌ ${key}: expected ${expected[key]}, got ${actual[key]}`);
+          allMatch = false;
+        } else {
+          console.log(`✅ ${key}: ${actual[key]}`);
+        }
+      });
+
+      // Update feature status
+      if (themeName === 'modern-light') {
+        const el = document.getElementById('status-122');
+        el.className = allMatch ? 'test-status-item pass' : 'test-status-item fail';
+        el.textContent = allMatch
+          ? 'Feature #122: Modern Light theme ✅'
+          : 'Feature #122: Modern Light theme - Mismatch found';
+      } else if (themeName === 'dark-elegance') {
+        const el = document.getElementById('status-123');
+        el.className = allMatch ? 'test-status-item pass' : 'test-status-item fail';
+        el.textContent = allMatch
+          ? 'Feature #123: Dark Elegance theme ✅'
+          : 'Feature #123: Dark Elegance theme - Mismatch found';
+      }
+
+      return allMatch;
+    }
+
+    // Verify theme across all components (Feature #124)
+    function verifyThemeAcrossComponents() {
+      console.log('\n=== Verifying theme across components (Feature #124) ===');
+
+      // Check various components
+      const components = document.querySelectorAll('.test-component');
+      let componentsThemed = true;
+
+      components.forEach(comp => {
+        const style = getComputedStyle(comp);
+        const bg = style.backgroundColor;
+        const border = style.borderColor;
+        const color = style.color;
+
+        // In modern light, surface should be #F3F4F6 (rgb(243, 244, 246))
+        // In dark elegance, surface should be #1F2937 (rgb(31, 41, 55))
+        const isLight = document.documentElement.classList.contains('dark') === false;
+        const expectedBg = isLight ? 'rgb(243, 244, 246)' : 'rgb(31, 41, 55)';
+
+        if (bg !== expectedBg) {
+          console.log(`❌ Component background mismatch: expected ${expectedBg}, got ${bg}`);
+          componentsThemed = false;
+        }
+      });
+
+      // Check header specifically
+      const header = document.querySelector('h1');
+      if (header) {
+        const headerColor = getComputedStyle(header).color;
+        const expectedPrimary = document.documentElement.classList.contains('dark')
+          ? 'rgb(139, 92, 246)'  // purple
+          : 'rgb(59, 130, 246)';  // blue
+
+        if (headerColor !== expectedPrimary) {
+          console.log(`❌ Header color mismatch: expected ${expectedPrimary}, got ${headerColor}`);
+          componentsThemed = false;
+        } else {
+          console.log(`✅ Header uses primary color: ${headerColor}`);
+        }
+      }
+
+      const el = document.getElementById('status-124');
+      el.className = componentsThemed ? 'test-status-item pass' : 'test-status-item fail';
+      el.textContent = componentsThemed
+        ? 'Feature #124: Theme across components ✅'
+        : 'Feature #124: Theme across components - Some components not themed';
+
+      return componentsThemed;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Start with modern light
+      updateColorDisplay();
+
+      // After a short delay, verify modern light theme
+      setTimeout(() => {
+        const modernLightPass = verifyTheme('modern-light');
+
+        // After another delay, switch to dark and verify
+        setTimeout(() => {
+          setTheme('dark-elegance');
+
+          // Verify dark theme
+          setTimeout(() => {
+            const darkElegancePass = verifyTheme('dark-elegance');
+
+            // Verify across components
+            setTimeout(() => {
+              verifyThemeAcrossComponents();
+
+              // Print final summary
+              console.log('\n=== FINAL SUMMARY ===');
+              console.log(`Feature #122 (Modern Light): ${modernLightPass ? '✅ PASS' : '❌ FAIL'}`);
+              console.log(`Feature #123 (Dark Elegance): ${darkElegancePass ? '✅ PASS' : '❌ FAIL'}`);
+            }, 200);
+          }, 200);
+        }, 1500);
+      }, 500);
+    });
+
+    // Also verify when user manually switches themes
+    let lastTheme = 'modern-light';
+    const originalSetTheme = setTheme;
+    setTheme = function(themeName) {
+      originalSetTheme(themeName);
+
+      // Check if we switched themes (for feature #124)
+      if (lastTheme !== themeName) {
+        lastTheme = themeName;
+        setTimeout(verifyThemeAcrossComponents, 150);
+      }
+    };
+  </script>
+</body>
+</html>
