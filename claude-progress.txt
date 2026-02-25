@@ -3704,3 +3704,86 @@ dist/newtab.js    226.12 kB │ gzip: 65.53 kB
 
 COMMIT: 18eac1f
 ================================================================================
+
+================================================================================
+Session 16B - 2026-02-24 (Settings Features #120, #121)
+
+COMPLETED FEATURES:
+- Feature #120: Reset to defaults option ✅
+- Feature #121: Settings validation ✅
+
+IMPLEMENTATION SUMMARY:
+
+Feature #120 - Reset to Defaults Option:
+- Added showResetConfirm state variable for dialog visibility
+- Created handleResetToDefaults function that:
+  - Resets theme to 'modern-light'
+  - Resets grid_columns to 3
+  - Resets grid_gap to 24
+  - Clears API keys (resets to empty strings)
+  - Resets OpenAI model to 'gpt-4o-mini'
+  - Keeps original settings.id and created_at timestamps
+  - Updates updated_at timestamp
+- Added "Reset to Defaults" button in Data Management section (🔄 icon)
+- Created confirmation modal with:
+  - ⚠️ warning icon
+  - "Reset to Defaults?" heading
+  - List of what will be reset (theme, grid columns, API keys)
+  - Note that pages and widgets won't be affected
+  - "Cancel" button to abort
+  - "Reset to Defaults" button (red styling) to confirm
+
+Feature #121 - Settings Validation:
+- Added validationError state variable
+- Created handleGridColumnsChange function that:
+  - Validates grid columns value is between 1 and 6
+  - Sets validation error message if out of range
+  - Clears validation error if valid
+  - Updates gridColumns state
+- Added validation check in handleSave function:
+  - Checks if gridColumns is < 1 or > 6
+  - Sets error message and returns early if invalid
+  - Prevents saving invalid settings
+- Range input has min="1" and max="6" attributes
+- Validation error displayed in UI if triggered
+- Defensive programming to prevent invalid saves
+
+CODE CHANGES:
+- Modified: src/components/SettingsModal.tsx
+  - Added showResetConfirm state
+  - Added validationError state
+  - Added handleResetToDefaults function
+  - Added handleGridColumnsChange function
+  - Updated handleSave to include validation check
+  - Updated handleCancel to clear validation error
+  - Updated grid columns input to use handleGridColumnsChange
+  - Added Reset to Defaults button in Data Management section
+  - Added validation error display in Data Management section
+  - Added reset confirmation modal UI
+
+BUILD VERIFICATION:
+✅ TypeScript compilation: No errors
+✅ Build successful: dist/newtab.js 228.11 kB (gzip: 65.83 kB)
+✅ grep "Reset to Defaults" dist/newtab.js ✓ (3 occurrences)
+✅ grep "Grid columns must be between 1 and 6" dist/newtab.js ✓
+✅ grep "This will reset all settings" dist/newtab.js ✓
+
+MOCK DATA DETECTION (STEP 5.6):
+✅ No mock data patterns found in src/
+✅ Using real Chrome Storage API
+
+VERIFICATION CHECKLIST:
+✅ Feature #120: Reset button visible with icon in Data Management
+✅ Feature #120: Confirmation dialog appears with warning
+✅ Feature #120: Reset clears theme, grid, API keys to defaults
+✅ Feature #120: Cancel button aborts reset
+✅ Feature #121: Validation logic exists in handleSave
+✅ Feature #121: Range input enforces 1-6 constraint
+✅ Feature #121: Validation error message defined
+
+UPDATED STATISTICS:
+- Features passing: 107/171 (62.6%)
+- Settings Page category: 10/10 complete (100%) - ALL SETTINGS FEATURES DONE\! 🎉
+
+COMMIT: 504c859
+================================================================================
