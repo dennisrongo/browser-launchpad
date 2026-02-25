@@ -214,6 +214,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setGridColumns(value)
   }
 
+  const handleGridGapChange = (value: number) => {
+    if (value < 0 || value > 64) {
+      setValidationError('Grid gap must be between 0 and 64 pixels')
+    } else {
+      setValidationError(null)
+    }
+    setGridGap(value)
+  }
+
   const handleExportData = async () => {
     try {
       // Get all data from Chrome storage
@@ -504,7 +513,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         {/* Grid Layout */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">Grid Layout</h3>
-          <div>
+          <div className="mb-4">
             <label htmlFor="columns" className="block text-sm font-medium mb-2">
               Number of Columns: {gridColumns}
             </label>
@@ -526,8 +535,30 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               <span>6</span>
             </div>
           </div>
+          <div>
+            <label htmlFor="spacing" className="block text-sm font-medium mb-2">
+              Widget Spacing: {gridGap}px
+            </label>
+            <input
+              type="range"
+              id="spacing"
+              min="0"
+              max="64"
+              step="4"
+              value={gridGap}
+              onChange={(e) => handleGridGapChange(parseInt(e.target.value))}
+              className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-text-secondary mt-1">
+              <span>0px</span>
+              <span>16px</span>
+              <span>32px</span>
+              <span>48px</span>
+              <span>64px</span>
+            </div>
+          </div>
           <p className="text-sm text-text-secondary mt-2">
-            Controls how many widgets appear in each row on large screens.
+            Controls how many widgets appear in each row and spacing between them.
           </p>
         </div>
 

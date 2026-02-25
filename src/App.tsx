@@ -913,7 +913,7 @@ function App() {
                 </button>
               </div>
               <div
-                className={`grid gap-6 ${
+                className={`grid ${
                   settings.grid_columns === 1
                     ? 'grid-cols-1'
                     : settings.grid_columns === 2
@@ -926,6 +926,7 @@ function App() {
                     ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
                     : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
                 }`}
+                style={{ gap: `${settings.grid_gap}px` }}
               >
                 {pages[activePage]?.widgets.map((widget: Widget) => (
                   <WidgetCard
