@@ -1,5 +1,9 @@
-const { chromium } = require('playwright');
-const path = require('path');
+import { chromium } from 'playwright';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 (async () => {
   const extensionPath = path.join(__dirname, 'dist');

@@ -111,6 +111,7 @@ function WidgetCardComponent({
         onDrop?.()
       }}
       onDragEnd={() => onDragEnd?.()}
+      style={{ contain: 'layout style paint' }}
       className={`
         group relative border border-border rounded-card bg-surface
         transition-all duration-200 overflow-hidden

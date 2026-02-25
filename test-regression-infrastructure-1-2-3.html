@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure Regression Test - Features 1, 2, 3</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 5px 0 0; opacity: 0.9; }
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .test-title { font-weight: 600; font-size: 16px; }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background: #e3f2fd; color: #1565c0; }
+        .status-running { background: #fff3e0; color: #e65100; }
+        .status-passed { background: #e8f5e9; color: #2e7d32; }
+        .status-failed { background: #ffebee; color: #c62828; }
+        .test-steps {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .test-steps .step { margin: 4px 0; }
+        .test-steps .step.pass::before { content: '✓ '; color: #2e7d32; }
+        .test-steps .step.fail::before { content: '✗ '; color: #c62828; }
+        .test-steps .step.info::before { content: '→ '; color: #1565c0; }
+        .summary {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        button.run-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button.run-btn:hover { background: #45a049; }
+        button.run-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+        .warning-box strong { display: block; margin-bottom: 5px; }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .all-passed { background: #e8f5e9; color: #2e7d32; }
+        .some-failed { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Chrome Extension Infrastructure Regression Test</h1>
+        <p>Testing Features 1, 2, 3: Database Connection, Schema, and Persistence</p>
+    </div>
+
+    <div class="warning-box">
+        <strong>⚠️ Important: Run this test in Chrome Extension Context</strong>
+        <p>To properly test Chrome Storage API, this page must be loaded as a Chrome Extension. Either:</p>
+        <ol>
+            <li>Load the 'dist' folder as an unpacked extension in Chrome</li>
+            <li>Open this file through the extension (e.g., as part of newtab.html)</li>
+            <li>Run the built extension and open DevTools console on the new tab page</li>
+        </ol>
+    </div>
+
+    <div style="text-align: center;">
+        <button id="runAllBtn" class="run-btn" onclick="runAllTests()">Run All Tests</button>
+        <button id="runFeature1Btn" class="run-btn" onclick="testFeature1()">Test Feature 1</button>
+        <button id="runFeature2Btn" class="run-btn" onclick="testFeature2()">Test Feature 2</button>
+        <button id="runFeature3Btn" class="run-btn" onclick="testFeature3()">Test Feature 3</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const results = {
+            feature1: null,
+            feature2: null,
+            feature3: null
+        };
+
+        function updateTestCard(featureId, status, title, steps) {
+            const resultsDiv = document.getElementById('results');
+            let card = document.getElementById(`card-${featureId}`);
+
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${featureId}`;
+                card.className = 'test-card';
+                resultsDiv.appendChild(card);
+            }
+
+            const statusClass = status === 'passed' ? 'status-passed' :
+                               status === 'failed' ? 'status-failed' :
+                               status === 'running' ? 'status-running' : 'status-pending';
+
+            card.innerHTML = `
+                <div class="test-header">
+                    <span class="test-title">${title}</span>
+                    <span class="status-badge ${statusClass}">${status.toUpperCase()}</span>
+                </div>
+                <div class="test-steps">
+                    ${steps.map(step => `<div class="step ${step.type}">${step.message}</div>`).join('')}
+                </div>
+            `;
+        }
+
+        async function testFeature1() {
+            updateTestCard(1, 'running', 'Feature 1: Database Connection', [
+                { type: 'info', message: 'Testing Chrome Storage API connection...' }
+            ]);
+
+            const steps = [];
+            let passed = true;
+
+            try {
+                // Step 1: Check if Chrome API is available
+                steps.push({ type: 'info', message: 'Step 1: Checking Chrome API availability...' });
+                if (typeof chrome === 'undefined') {
+                    steps.push({ type: 'fail', message: 'Chrome API not available. Must run in extension context.' });
+                    passed = false;
+                } else if (!chrome.storage) {
+                    steps.push({ type: 'fail', message: 'chrome.storage not available. Check permissions.' });
+                    passed = false;
+                } else {
+                    steps.push({ type: 'pass', message: 'Chrome API is available' });
+                }
+
+                if (!passed) {
+                    updateTestCard(1, 'failed', 'Feature 1: Database Connection', steps);
+                    results.feature1 = false;
+                    return false;
+                }
+
+                // Step 2: Test chrome.storage.local.get()
+                steps.push({ type: 'info', message: 'Step 2: Testing chrome.storage.local.get()...' });
+                const getTest = await new Promise((resolve) => {
+                    chrome.storage.local.get(['_connection_test'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ success: true, result });
+                        }
+                    });
+                });
+
+                if (getTest.success) {
+                    steps.push({ type: 'pass', message: 'chrome.storage.local.get() returned valid response' });
+                } else {
+                    steps.push({ type: 'fail', message: `get() failed: ${getTest.error}` });
+                    passed = false;
+                }
+
+                // Step 3: Test chrome.storage.local.set()
+                steps.push({ type: 'info', message: 'Step 3: Testing chrome.storage.local.set()...' });
+                const testKey = '_connection_test_' + Date.now();
+                const setTest = await new Promise((resolve) => {
+                    chrome.storage.local.set({ [testKey]: { timestamp: Date.now() } }, () => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ success: true });
+                        }
+                    });
+                });
+
+                if (setTest.success) {
+                    steps.push({ type: 'pass', message: 'chrome.storage.local.set() completed successfully' });
+                } else {
+                    steps.push({ type: 'fail', message: `set() failed: ${setTest.error}` });
+                    passed = false;
+                }
+
+                // Step 4: Verify written data
+                steps.push({ type: 'info', message: 'Step 4: Verifying written data...' });
+                const verifyTest = await new Promise((resolve) => {
+                    chrome.storage.local.get([testKey], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            const found = testKey in result;
+                            resolve({ success: true, found });
+                        }
+                    });
+                });
+
+                if (verifyTest.found) {
+                    steps.push({ type: 'pass', message: 'Data persists after write - storage API verified' });
+                } else {
+                    steps.push({ type: 'fail', message: 'Data not found after write - storage not working' });
+                    passed = false;
+                }
+
+                // Cleanup
+                chrome.storage.local.remove([testKey]);
+
+                steps.push({ type: 'pass', message: 'No connection errors in Chrome Storage API' });
+
+                if (passed) {
+                    updateTestCard(1, 'passed', 'Feature 1: Database Connection', steps);
+                    results.feature1 = true;
+                } else {
+                    updateTestCard(1, 'failed', 'Feature 1: Database Connection', steps);
+                    results.feature1 = false;
+                }
+
+                return passed;
+
+            } catch (error) {
+                steps.push({ type: 'fail', message: `Exception: ${error.message}` });
+                updateTestCard(1, 'failed', 'Feature 1: Database Connection', steps);
+                results.feature1 = false;
+                return false;
+            }
+        }
+
+        async function testFeature2() {
+            updateTestCard(2, 'running', 'Feature 2: Database Schema', [
+                { type: 'info', message: 'Testing database schema structure...' }
+            ]);
+
+            const steps = [];
+            let passed = true;
+
+            try {
+                // Step 1: Get all storage data
+                steps.push({ type: 'info', message: 'Step 1: Retrieving all storage data...' });
+                const allData = await new Promise((resolve) => {
+                    chrome.storage.local.get(null, (data) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ data, keys: Object.keys(data) });
+                        }
+                    });
+                });
+
+                if (allData.error) {
+                    steps.push({ type: 'fail', message: `Failed to retrieve storage: ${allData.error}` });
+                    updateTestCard(2, 'failed', 'Feature 2: Database Schema', steps);
+                    results.feature2 = false;
+                    return false;
+                }
+
+                steps.push({ type: 'pass', message: `Retrieved ${allData.keys.length} keys from storage` });
+                steps.push({ type: 'info', message: `All keys: ${allData.keys.join(', ') || '(empty)'}` });
+
+                // Step 2: Check for 'pages' key
+                steps.push({ type: 'info', message: 'Step 2: Checking "pages" schema...' });
+                const hasPages = 'pages' in allData.data;
+                const pagesStructure = hasPages ? Array.isArray(allData.data.pages) : false;
+
+                if (hasPages) {
+                    steps.push({ type: 'pass', message: `"pages" key exists in storage` });
+                    if (pagesStructure) {
+                        steps.push({ type: 'pass', message: `"pages" has correct array structure (${allData.data.pages.length} pages)` });
+                    } else {
+                        steps.push({ type: 'fail', message: `"pages" is not an array (type: ${typeof allData.data.pages})` });
+                        passed = false;
+                    }
+                } else {
+                    steps.push({ type: 'info', message: `"pages" key not found (will be created on first run)` });
+                }
+
+                // Step 3: Check for 'settings' key
+                steps.push({ type: 'info', message: 'Step 3: Checking "settings" schema...' });
+                const hasSettings = 'settings' in allData.data;
+                const settingsStructure = hasSettings && typeof allData.data.settings === 'object' &&
+                                         allData.data.settings !== null && !Array.isArray(allData.data.settings);
+
+                if (hasSettings) {
+                    steps.push({ type: 'pass', message: `"settings" key exists in storage` });
+                    if (settingsStructure) {
+                        steps.push({ type: 'pass', message: `"settings" has correct object structure` });
+                    } else {
+                        steps.push({ type: 'fail', message: `"settings" is not a valid object` });
+                        passed = false;
+                    }
+                } else {
+                    steps.push({ type: 'info', message: `"settings" key not found (will be created on first run)` });
+                }
+
+                // Step 4: Check schema fields on pages
+                if (hasPages && pagesStructure && allData.data.pages.length > 0) {
+                    steps.push({ type: 'info', message: 'Step 4: Verifying page field structure...' });
+                    const samplePage = allData.data.pages[0];
+                    const requiredFields = ['id', 'name', 'widgets'];
+                    const missingFields = requiredFields.filter(f => !(f in samplePage));
+
+                    if (missingFields.length === 0) {
+                        steps.push({ type: 'pass', message: `Sample page has all required fields: ${requiredFields.join(', ')}` });
+                    } else {
+                        steps.push({ type: 'fail', message: `Sample page missing fields: ${missingFields.join(', ')}` });
+                        passed = false;
+                    }
+                } else {
+                    steps.push({ type: 'info', message: 'Step 4: No pages to verify (schema will be created on use)' });
+                }
+
+                // Summary
+                if (passed) {
+                    steps.push({ type: 'pass', message: 'Database schema is correctly structured' });
+                }
+
+                if (passed) {
+                    updateTestCard(2, 'passed', 'Feature 2: Database Schema', steps);
+                    results.feature2 = true;
+                } else {
+                    updateTestCard(2, 'failed', 'Feature 2: Database Schema', steps);
+                    results.feature2 = false;
+                }
+
+                return passed;
+
+            } catch (error) {
+                steps.push({ type: 'fail', message: `Exception: ${error.message}` });
+                updateTestCard(2, 'failed', 'Feature 2: Database Schema', steps);
+                results.feature2 = false;
+                return false;
+            }
+        }
+
+        async function testFeature3() {
+            updateTestCard(3, 'running', 'Feature 3: Data Persistence', [
+                { type: 'info', message: 'Testing data persistence...' }
+            ]);
+
+            const steps = [];
+            let passed = true;
+
+            const TEST_PAGE_ID = 'PERSIST_TEST_' + Date.now();
+            const TEST_PAGE_NAME = 'PERSIST_TEST_' + Date.now();
+
+            try {
+                // Step 1: Create test page
+                steps.push({ type: 'info', message: `Step 1: Creating test page "${TEST_PAGE_ID}"...` });
+
+                // First, get existing pages
+                const getPages1 = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ pages: result.pages || [] });
+                        }
+                    });
+                });
+
+                if (getPages1.error) {
+                    steps.push({ type: 'fail', message: `Failed to get pages: ${getPages1.error}` });
+                    updateTestCard(3, 'failed', 'Feature 3: Data Persistence', steps);
+                    results.feature3 = false;
+                    return false;
+                }
+
+                // Add test page
+                const testPage = {
+                    id: TEST_PAGE_ID,
+                    name: TEST_PAGE_NAME,
+                    order: 9999,
+                    widgets: [],
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                const newPages = [...getPages1.pages, testPage];
+
+                const saveResult1 = await new Promise((resolve) => {
+                    chrome.storage.local.set({ pages: newPages }, () => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ success: true });
+                        }
+                    });
+                });
+
+                if (!saveResult1.success) {
+                    steps.push({ type: 'fail', message: `Failed to save test page: ${saveResult1.error}` });
+                    updateTestCard(3, 'failed', 'Feature 3: Data Persistence', steps);
+                    results.feature3 = false;
+                    return false;
+                }
+
+                steps.push({ type: 'pass', message: `Created test page with ID: ${TEST_PAGE_ID}` });
+
+                // Step 2: Verify data appears
+                steps.push({ type: 'info', message: 'Step 2: Verifying test page was created...' });
+
+                const getPages2 = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ pages: result.pages || [] });
+                        }
+                    });
+                });
+
+                const foundPage = getPages2.pages.find(p => p.id === TEST_PAGE_ID);
+
+                if (foundPage) {
+                    steps.push({ type: 'pass', message: `Test page "${TEST_PAGE_NAME}" found in storage` });
+                } else {
+                    steps.push({ type: 'fail', message: `Test page not found after creation!` });
+                    passed = false;
+                }
+
+                // Step 3: Simulate "reload" by reading again
+                steps.push({ type: 'info', message: 'Step 3: Simulating extension reload (re-reading storage)...' });
+                await new Promise(r => setTimeout(r, 100));
+
+                const getPages3 = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ pages: result.pages || [] });
+                        }
+                    });
+                });
+
+                const foundAfterReload = getPages3.pages.find(p => p.id === TEST_PAGE_ID);
+
+                if (foundAfterReload) {
+                    steps.push({ type: 'pass', message: `Test page persists after "reload" (re-read)` });
+                } else {
+                    steps.push({ type: 'fail', message: `Test page not found after "reload"!` });
+                    passed = false;
+                }
+
+                // Step 4: Clean up test data
+                steps.push({ type: 'info', message: 'Step 4: Cleaning up test data...' });
+
+                const cleanedPages = getPages3.pages.filter(p => p.id !== TEST_PAGE_ID);
+
+                const cleanupResult = await new Promise((resolve) => {
+                    chrome.storage.local.set({ pages: cleanedPages }, () => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ success: false, error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ success: true });
+                        }
+                    });
+                });
+
+                if (!cleanupResult.success) {
+                    steps.push({ type: 'fail', message: `Failed to cleanup: ${cleanupResult.error}` });
+                    passed = false;
+                } else {
+                    steps.push({ type: 'pass', message: 'Test data cleaned up successfully' });
+                }
+
+                // Step 5: Verify cleanup
+                steps.push({ type: 'info', message: 'Step 5: Verifying cleanup...' });
+
+                const finalPages = await new Promise((resolve) => {
+                    chrome.storage.local.get(['pages'], (result) => {
+                        if (chrome.runtime.lastError) {
+                            resolve({ error: chrome.runtime.lastError.message });
+                        } else {
+                            resolve({ pages: result.pages || [] });
+                        }
+                    });
+                });
+
+                const stillExists = finalPages.pages.find(p => p.id === TEST_PAGE_ID);
+
+                if (!stillExists) {
+                    steps.push({ type: 'pass', message: 'Test page successfully removed' });
+                } else {
+                    steps.push({ type: 'fail', message: 'Test page still exists after cleanup!' });
+                    passed = false;
+                }
+
+                // Summary
+                if (passed) {
+                    steps.push({ type: 'pass', message: 'Data persists correctly across storage operations' });
+                }
+
+                if (passed) {
+                    updateTestCard(3, 'passed', 'Feature 3: Data Persistence', steps);
+                    results.feature3 = true;
+                } else {
+                    updateTestCard(3, 'failed', 'Feature 3: Data Persistence', steps);
+                    results.feature3 = false;
+                }
+
+                return passed;
+
+            } catch (error) {
+                steps.push({ type: 'fail', message: `Exception: ${error.message}` });
+                updateTestCard(3, 'failed', 'Feature 3: Data Persistence', steps);
+                results.feature3 = false;
+
+                // Attempt cleanup on error
+                chrome.storage.local.get(['pages'], (result) => {
+                    const pages = result.pages || [];
+                    const cleaned = pages.filter(p => p.id !== TEST_PAGE_ID);
+                    chrome.storage.local.set({ pages: cleaned });
+                });
+
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            document.getElementById('runAllBtn').disabled = true;
+            document.getElementById('runFeature1Btn').disabled = true;
+            document.getElementById('runFeature2Btn').disabled = true;
+            document.getElementById('runFeature3Btn').disabled = true;
+
+            const r1 = await testFeature1();
+            const r2 = await testFeature2();
+            const r3 = await testFeature3();
+
+            // Show summary
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-card summary';
+            const passCount = [r1, r2, r3].filter(r => r).length;
+
+            summaryDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">Test Results Summary</div>
+                <div class="${passCount === 3 ? 'all-passed' : 'some-failed'}" style="padding: 15px; border-radius: 6px;">
+                    ${passCount}/3 tests passed
+                </div>
+                <div style="margin-top: 15px; font-size: 14px; font-weight: normal;">
+                    ${r1 ? '✅ Feature 1 (Database Connection)' : '❌ Feature 1 (Database Connection)'}<br>
+                    ${r2 ? '✅ Feature 2 (Database Schema)' : '❌ Feature 2 (Database Schema)'}<br>
+                    ${r3 ? '✅ Feature 3 (Data Persistence)' : '❌ Feature 3 (Data Persistence)'}
+                </div>
+            `;
+
+            resultsDiv.appendChild(summaryDiv);
+
+            document.getElementById('runAllBtn').disabled = false;
+            document.getElementById('runFeature1Btn').disabled = false;
+            document.getElementById('runFeature2Btn').disabled = false;
+            document.getElementById('runFeature3Btn').disabled = false;
+        }
+
+        // Check if running in extension context
+        window.addEventListener('load', () => {
+            if (typeof chrome === 'undefined' || !chrome.storage) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="test-card" style="background: #ffebee; border: 1px solid #ef5350;">
+                        <h3 style="color: #c62828; margin-top: 0;">⚠️ Not in Chrome Extension Context</h3>
+                        <p><strong>This test must be run in a Chrome extension context to access chrome.storage API.</strong></p>
+                        <p><strong>Options:</strong></p>
+                        <ol>
+                            <li>Load the <code>dist</code> folder as an unpacked extension in Chrome (<code>chrome://extensions</code>)</li>
+                            <li>Run this file from within the extension (e.g., inject into newtab.html)</li>
+                            <li>Use Chrome DevTools console on a new tab after loading the extension</li>
+                        </ol>
+                        <p style="margin-top: 10px;"><em>Note: When run as a regular HTML file, this test shows a mock result but cannot verify actual Chrome Storage API.</em></p>
+                    </div>
+                `;
+            } else {
+                // Auto-run tests if in extension context
+                console.log('Chrome Storage API detected. Ready to run tests.');
+            }
+        });
+    </script>
+</body>
+</html>
