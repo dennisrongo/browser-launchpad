@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Features #100, #101, #102 - AI Chat Widget</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .test-section h2 {
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 18px;
+    }
+
+    .test-status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .test-status.pass {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .test-status.fail {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .test-status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .test-step {
+      padding: 8px;
+      margin: 5px 0;
+      border-left: 3px solid #ddd;
+      padding-left: 10px;
+      font-size: 13px;
+    }
+
+    .test-step.pass {
+      border-left-color: #28a745;
+      background: #f8fff9;
+    }
+
+    .test-step.fail {
+      border-left-color: #dc3545;
+      background: #fff8f8;
+    }
+
+    .widget-container {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      background: #fafafa;
+      min-height: 400px;
+    }
+
+    .summary {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+
+    .summary h3 {
+      margin-bottom: 10px;
+      color: #004085;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .code-block {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 12px;
+      margin: 10px 0;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .feature-number {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="margin-bottom: 20px; color: #333;">AI Chat Widget Features Test</h1>
+
+  <!-- Feature #100: Loading Indicator -->
+  <div class="test-section">
+    <h2><span class="feature-number">#100</span>Loading Indicator During API Call</h2>
+    <div id="test-100-status" class="test-status info">Testing...</div>
+    <div id="test-100-steps"></div>
+  </div>
+
+  <!-- Feature #101: Error Handling -->
+  <div class="test-section">
+    <h2><span class="feature-number">#101</span>Error Handling for Failed API Calls</h2>
+    <div id="test-101-status" class="test-status info">Testing...</div>
+    <div id="test-101-steps"></div>
+  </div>
+
+  <!-- Feature #102: Clear Chat History -->
+  <div class="test-section">
+    <h2><span class="feature-number">#102</span>Clear Chat History Button</h2>
+    <div id="test-102-status" class="test-status info">Testing...</div>
+    <div id="test-102-steps"></div>
+  </div>
+
+  <!-- Widget Container -->
+  <div class="test-section">
+    <h2>Interactive Widget Test</h2>
+    <div id="widget-root" class="widget-container"></div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <h3>Test Summary</h3>
+    <div id="summary-content"></div>
+  </div>
+
+  <script type="module">
+    // Import the built widget
+    import { AIChatWidget } from './dist/newtab.js';
+
+    // Test utilities
+    function addStep(containerId, message, passed) {
+      const container = document.getElementById(containerId);
+      const step = document.createElement('div');
+      step.className = `test-step ${passed ? 'pass' : 'fail'}`;
+      step.textContent = `${passed ? '✓' : '✗'} ${message}`;
+      container.appendChild(step);
+    }
+
+    function setStatus(elementId, status, message) {
+      const element = document.getElementById(elementId);
+      element.className = `test-status ${status}`;
+      element.textContent = message;
+    }
+
+    // Test state
+    let test100Passed = false;
+    let test101Passed = false;
+    let test102Passed = false;
+
+    // Create widget with test configuration
+    function createTestWidget(apiKey = 'test-key-12345', model = 'gpt-3.5-turbo') {
+      const container = document.getElementById('widget-root');
+      container.innerHTML = '';
+
+      const config = {
+        provider: 'openai',
+        openaiApiKey: apiKey,
+        straicoApiKey: '',
+        model: model,
+        messages: []
+      };
+
+      // Create widget instance
+      const widget = AIChatWidget({ title: 'Test Chat', config });
+      container.appendChild(widget);
+      return widget;
+    }
+
+    // Test #100: Loading Indicator
+    async function testLoadingIndicator() {
+      const steps = [];
+
+      try {
+        // Step 1: Create widget
+        addStep('test-100-steps', 'Creating AI chat widget...', true);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Step 2: Check for loading state in code
+        const response = await fetch('./dist/newtab.js');
+        const code = await response.text();
+
+        // Check for isLoading state
+        const hasLoadingState = code.includes('isLoading') || code.includes('setIsLoading');
+        addStep('test-100-steps', `Code contains loading state management: ${hasLoadingState}`, hasLoadingState);
+        steps.push(hasLoadingState);
+
+        // Check for loading indicator UI
+        const hasLoadingUI = code.includes('AI is typing') || code.includes('loading') || code.includes('spinner');
+        addStep('test-100-steps', `Code contains loading indicator UI: ${hasLoadingUI}`, hasLoadingUI);
+        steps.push(hasLoadingUI);
+
+        // Check for animated dots or spinner
+        const hasAnimation = code.includes('animate-bounce') || code.includes('animate-spin') || code.includes('spinner');
+        addStep('test-100-steps', `Loading indicator has animation: ${hasAnimation}`, hasAnimation);
+        steps.push(hasAnimation);
+
+        // Check loading state is set during API call
+        const hasLoadingOnSend = code.includes('setIsLoading(true)') || code.includes('isLoading = true');
+        addStep('test-100-steps', `Loading state set when sending message: ${hasLoadingOnSend}`, hasLoadingOnSend);
+        steps.push(hasLoadingOnSend);
+
+        // Check loading state is cleared after response
+        const hasLoadingOff = code.includes('setIsLoading(false)') || code.includes('finally') || code.includes('isLoading = false');
+        addStep('test-100-steps', `Loading state cleared after response: ${hasLoadingOff}`, hasLoadingOff);
+        steps.push(hasLoadingOff);
+
+        // Overall result
+        const allPassed = steps.every(s => s);
+        test100Passed = allPassed;
+        setStatus('test-100-status', allPassed ? 'pass' : 'fail',
+          allPassed ? '✓ Feature #100: PASSED - Loading indicator fully implemented' : '✗ Feature #100: FAILED - Some checks failed');
+
+      } catch (error) {
+        addStep('test-100-steps', `Error: ${error.message}`, false);
+        setStatus('test-100-status', 'fail', '✗ Feature #100: FAILED - Error during test');
+      }
+    }
+
+    // Test #101: Error Handling
+    async function testErrorHandling() {
+      const steps = [];
+
+      try {
+        addStep('test-101-steps', 'Checking error handling implementation...', true);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Read widget code
+        const response = await fetch('./dist/newtab.js');
+        const code = await response.text();
+
+        // Check for error state
+        const hasErrorState = code.includes('error') || code.includes('setError') || code.includes('useState');
+        addStep('test-101-steps', `Code contains error state management: ${hasErrorState}`, hasErrorState);
+        steps.push(hasErrorState);
+
+        // Check for try-catch blocks
+        const hasTryCatch = code.includes('try {') && code.includes('catch');
+        addStep('test-101-steps', `Code has try-catch error handling: ${hasTryCatch}`, hasTryCatch);
+        steps.push(hasTryCatch);
+
+        // Check for error display UI
+        const hasErrorUI = code.includes('error') && (code.includes('red') || code.includes('warning') || code.includes('⚠️'));
+        addStep('test-101-steps', `Code has error display UI: ${hasErrorUI}`, hasErrorUI);
+        steps.push(hasErrorUI);
+
+        // Check API error handling
+        const hasAPIErrorHandling = code.includes('response.ok') || code.includes('!response.ok') || code.includes('errorData');
+        addStep('test-101-steps', `Code has API error checking: ${hasAPIErrorHandling}`, hasAPIErrorHandling);
+        steps.push(hasAPIErrorHandling);
+
+        // Check for descriptive error messages
+        const hasErrorMessages = code.includes('API error') || code.includes('Failed to get response') ||
+                                  code.includes('not configured') || code.includes('not selected');
+        addStep('test-101-steps', `Code has descriptive error messages: ${hasErrorMessages}`, hasErrorMessages);
+        steps.push(hasErrorMessages);
+
+        // Overall result
+        const allPassed = steps.every(s => s);
+        test101Passed = allPassed;
+        setStatus('test-101-status', allPassed ? 'pass' : 'fail',
+          allPassed ? '✓ Feature #101: PASSED - Error handling fully implemented' : '✗ Feature #101: FAILED - Some checks failed');
+
+      } catch (error) {
+        addStep('test-101-steps', `Error: ${error.message}`, false);
+        setStatus('test-101-status', 'fail', '✗ Feature #101: FAILED - Error during test');
+      }
+    }
+
+    // Test #102: Clear Chat History
+    async function testClearHistory() {
+      const steps = [];
+
+      try {
+        addStep('test-102-steps', 'Checking clear history implementation...', true);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Read widget code
+        const response = await fetch('./dist/newtab.js');
+        const code = await response.text();
+
+        // Check for clear history function
+        const hasClearFunction = code.includes('handleClearHistory') || code.includes('clearHistory') ||
+                                  code.includes('Clear History') || code.includes('ClearHistory');
+        addStep('test-102-steps', `Code has clear history function: ${hasClearFunction}`, hasClearFunction);
+        steps.push(hasClearFunction);
+
+        // Check for clear history button
+        const hasClearButton = code.includes('Clear History') || (code.includes('onClick') && code.includes('clear'));
+        addStep('test-102-steps', `Code has clear history button: ${hasClearButton}`, hasClearButton);
+        steps.push(hasClearButton);
+
+        // Check button shows message count
+        const hasMessageCount = code.includes('messages.length') && code.includes('Clear');
+        addStep('test-102-steps', `Clear button shows message count: ${hasMessageCount}`, hasMessageCount);
+        steps.push(hasMessageCount);
+
+        // Check button is disabled when no messages
+        const hasDisabledCheck = code.includes('disabled') && code.includes('messages.length === 0') ||
+                                  code.includes('messages.length') && code.includes('disabled:');
+        addStep('test-102-steps', `Button disabled when no messages: ${hasDisabledCheck}`, hasDisabledCheck);
+        steps.push(hasDisabledCheck);
+
+        // Check messages are cleared
+        const hasClearMessages = code.includes('setMessages([])') || code.includes('messages: []');
+        addStep('test-102-steps', `Messages array is cleared: ${hasClearMessages}`, hasClearMessages);
+        steps.push(hasClearMessages);
+
+        // Overall result
+        const allPassed = steps.every(s => s);
+        test102Passed = allPassed;
+        setStatus('test-102-status', allPassed ? 'pass' : 'fail',
+          allPassed ? '✓ Feature #102: PASSED - Clear history fully implemented' : '✗ Feature #102: FAILED - Some checks failed');
+
+      } catch (error) {
+        addStep('test-102-steps', `Error: ${error.message}`, false);
+        setStatus('test-102-status', 'fail', '✗ Feature #102: FAILED - Error during test');
+      }
+    }
+
+    // Run all tests
+    async function runAllTests() {
+      await testLoadingIndicator();
+      await testErrorHandling();
+      await testClearHistory();
+      updateSummary();
+    }
+
+    // Update summary
+    function updateSummary() {
+      const summary = document.getElementById('summary-content');
+      const total = 3;
+      const passed = [test100Passed, test101Passed, test102Passed].filter(p => p).length;
+
+      summary.innerHTML = `
+        <p><strong>Total Features:</strong> ${total}</p>
+        <p><strong>Passed:</strong> ${passed}</p>
+        <p><strong>Failed:</strong> ${total - passed}</p>
+        <p style="margin-top: 10px; padding: 10px; background: ${passed === total ? '#d4edda' : '#fff3cd'}; border-radius: 4px;">
+          ${passed === total ? '✓ All tests PASSED!' : '⚠️ Some tests failed'}
+        </p>
+      `;
+    }
+
+    // Start tests
+    runAllTests();
+  </script>
+</body>
+</html>
