@@ -145,8 +145,8 @@ function SortableItem({
         onClick={() => onToggle(item.id)}
         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
           item.completed
-            ? 'bg-primary border-primary text-white'
-            : 'border-border hover:border-primary'
+            ? 'bg-secondary border-secondary text-[var(--color-on-secondary)]'
+            : 'border-border hover:border-secondary'
         }`}
       >
         {item.completed && <Check className="w-3 h-3" />}

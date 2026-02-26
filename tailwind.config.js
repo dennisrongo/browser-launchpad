@@ -9,35 +9,36 @@ export default {
     extend: {
       colors: {
         primary: {
-          light: '#818CF8',
+          light: 'var(--color-primary-light)',
           DEFAULT: 'var(--color-primary)',
-          dark: '#6366F1',
+        },
+        secondary: {
+          light: 'var(--color-secondary-light)',
+          DEFAULT: 'var(--color-secondary)',
         },
         accent: {
-          light: '#FBBF24',
+          light: 'var(--color-accent-light)',
           DEFAULT: 'var(--color-accent)',
-          dark: '#F59E0B',
+        },
+        neutral: {
+          light: 'var(--color-neutral-light)',
+          DEFAULT: 'var(--color-neutral)',
         },
         background: {
-          light: '#F8FAFC',
           DEFAULT: 'var(--color-background)',
-          dark: '#F1F5F9',
         },
         surface: {
-          light: 'var(--color-surface)',
           DEFAULT: 'var(--color-surface)',
           elevated: 'var(--color-surface-elevated)',
         },
         text: {
-          light: '#1E293B',
           DEFAULT: 'var(--color-text)',
           secondary: 'var(--color-text-secondary)',
-          muted: '#94A3B8',
+          muted: 'var(--color-text-muted)',
         },
         border: {
-          light: '#E2E8F0',
           DEFAULT: 'var(--color-border)',
-          dark: '#CBD5E1',
+          subtle: 'var(--color-border-subtle)',
         },
       },
       fontFamily: {
@@ -68,8 +69,9 @@ export default {
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%)',
+        'gradient-secondary': 'linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%)',
+        'gradient-accent': 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%)',
         'gradient-surface': 'linear-gradient(180deg, var(--color-surface) 0%, var(--color-background) 100%)',
-        'gradient-accent': 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light, #FBBF24) 100%)',
         'noise': "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E\")",
       },
       animation: {

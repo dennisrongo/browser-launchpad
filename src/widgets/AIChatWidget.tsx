@@ -378,17 +378,17 @@ export function AIChatWidget({ config, onConfigChange, pageWidgets = [] }: AICha
       <div className="flex-1 overflow-y-auto mb-3 space-y-3 pr-1" style={{ maxHeight: 'calc(100% - 180px)' }}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-              <Sparkles className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
+              <Sparkles className="w-6 h-6 text-secondary" />
             </div>
-            <p className="text-text-secondary text-sm">
+            <p className="text-neutral text-sm">
               {!hasApiKey ? 'Configure your API key in Settings' :
                !hasModel ? 'Select a model in Settings' :
                hasWidgetContext ? 'Ask me about your bookmarks, tasks, or weather!' :
                'Start a conversation with AI'}
             </p>
             {hasWidgetContext && hasApiKey && hasModel && (
-              <p className="text-text-muted text-xs mt-2">
+              <p className="text-neutral text-xs mt-2">
                 I can see your dashboard widgets and answer questions about them.
               </p>
             )}
@@ -482,11 +482,11 @@ export function AIChatWidget({ config, onConfigChange, pageWidgets = [] }: AICha
               <span>Output: {tokenUsage.completionTokens}</span>
             )}
             {tokenUsage.totalTokens && (
-              <span className="text-primary font-medium">Total: {tokenUsage.totalTokens}</span>
+              <span className="text-accent font-medium">Total: {tokenUsage.totalTokens}</span>
             )}
           </div>
           {tokenUsage.cost !== undefined && (
-            <div className="mt-1 text-text-secondary">
+            <div className="mt-1 text-neutral">
               Cost: ${tokenUsage.cost.toFixed(6)}
             </div>
           )}

@@ -9,66 +9,109 @@ type ThemeOption = {
   id: ThemeName
   name: string
   description: string
-  colors: string[]
-  borders: string[]
+  primary: string
+  secondary: string
+  accent: string
+  neutral: string
+  surface: string
+  isDark?: boolean
 }
 
 const themeOptions: ThemeOption[] = [
   {
     id: 'modern-light',
     name: 'Modern Light',
-    description: 'Clean, minimal light theme',
-    colors: ['bg-indigo-500', 'bg-white', 'bg-slate-100'],
-    borders: ['', 'border border-gray-200', 'border border-gray-200'],
+    description: 'Clean indigo with violet accents',
+    primary: '#6366F1',
+    secondary: '#8B5CF6',
+    accent: '#F59E0B',
+    neutral: '#64748B',
+    surface: '#F8FAFC',
   },
   {
     id: 'dark-elegance',
     name: 'Dark Elegance',
-    description: 'Sleek dark theme',
-    colors: ['bg-teal-500', 'bg-slate-900', 'bg-slate-800'],
-    borders: ['', 'border border-slate-700', 'border border-slate-600'],
+    description: 'Teal with cyan highlights',
+    primary: '#14B8A6',
+    secondary: '#06B6D4',
+    accent: '#F59E0B',
+    neutral: '#64748B',
+    surface: '#0F172A',
+    isDark: true,
   },
   {
     id: 'vintage-rose',
     name: 'Vintage Rose',
-    description: 'Warm dusty pink tones',
-    colors: ['bg-[#8a4a52]', 'bg-[#f8f3f3]', 'bg-[#f0e6e8]'],
-    borders: ['', 'border border-[#cfa0a8]', 'border border-[#b8848c]'],
+    description: 'Dusty rose with gold warmth',
+    primary: '#8a4a52',
+    secondary: '#9d7a82',
+    accent: '#c9a857',
+    neutral: '#8a7a78',
+    surface: '#f8f3f3',
   },
   {
     id: 'sage-sanctuary',
     name: 'Sage Sanctuary',
-    description: 'Earthy green serenity',
-    colors: ['bg-[#646831]', 'bg-[#f6f7ee]', 'bg-[#edefdc]'],
-    borders: ['', 'border border-[#dcdeba]', 'border border-[#cace97]'],
+    description: 'Earthy sage with terracotta',
+    primary: '#646831',
+    secondary: '#4a7850',
+    accent: '#c47a4a',
+    neutral: '#7a7a6a',
+    surface: '#f6f7ee',
   },
   {
     id: 'midnight-charcoal',
     name: 'Midnight Charcoal',
-    description: 'Sophisticated dark gray',
-    colors: ['bg-[#c4b8b8]', 'bg-[#0d0b0b]', 'bg-[#191616]'],
-    borders: ['', 'border border-[#3b3333]', 'border border-[#5a5252]'],
+    description: 'Silver with copper accents',
+    primary: '#c4b8b8',
+    secondary: '#c8a8a0',
+    accent: '#b87858',
+    neutral: '#6a6060',
+    surface: '#0d0b0b',
+    isDark: true,
   },
   {
     id: 'lavender-dreams',
     name: 'Lavender Dreams',
-    description: 'Soft purple twilight',
-    colors: ['bg-[#b89cc4]', 'bg-[#0e0b10]', 'bg-[#18141a]'],
-    borders: ['', 'border border-[#402848]', 'border border-[#584c64]'],
+    description: 'Soft lavender with gold',
+    primary: '#b89cc4',
+    secondary: '#a88ab8',
+    accent: '#d4b86a',
+    neutral: '#8a7890',
+    surface: '#0e0b10',
+    isDark: true,
   },
   {
     id: 'caramel-comfort',
     name: 'Caramel Comfort',
-    description: 'Warm amber embrace',
-    colors: ['bg-[#935939]', 'bg-[#f8f1ed]', 'bg-[#f1e2da]'],
-    borders: ['', 'border border-[#e2c5b6]', 'border border-[#d4a891]'],
+    description: 'Warm caramel with honey',
+    primary: '#935939',
+    secondary: '#7a6858',
+    accent: '#d4a040',
+    neutral: '#7a6a5a',
+    surface: '#f8f1ed',
   },
   {
     id: 'arctic-frost',
     name: 'Arctic Frost',
-    description: 'Cool teal darkness',
-    colors: ['bg-[#008cff]', 'bg-[#0f1515]', 'bg-[#151e1e]'],
-    borders: ['', 'border border-[#2b3b3b]', 'border border-[#405959]'],
+    description: 'Ice blue with purple glow',
+    primary: '#008cff',
+    secondary: '#00a0a0',
+    accent: '#725ea1',
+    neutral: '#6a8080',
+    surface: '#0f1515',
+    isDark: true,
+  },
+  {
+    id: 'crimson-night',
+    name: 'Crimson Night',
+    description: 'Bold crimson with steel blue',
+    primary: '#d92638',
+    secondary: '#3b86c4',
+    accent: '#f2870d',
+    neutral: '#7766cc',
+    surface: '#110d26',
+    isDark: true,
   },
 ]
 import type { Settings } from '../types'
@@ -544,6 +587,21 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         {activeTab === 'appearance' && (
           <>
             <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">Grid Layout</h3>
+              <div className="mb-4">
+                <label htmlFor="columns" className="block text-sm font-medium mb-2">Number of Columns: {gridColumns}</label>
+                <input type="range" id="columns" min="1" max="6" value={gridColumns} onChange={(e) => handleGridColumnsChange(parseInt(e.target.value))} className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer" />
+                <div className="flex justify-between text-xs text-text-secondary mt-1"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+              </div>
+              <div>
+                <label htmlFor="spacing" className="block text-sm font-medium mb-2">Widget Spacing: {gridGap}px</label>
+                <input type="range" id="spacing" min="0" max="64" step="4" value={gridGap} onChange={(e) => handleGridGapChange(parseInt(e.target.value))} className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer" />
+                <div className="flex justify-between text-xs text-text-secondary mt-1"><span>0px</span><span>16px</span><span>32px</span><span>48px</span><span>64px</span></div>
+              </div>
+              <p className="text-sm text-text-secondary mt-2">Controls how many widgets appear in each row and spacing between them.</p>
+            </div>
+
+            <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3">Theme</h3>
               <div className="flex flex-col gap-3">
                 {themeOptions.map((themeOption) => (
@@ -565,30 +623,19 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                         <div className="font-semibold mb-1">{themeOption.name}</div>
                         <div className="text-sm text-text-secondary">{themeOption.description}</div>
                       </div>
-                      <div className="flex gap-1.5">
-                        {themeOption.colors.map((color, idx) => (
-                          <div key={idx} className={`w-5 h-5 rounded-full ${color} ${themeOption.borders[idx]} shadow-sm`}></div>
+                      <div className="flex gap-1">
+                        {[themeOption.primary, themeOption.secondary, themeOption.accent, themeOption.neutral, themeOption.surface].map((color, idx) => (
+                          <div
+                            key={idx}
+                            className="w-4 h-4 rounded-full shadow-sm ring-1 ring-black/10"
+                            style={{ backgroundColor: color }}
+                          />
                         ))}
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Grid Layout</h3>
-              <div className="mb-4">
-                <label htmlFor="columns" className="block text-sm font-medium mb-2">Number of Columns: {gridColumns}</label>
-                <input type="range" id="columns" min="1" max="6" value={gridColumns} onChange={(e) => handleGridColumnsChange(parseInt(e.target.value))} className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer" />
-                <div className="flex justify-between text-xs text-text-secondary mt-1"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-              </div>
-              <div>
-                <label htmlFor="spacing" className="block text-sm font-medium mb-2">Widget Spacing: {gridGap}px</label>
-                <input type="range" id="spacing" min="0" max="64" step="4" value={gridGap} onChange={(e) => handleGridGapChange(parseInt(e.target.value))} className="w-full h-2 bg-background rounded-lg appearance-none cursor-pointer" />
-                <div className="flex justify-between text-xs text-text-secondary mt-1"><span>0px</span><span>16px</span><span>32px</span><span>48px</span><span>64px</span></div>
-              </div>
-              <p className="text-sm text-text-secondary mt-2">Controls how many widgets appear in each row and spacing between them.</p>
             </div>
           </>
         )}

@@ -6,8 +6,14 @@
   :root {
     --color-primary: #6366F1;
     --color-primary-light: #818CF8;
+    --color-on-primary: #ffffff;
+    --color-secondary: #8B5CF6;
+    --color-secondary-light: #A78BFA;
+    --color-on-secondary: #ffffff;
     --color-accent: #F59E0B;
     --color-accent-light: #FBBF24;
+    --color-neutral: #64748B;
+    --color-neutral-light: #94A3B8;
     --color-background: #F8FAFC;
     --color-surface: rgba(248, 250, 252, 0.8);
     --color-surface-elevated: rgba(255, 255, 255, 0.9);
@@ -16,7 +22,6 @@
     --color-text-muted: #94A3B8;
     --color-border: rgba(226, 232, 240, 0.8);
     --color-border-subtle: rgba(226, 232, 240, 0.4);
-    --color-on-primary: #ffffff;
     --glass-blur: 16px;
     --glass-bg: rgba(255, 255, 255, 0.7);
     --glass-border: rgba(255, 255, 255, 0.5);
@@ -25,8 +30,14 @@
   .dark {
     --color-primary: #14B8A6;
     --color-primary-light: #2DD4BF;
+    --color-on-primary: #ffffff;
+    --color-secondary: #06B6D4;
+    --color-secondary-light: #22D3EE;
+    --color-on-secondary: #ffffff;
     --color-accent: #F59E0B;
     --color-accent-light: #FBBF24;
+    --color-neutral: #64748B;
+    --color-neutral-light: #94A3B8;
     --color-background: #0F172A;
     --color-surface: rgba(30, 41, 59, 0.8);
     --color-surface-elevated: rgba(51, 65, 85, 0.9);
@@ -43,8 +54,14 @@
   [data-theme="vintage-rose"] {
     --color-primary: #8a4a52;
     --color-primary-light: #a3626a;
-    --color-accent: #b8848c;
-    --color-accent-light: #cfa0a8;
+    --color-on-primary: #ffffff;
+    --color-secondary: #9d7a82;
+    --color-secondary-light: #b6949c;
+    --color-on-secondary: #ffffff;
+    --color-accent: #c9a857;
+    --color-accent-light: #d9be77;
+    --color-neutral: #8a7a78;
+    --color-neutral-light: #a89a98;
     --color-background: #f8f3f3;
     --color-surface: rgba(240, 230, 232, 0.85);
     --color-surface-elevated: rgba(250, 245, 246, 0.95);
@@ -60,9 +77,15 @@
 
   [data-theme="sage-sanctuary"] {
     --color-primary: #646831;
-    --color-primary-light: #868b41;
-    --color-accent: #a7ad52;
-    --color-accent-light: #b9be74;
+    --color-primary-light: #7a8040;
+    --color-on-primary: #ffffff;
+    --color-secondary: #4a7850;
+    --color-secondary-light: #5c9064;
+    --color-on-secondary: #ffffff;
+    --color-accent: #c47a4a;
+    --color-accent-light: #d49464;
+    --color-neutral: #7a7a6a;
+    --color-neutral-light: #989890;
     --color-background: #f6f7ee;
     --color-surface: rgba(237, 239, 220, 0.8);
     --color-surface-elevated: rgba(246, 247, 238, 0.95);
@@ -79,8 +102,14 @@
   [data-theme="midnight-charcoal"] {
     --color-primary: #c4b8b8;
     --color-primary-light: #d8d0d0;
-    --color-accent: #a89898;
-    --color-accent-light: #c0b4b4;
+    --color-on-primary: #1a1515;
+    --color-secondary: #c8a8a0;
+    --color-secondary-light: #dcc0b8;
+    --color-on-secondary: #1a1515;
+    --color-accent: #b87858;
+    --color-accent-light: #cc9070;
+    --color-neutral: #6a6060;
+    --color-neutral-light: #8a8080;
     --color-background: #0d0b0b;
     --color-surface: rgba(25, 22, 22, 0.92);
     --color-surface-elevated: rgba(38, 33, 33, 0.95);
@@ -89,7 +118,6 @@
     --color-text-muted: #9a9090;
     --color-border: rgba(90, 82, 82, 0.8);
     --color-border-subtle: rgba(120, 110, 110, 0.4);
-    --color-on-primary: #1a1515;
     --glass-blur: 16px;
     --glass-bg: rgba(25, 22, 22, 0.85);
     --glass-border: rgba(90, 82, 82, 0.5);
@@ -98,8 +126,14 @@
   [data-theme="lavender-dreams"] {
     --color-primary: #b89cc4;
     --color-primary-light: #cbb4d8;
-    --color-accent: #9a7ca8;
-    --color-accent-light: #b098c0;
+    --color-on-primary: #1a1520;
+    --color-secondary: #a88ab8;
+    --color-secondary-light: #bca0cc;
+    --color-on-secondary: #1a1520;
+    --color-accent: #d4b86a;
+    --color-accent-light: #e0cc88;
+    --color-neutral: #8a7890;
+    --color-neutral-light: #a898a8;
     --color-background: #0e0b10;
     --color-surface: rgba(24, 20, 26, 0.92);
     --color-surface-elevated: rgba(38, 32, 42, 0.95);
@@ -108,7 +142,6 @@
     --color-text-muted: #9a88a8;
     --color-border: rgba(88, 72, 100, 0.8);
     --color-border-subtle: rgba(118, 100, 130, 0.4);
-    --color-on-primary: #1a1520;
     --glass-blur: 16px;
     --glass-bg: rgba(24, 20, 26, 0.85);
     --glass-border: rgba(88, 72, 100, 0.5);
@@ -116,9 +149,15 @@
 
   [data-theme="caramel-comfort"] {
     --color-primary: #935939;
-    --color-primary-light: #b86f47;
-    --color-accent: #c68c6c;
-    --color-accent-light: #d4a891;
+    --color-primary-light: #a87050;
+    --color-on-primary: #ffffff;
+    --color-secondary: #7a6858;
+    --color-secondary-light: #908068;
+    --color-on-secondary: #ffffff;
+    --color-accent: #d4a040;
+    --color-accent-light: #e0b458;
+    --color-neutral: #7a6a5a;
+    --color-neutral-light: #9a8a78;
     --color-background: #f8f1ed;
     --color-surface: rgba(241, 226, 218, 0.8);
     --color-surface-elevated: rgba(248, 241, 237, 0.95);
@@ -135,8 +174,14 @@
   [data-theme="arctic-frost"] {
     --color-primary: #008cff;
     --color-primary-light: #33a3ff;
+    --color-on-primary: #ffffff;
+    --color-secondary: #00a0a0;
+    --color-secondary-light: #20b8b8;
+    --color-on-secondary: #ffffff;
     --color-accent: #725ea1;
     --color-accent-light: #8e7eb4;
+    --color-neutral: #6a8080;
+    --color-neutral-light: #8aa0a0;
     --color-background: #0f1515;
     --color-surface: rgba(21, 30, 30, 0.9);
     --color-surface-elevated: rgba(43, 59, 59, 0.95);
@@ -148,6 +193,30 @@
     --glass-blur: 16px;
     --glass-bg: rgba(21, 30, 30, 0.8);
     --glass-border: rgba(64, 89, 89, 0.5);
+  }
+
+  [data-theme="crimson-night"] {
+    --color-primary: #d92638;
+    --color-primary-light: #e05260;
+    --color-on-primary: #ffffff;
+    --color-secondary: #3b86c4;
+    --color-secondary-light: #629fd0;
+    --color-on-secondary: #ffffff;
+    --color-accent: #f2870d;
+    --color-accent-light: #f59f3d;
+    --color-neutral: #7766cc;
+    --color-neutral-light: #998cd9;
+    --color-background: #110d26;
+    --color-surface: rgba(34, 25, 51, 0.9);
+    --color-surface-elevated: rgba(51, 38, 73, 0.95);
+    --color-text: #eeecf9;
+    --color-text-secondary: #bbb3e6;
+    --color-text-muted: #998cd9;
+    --color-border: rgba(85, 64, 100, 0.8);
+    --color-border-subtle: rgba(119, 102, 140, 0.4);
+    --glass-blur: 16px;
+    --glass-bg: rgba(34, 25, 51, 0.85);
+    --glass-border: rgba(85, 64, 100, 0.5);
   }
 
   * {
@@ -188,11 +257,7 @@
   }
 
   .hover-glow:hover {
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.12);
-  }
-
-  .dark .hover-glow:hover {
-    box-shadow: 0 0 24px rgba(20, 184, 166, 0.12);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   .btn-primary {
@@ -208,6 +273,18 @@
   }
 
   .btn-secondary {
+    @apply px-4 py-2 font-medium rounded-button;
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+    color: var(--color-on-secondary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    @apply shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
     @apply px-4 py-2 font-medium rounded-button border border-border;
     @apply bg-surface text-text hover:bg-surface-elevated transition-all duration-200;
   }
@@ -217,6 +294,24 @@
     @apply bg-surface border border-border;
     @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-30 focus:border-primary;
     @apply placeholder:text-text-muted transition-all duration-200;
+  }
+
+  .badge-primary {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+
+  .badge-secondary {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full;
+    background: color-mix(in srgb, var(--color-secondary) 15%, transparent);
+    color: var(--color-secondary);
+  }
+
+  .badge-accent {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full;
+    background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    color: var(--color-accent);
   }
 
   .columns-container {
@@ -234,7 +329,7 @@
   }
 
   .column.drag-over {
-    background-color: rgba(99, 102, 241, 0.05);
+    background-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
     border-radius: 8px;
   }
 
@@ -243,7 +338,7 @@
     background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
     border-radius: 4px;
     border: 2px dashed var(--color-primary);
-    background-color: rgba(99, 102, 241, 0.1);
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
     animation: dropPulse 1s ease-in-out infinite;
   }
 
@@ -267,18 +362,25 @@
     background-clip: text;
   }
 
-  .bg-gradient-mesh {
-    background-image: 
-      radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(245, 158, 11, 0.06) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+  .text-gradient-secondary {
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .dark .bg-gradient-mesh {
+  .text-gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-mesh {
     background-image: 
-      radial-gradient(at 40% 20%, rgba(20, 184, 166, 0.08) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(245, 158, 11, 0.06) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(20, 184, 166, 0.05) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, color-mix(in srgb, var(--color-primary) 8%, transparent) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, color-mix(in srgb, var(--color-accent) 6%, transparent) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, color-mix(in srgb, var(--color-secondary) 5%, transparent) 0px, transparent 50%);
   }
 
   .scrollbar-thin {

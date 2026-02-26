@@ -21,8 +21,8 @@ export function Header({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {storageVerified && (
-            <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="text-xs font-medium flex items-center gap-1.5 text-accent">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
               Storage Connected
             </span>
           )}
@@ -33,8 +33,8 @@ export function Header({
               onClick={onEditToggle}
               className={`p-2 rounded-lg transition-all duration-200 ${
                 isEditMode
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-text-muted hover:text-primary hover:bg-surface'
+                  ? 'bg-secondary/15 text-secondary'
+                  : 'text-text-muted hover:text-secondary hover:bg-surface'
               }`}
               title={isEditMode ? 'Exit edit mode' : 'Edit pages'}
               aria-label={isEditMode ? 'Exit edit mode' : 'Edit pages'}
@@ -50,7 +50,7 @@ export function Header({
           {onSettingsClick && (
             <button
               onClick={onSettingsClick}
-              className="p-2 rounded-lg text-text-muted hover:text-primary hover:bg-surface transition-all duration-200"
+              className="p-2 rounded-lg text-text-muted hover:text-secondary hover:bg-surface transition-all duration-200"
               title="Open settings"
               aria-label="Open settings"
             >

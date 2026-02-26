@@ -156,7 +156,7 @@ function WidgetCardComponent({
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-2.5 flex-1 pl-7">
-          <div className="text-primary">
+          <div className="text-secondary">
             {getWidgetIcon()}
           </div>
           {isEditing ? (
@@ -183,7 +183,7 @@ function WidgetCardComponent({
         {!isEditing && (
           <div className="flex items-center gap-2">
             {hasAIContext && (
-              <span className="text-xs px-2 py-0.5 bg-emerald-500/10 rounded text-emerald-600 flex items-center gap-1" title="This chat is context-aware and can reference your widgets">
+              <span className="text-xs px-2 py-0.5 rounded flex items-center gap-1 badge-accent" title="This chat is context-aware and can reference your widgets">
                 <Info className="w-3 h-3" />
                 Context
               </span>

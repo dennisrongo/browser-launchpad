@@ -1070,7 +1070,7 @@ function App() {
                 isEditMode ? 'cursor-move' : ''
               } ${
                 activePage === index
-                  ? 'bg-primary text-[var(--color-on-primary)] font-semibold shadow-md'
+                  ? 'bg-secondary text-[var(--color-on-secondary)] font-semibold shadow-md'
                   : 'bg-background text-text hover:bg-surface'
               } ${
                 draggedPageId === page.id
@@ -1078,11 +1078,11 @@ function App() {
                   : ''
               } ${
                 dragOverPageId === page.id && draggedPageId !== page.id
-                  ? 'shadow-md scale-105 border-2 border-primary'
+                  ? 'shadow-md scale-105 border-2 border-accent'
                   : ''
               } ${
                 isEditMode && activePage === index
-                  ? 'ring-2 ring-primary/30'
+                  ? 'ring-2 ring-secondary/30'
                   : ''
               }`}
             >
@@ -1093,7 +1093,7 @@ function App() {
                   onChange={(e) => setEditingPageName(e.target.value)}
                   onKeyDown={(e) => handleRenameKeyDown(e, page.id)}
                   onBlur={() => handleSaveRename(page.id)}
-                  className="px-3 py-2 bg-surface text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="px-3 py-2 bg-surface text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-secondary"
                   autoFocus
                   maxLength={50}
                 />

@@ -89,10 +89,10 @@ export function ClockWidget({ config }: ClockWidgetProps) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full">
-      <div className={`${getFontSizeClasses()} ${getFontStyleClasses()} ${getFontWeight()} text-primary mb-2 tabular-nums`}>
+      <div className={`${getFontSizeClasses()} ${getFontStyleClasses()} ${getFontWeight()} text-gradient mb-2 tabular-nums`}>
         {formatTime(time)}
       </div>
-      <div className="text-text-secondary text-sm">
+      <div className="text-neutral text-sm">
         {formatCityName()}
       </div>
     </div>

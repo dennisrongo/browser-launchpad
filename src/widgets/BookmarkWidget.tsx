@@ -181,10 +181,10 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                     value={editUrl}
                     onChange={(e) => setEditUrl(e.target.value)}
                     placeholder="URL"
-                    className="flex-1 min-w-0 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="flex-1 min-w-0 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-secondary"
                     autoFocus
                   />
-                   <button onClick={handleSaveEdit} className="p-1 text-primary hover:bg-surface rounded" title="Save">
+                   <button onClick={handleSaveEdit} className="p-1 text-accent hover:bg-surface rounded" title="Save">
                      <Check className="w-4 h-4" />
                    </button>
                    <button onClick={() => { setEditingBookmarkId(null); setEditUrl(''); setEditTitle(''); }} className="p-1 text-text-muted hover:bg-surface rounded" title="Cancel">
@@ -201,13 +201,13 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                     href={bookmark.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 text-sm font-medium text-text hover:text-primary transition-colors truncate"
+                    className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
                     title={bookmark.url}
                   >
                     {bookmark.title}
                   </a>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-text-muted hover:text-primary hover:bg-surface rounded transition-all" title="Edit">
+                    <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded transition-all" title="Edit">
                        <Pencil className="w-3.5 h-3.5" />
                      </button>
                      <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-all" title="Delete">
@@ -223,13 +223,13 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
 
       {showAddForm ? (
         <div className="pt-2 border-t border-border-subtle space-y-2">
-          <input
-            type="url"
-            value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
-            onBlur={handleUrlBlur}
-            placeholder="https://example.com"
-            className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                  <input
+                    type="url"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    onBlur={handleUrlBlur}
+                    placeholder="https://example.com"
+                    className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-secondary"
             disabled={isFetching}
             autoFocus
           />

@@ -122,11 +122,11 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   if (!config.city || config.city.trim() === '') {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-           <CloudSun className="w-6 h-6 text-primary" />
+        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
+           <CloudSun className="w-6 h-6 text-secondary" />
          </div>
          <h3 className="text-sm font-semibold mb-1">{title}</h3>
-         <p className="text-text-muted text-xs flex items-center gap-1">
+         <p className="text-neutral text-xs flex items-center gap-1">
            <Settings className="w-3 h-3" />
            Configure city
          </p>
@@ -137,11 +137,11 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   if (weather.loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-           <CloudSun className="w-6 h-6 text-primary animate-pulse" />
+         <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
+           <CloudSun className="w-6 h-6 text-secondary animate-pulse" />
          </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
-        <p className="text-text-muted text-xs">Loading...</p>
+        <p className="text-neutral text-xs">Loading...</p>
       </div>
     )
   }
@@ -163,18 +163,18 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <div className="text-4xl mb-2">{emoji}</div>
-      <div className="text-3xl font-bold text-primary mb-1">
+      <div className="text-3xl font-bold text-gradient-accent mb-1">
         {formatTemperature(weather.temp, config.units || 'celsius')}
       </div>
       <h3 className="text-sm font-semibold text-text capitalize mb-1">
         {formatCondition(weather.condition)}
       </h3>
-      <p className="text-text-muted text-xs mb-3">{weather.location}</p>
+      <p className="text-neutral text-xs mb-3">{weather.location}</p>
 
       <button
         onClick={() => fetchWeatherData(true)}
         disabled={refreshing}
-        className="p-2 text-text-muted hover:text-primary hover:bg-surface rounded-button transition-all duration-200 disabled:opacity-50"
+        className="p-2 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-200 disabled:opacity-50"
         title="Refresh weather data"
       >
         <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />

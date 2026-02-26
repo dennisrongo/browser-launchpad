@@ -179,13 +179,13 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   if (!config.googleConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-          <CalendarIcon className="w-6 h-6 text-primary" />
+        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
+          <CalendarIcon className="w-6 h-6 text-secondary" />
         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
         {!isConfigured ? (
           <>
-            <p className="text-text-muted text-xs mb-3 text-center px-4">
+            <p className="text-neutral text-xs mb-3 text-center px-4">
               Configure Google Calendar in Settings first
             </p>
             <button
@@ -198,7 +198,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
           </>
         ) : (
           <>
-            <p className="text-text-muted text-xs mb-3 text-center px-4">
+            <p className="text-neutral text-xs mb-3 text-center px-4">
               Connect to Google Calendar to view your events
             </p>
             <button
@@ -230,8 +230,8 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-          <CalendarIcon className="w-6 h-6 text-primary animate-pulse" />
+        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
+          <CalendarIcon className="w-6 h-6 text-secondary animate-pulse" />
         </div>
         <p className="text-text-muted text-xs">Loading calendar...</p>
       </div>

@@ -240,10 +240,10 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
         </svg>
         
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-primary tabular-nums tracking-tight">
+          <span className="text-2xl font-bold text-gradient-accent tabular-nums tracking-tight">
             {formatTime(timerState.remaining)}
           </span>
-          <span className="text-xs text-text-secondary mt-0.5">
+          <span className="text-xs text-neutral mt-0.5">
             {getSessionLabel(timerState.sessionType)}
           </span>
         </div>
@@ -265,7 +265,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
             key={i}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
               i < currentCyclePosition 
-                ? 'bg-primary' 
+                ? 'bg-accent' 
                 : 'bg-border'
             }`}
           />
@@ -275,7 +275,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTimer}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 bg-primary/10 hover:bg-primary/20 text-primary"
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 bg-secondary/10 hover:bg-secondary/20 text-secondary"
           title={timerState.isRunning ? 'Pause' : 'Start'}
         >
           {timerState.isRunning ? (
@@ -287,7 +287,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
         
         <button
           onClick={resetTimer}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-text-secondary hover:text-text"
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-neutral hover:text-text"
           title="Reset"
         >
           <RotateCcw className="w-4 h-4" />
@@ -295,7 +295,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
         
         <button
           onClick={skipSession}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-text-secondary hover:text-text"
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-neutral hover:text-text"
           title="Skip"
         >
           <SkipForward className="w-4 h-4" />
@@ -303,7 +303,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
         
         <button
           onClick={toggleSound}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-text-secondary hover:text-text"
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-surface text-neutral hover:text-text"
           title={soundEnabled ? 'Mute' : 'Unmute'}
         >
           {soundEnabled ? (
@@ -314,7 +314,7 @@ export function PomodoroWidget({ config, onConfigChange }: PomodoroWidgetProps) 
         </button>
       </div>
 
-      <div className="text-xs text-text-muted mt-2">
+      <div className="text-xs text-neutral mt-2">
         {timerState.completedSessions} session{timerState.completedSessions !== 1 ? 's' : ''} completed
       </div>
     </div>
