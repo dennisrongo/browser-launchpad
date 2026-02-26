@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { settingsStorage } from '../services/storage'
 import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
-import { applyTheme, type ThemeName } from '../utils/theme'
+import type { ThemeName } from '../utils/theme'
 import type { Settings } from '../types'
 
 interface SettingsModalProps {
@@ -57,10 +57,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    applyTheme(theme)
-  }, [theme])
-
   // Load settings when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -77,8 +73,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         setSettings(newSettings)
         setGridColumns(newSettings.grid_columns)
         setTheme(newSettings.theme)
-        // Apply theme immediately when settings change from another context (for feature #126)
-        applyTheme(newSettings.theme)
       }
     }
 
@@ -93,15 +87,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setGridColumns(result.data.grid_columns)
       setGridGap(result.data.grid_gap)
       setTheme(result.data.theme)
-      // Apply loaded theme immediately to document (for feature #125, #126)
-      applyTheme(result.data.theme)
     } else {
       // Create default settings
       const saveResult = await settingsStorage.set(DEFAULT_SETTINGS)
       if (saveResult.success) {
         console.log('✓ Default settings created in Chrome storage')
         setSettings(DEFAULT_SETTINGS)
-        applyTheme(DEFAULT_SETTINGS.theme)
       }
     }
   }

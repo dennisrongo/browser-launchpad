@@ -118,8 +118,7 @@ function App() {
 
       // Handle settings
       if (settingsResult.data) {
-        console.log('Loaded settings from Chrome storage:', settingsResult.data)
-        console.log('Theme to apply:', settingsResult.data.theme)
+        console.log('Loaded settings from Chrome storage')
         setSettings(settingsResult.data)
         applyTheme(settingsResult.data.theme)
       } else {
