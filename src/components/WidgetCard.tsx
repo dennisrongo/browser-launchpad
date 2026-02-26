@@ -1,5 +1,6 @@
-import { useState, memo } from 'react'
-import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight } from 'lucide-react'
+import { useState, memo, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus } from 'lucide-react'
 import { Widget } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
@@ -45,8 +46,21 @@ function WidgetCardComponent({
   onDragEnd
 }: WidgetCardProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const [showAddBookmark, setShowAddBookmark] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const isEditing = editingWidgetId === widget.id
   const isDragging = draggedWidgetId === widget.id
+
+  const updateMenuPosition = () => {
+    if (menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 176,
+      })
+    }
+  }
 
   const renderWidget = () => {
     switch (widget.type) {
@@ -58,6 +72,8 @@ function WidgetCardComponent({
             title={widget.title}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+            showAddForm={showAddBookmark}
+            onAddFormClose={() => setShowAddBookmark(false)}
           />
         )
       case 'weather':
@@ -85,6 +101,7 @@ function WidgetCardComponent({
             title={widget.title}
             config={widget.config as any}
             onConfigChange={(newConfig: any) => onConfigChange?.(widget.id, newConfig)}
+            widgetId={widget.id}
           />
         )
       case 'calendar':
@@ -143,9 +160,9 @@ function WidgetCardComponent({
       style={{ contain: 'layout style paint' }}
       className={`
         group relative glass-card rounded-card
-        transition-all duration-200 ease-out overflow-hidden
+        transition-all duration-150 ease-out overflow-hidden
         hover:shadow-glass-hover hover-lift
-        ${isDragging ? 'opacity-50 scale-[0.98] shadow-lg' : 'shadow-glass'}
+        ${isDragging ? 'opacity-50 scale-[0.97] shadow-lg' : 'shadow-glass'}
       `}
     >
       {!isEditing && (
@@ -154,7 +171,7 @@ function WidgetCardComponent({
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle/60">
         <div className="flex items-center gap-2.5 flex-1 pl-7">
           <div className="text-secondary">
             {getWidgetIcon()}
@@ -190,26 +207,48 @@ function WidgetCardComponent({
             )}
             <div className="relative">
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              ref={menuButtonRef}
+              onClick={() => {
+                if (!showMenu) updateMenuPosition()
+                setShowMenu(!showMenu)
+              }}
               className="p-1.5 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-200"
               title="Widget options"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
-            {showMenu && (
+            {showMenu && createPortal(
               <>
-                <div 
-                  className="fixed inset-0 z-10" 
+                <div
+                  className="fixed inset-0 z-50"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 mt-1 w-44 glass-card rounded-card shadow-modal z-20 animate-scale-in origin-top-right">
-                  <div className="py-1">
+                <div
+                  className="fixed w-44 bg-surface-elevated rounded-card shadow-lg border border-border-subtle animate-dropdown-in origin-top-right z-50"
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                >
+                  <div className="py-1.5">
+                    {widget.type === 'bookmark' && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowAddBookmark(true)
+                            setShowMenu(false)
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 transition-colors duration-100 flex items-center gap-2.5 text-text rounded-lg mx-1"
+                        >
+                          <Plus className="w-4 h-4 text-text-muted" />
+                          Add Bookmark
+                        </button>
+                        <div className="my-1.5 mx-3 border-t border-border-subtle/60" />
+                      </>
+                    )}
                     <button
                       onClick={() => {
                         onEdit?.(widget.id)
                         setShowMenu(false)
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-surface/50 transition-colors flex items-center gap-2.5 text-text"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 transition-colors duration-100 flex items-center gap-2.5 text-text rounded-lg mx-1"
                     >
                       <Settings className="w-4 h-4 text-text-muted" />
                       Configure
@@ -219,7 +258,7 @@ function WidgetCardComponent({
                         onMove?.(widget.id)
                         setShowMenu(false)
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-surface/50 transition-colors flex items-center gap-2.5 text-text"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 transition-colors duration-100 flex items-center gap-2.5 text-text rounded-lg mx-1"
                     >
                       <MoveRight className="w-4 h-4 text-text-muted" />
                       Move
@@ -229,25 +268,26 @@ function WidgetCardComponent({
                         onEditTitle?.(widget.id)
                         setShowMenu(false)
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-surface/50 transition-colors flex items-center gap-2.5 text-text"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 transition-colors duration-100 flex items-center gap-2.5 text-text rounded-lg mx-1"
                     >
                       <Pencil className="w-4 h-4 text-text-muted" />
                       Edit Title
                     </button>
-                    <div className="my-1 border-t border-border-subtle" />
+                    <div className="my-1.5 mx-3 border-t border-border-subtle/60" />
                     <button
                       onClick={() => {
                         onDelete?.(widget.id)
                         setShowMenu(false)
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-red-500/10 transition-colors flex items-center gap-2.5 text-red-500"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-red-500/10 transition-colors duration-100 flex items-center gap-2.5 text-red-500 rounded-lg mx-1"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete
                     </button>
                   </div>
                 </div>
-              </>
+              </>,
+              document.body
             )}
             </div>
           </div>

@@ -129,7 +129,7 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-start gap-2 p-2 rounded-lg transition-all duration-200 ${
+      className={`group flex items-start gap-2 p-2 rounded-lg transition-all duration-150 ${
         item.completed ? 'opacity-60' : ''
       } ${item.archived ? 'opacity-50' : ''} hover:bg-surface/50`}
     >
@@ -143,7 +143,7 @@ function SortableItem({
 
       <button
         onClick={() => onToggle(item.id)}
-        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
           item.completed
             ? 'bg-secondary border-secondary text-[var(--color-on-secondary)]'
             : 'border-border hover:border-secondary'
@@ -200,14 +200,14 @@ function SortableItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
         <button
           ref={tagButtonRef}
           onClick={() => {
             updateDropdownPosition(tagButtonRef)
             setShowTagPicker(!showTagPicker)
           }}
-          className="p-1 hover:bg-surface rounded transition-colors"
+          className="p-1 hover:bg-surface rounded-button transition-all duration-100"
           title="Add tags"
         >
           <Tag className="w-3.5 h-3.5 text-text-muted" />
@@ -219,7 +219,7 @@ function SortableItem({
             updateDropdownPosition(dateButtonRef)
             setShowDatePicker(!showDatePicker)
           }}
-          className="p-1 hover:bg-surface rounded transition-colors"
+          className="p-1 hover:bg-surface rounded-button transition-all duration-100"
           title="Set due date"
         >
           <Calendar className="w-3.5 h-3.5 text-text-muted" />
@@ -231,13 +231,13 @@ function SortableItem({
             updateDropdownPosition(priorityButtonRef)
             setShowPriorityPicker(!showPriorityPicker)
           }}
-          className={`w-3 h-3 rounded-full ${PRIORITY_COLORS[item.priority]} hover:ring-2 hover:ring-offset-1 hover:ring-primary/50`}
+          className={`w-3 h-3 rounded-full ${PRIORITY_COLORS[item.priority]} hover:ring-2 hover:ring-offset-1 hover:ring-primary/50 transition-all duration-100`}
           title={`Priority: ${item.priority}`}
         />
 
         <button
           onClick={() => onArchive(item.id)}
-          className="p-1 hover:bg-surface rounded transition-colors"
+          className="p-1 hover:bg-surface rounded-button transition-all duration-100"
           title={item.archived ? 'Unarchive' : 'Archive'}
         >
           {item.archived ? (
@@ -249,7 +249,7 @@ function SortableItem({
 
         <button
           onClick={() => onDelete(item.id)}
-          className="p-1 hover:bg-rose-500/10 rounded transition-colors text-rose-500"
+          className="p-1 hover:bg-rose-500/10 rounded-button transition-all duration-100 text-rose-500"
           title="Delete"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -260,8 +260,8 @@ function SortableItem({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowTagPicker(false)} />
           <div
-            className="fixed w-40 glass-card rounded-lg shadow-lg z-50 p-2 animate-scale-in origin-top-right max-h-48 overflow-y-auto"
-            style={{ top: dropdownPosition.top, left: dropdownPosition.left - 160 }}
+            className="fixed w-40 bg-surface-elevated rounded-lg z-50 p-2 animate-dropdown-in origin-top-right max-h-48 overflow-y-auto shadow-lg border border-border-subtle"
+            style={{ backdropFilter: 'none', top: dropdownPosition.top, left: dropdownPosition.left - 160 }}
           >
             <div className="text-xs text-text-muted mb-1 px-1">Tags</div>
             {tags.length === 0 ? (
@@ -299,8 +299,8 @@ function SortableItem({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
           <div
-            className="fixed glass-card rounded-lg shadow-lg z-50 p-2 animate-scale-in origin-top-right"
-            style={{ top: dropdownPosition.top, left: dropdownPosition.left - 140 }}
+            className="fixed bg-surface-elevated rounded-lg z-50 p-2 animate-dropdown-in origin-top-right shadow-lg border border-border-subtle"
+            style={{ backdropFilter: 'none', top: dropdownPosition.top, left: dropdownPosition.left - 140 }}
           >
             <input
               type="date"
@@ -332,8 +332,8 @@ function SortableItem({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowPriorityPicker(false)} />
           <div
-            className="fixed w-28 glass-card rounded-lg shadow-lg z-50 p-1 animate-scale-in origin-top-right"
-            style={{ top: dropdownPosition.top, left: dropdownPosition.left - 112 }}
+            className="fixed w-28 bg-surface-elevated rounded-lg z-50 p-1 animate-dropdown-in origin-top-right shadow-lg border border-border-subtle"
+            style={{ backdropFilter: 'none', top: dropdownPosition.top, left: dropdownPosition.left - 112 }}
           >
             {(['high', 'medium', 'low'] as const).map(p => (
               <button
@@ -598,13 +598,13 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
         <button
           onClick={handleAddItem}
           disabled={!newItemText.trim()}
-          className="p-1.5 bg-primary text-[var(--color-on-primary)] rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 bg-primary text-[var(--color-on-primary)] rounded-button hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 active:scale-95"
         >
           <Plus className="w-4 h-4" />
         </button>
         <button
           onClick={() => setShowTagManager(!showTagManager)}
-          className={`p-1.5 rounded-lg transition-colors ${showTagManager ? 'bg-primary text-[var(--color-on-primary)]' : 'bg-surface hover:bg-surface/80'}`}
+          className={`p-1.5 rounded-button transition-all duration-150 ${showTagManager ? 'bg-primary text-[var(--color-on-primary)]' : 'bg-surface hover:bg-surface/80'}`}
           title="Manage tags"
         >
           <Tag className="w-4 h-4" />
@@ -657,7 +657,7 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
           <button
             key={filter}
             onClick={() => saveConfig({ ...localConfig, filter })}
-            className={`px-2 py-1 rounded transition-colors capitalize ${
+            className={`px-2 py-1 rounded-button transition-all duration-150 capitalize ${
               localConfig.filter === filter
                 ? 'bg-primary text-[var(--color-on-primary)]'
                 : 'bg-surface/50 text-text-muted hover:text-text'
@@ -671,7 +671,7 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
         <div className="relative ml-auto">
           <button
             onClick={() => setShowSortDropdown(!showSortDropdown)}
-            className="flex items-center gap-1 px-2 py-1 bg-surface/50 rounded hover:bg-surface transition-colors text-text-muted"
+            className="flex items-center gap-1 px-2 py-1 bg-surface/50 rounded-button hover:bg-surface transition-all duration-150 text-text-muted"
           >
             Sort
             <ChevronDown className="w-3 h-3" />
@@ -679,7 +679,7 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
           {showSortDropdown && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowSortDropdown(false)} />
-              <div className="absolute right-0 top-full mt-1 w-32 glass-card rounded-lg shadow-lg z-50 p-1 animate-scale-in">
+              <div className="absolute right-0 top-full mt-1 w-32 bg-surface-elevated rounded-lg z-50 p-1 animate-dropdown-in shadow-lg border border-border-subtle" style={{ backdropFilter: 'none' }}>
                 {(['manual', 'priority', 'dueDate'] as const).map(sort => (
                   <button
                     key={sort}
@@ -687,7 +687,7 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
                       saveConfig({ ...localConfig, sortBy: sort })
                       setShowSortDropdown(false)
                     }}
-                    className={`w-full text-left text-xs px-2 py-1.5 rounded hover:bg-surface ${
+                    className={`w-full text-left text-xs px-2 py-1.5 rounded-button hover:bg-surface transition-all duration-100 ${
                       localConfig.sortBy === sort ? 'bg-surface/50 text-primary' : ''
                     }`}
                   >

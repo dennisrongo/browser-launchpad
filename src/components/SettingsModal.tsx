@@ -551,11 +551,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={handleBackdropClick}>
-      <div className="glass-modal rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-slide-up scrollbar-thin">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={handleBackdropClick}>
+      <div className="glass-modal rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gradient">Settings</h2>
-          <button onClick={handleCancel} className="p-2 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-200" aria-label="Close settings">
+          <button onClick={handleCancel} className="p-2 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-150" aria-label="Close settings">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -566,7 +566,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-button transition-all duration-150 ${
                 activeTab === tab.id ? 'bg-primary text-[var(--color-on-primary)] shadow-sm' : 'text-text-secondary hover:text-text hover:bg-surface'
               }`}
             >

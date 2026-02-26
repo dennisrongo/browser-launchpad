@@ -126,7 +126,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
            <CloudSun className="w-6 h-6 text-secondary" />
          </div>
          <h3 className="text-sm font-semibold mb-1">{title}</h3>
-         <p className="text-neutral text-xs flex items-center gap-1">
+         <p className="text-neutral text-xs flex items-center gap-1.5">
            <Settings className="w-3 h-3" />
            Configure city
          </p>
@@ -174,7 +174,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
       <button
         onClick={() => fetchWeatherData(true)}
         disabled={refreshing}
-        className="p-2 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-200 disabled:opacity-50"
+        className="p-2 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-150 disabled:opacity-50 active:scale-95"
         title="Refresh weather data"
       >
         <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />

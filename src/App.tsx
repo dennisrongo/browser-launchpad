@@ -1066,7 +1066,7 @@ function App() {
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, page.id)}
               onDragEnd={handleDragEnd}
-              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out ${
+              className={`group relative flex items-center rounded-button transition-all duration-150 ease-out ${
                 isEditMode ? 'cursor-move' : ''
               } ${
                 activePage === index
@@ -1157,7 +1157,7 @@ function App() {
                 Add Page
               </button>
               {showLimitMessage && (
-                <div className="absolute top-full mt-2 left-0 glass-card px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap flex items-center gap-2 text-amber-600 border-amber-500/20">
+                <div className="absolute top-full mt-2 left-0 glass-dropdown px-3 py-2 rounded-button text-sm animate-dropdown-in z-50 whitespace-nowrap flex items-center gap-2 text-amber-600 border-amber-500/20">
                   <AlertTriangle className="w-4 h-4" />
                   Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
                 </div>
@@ -1178,8 +1178,8 @@ function App() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-slide-up">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+            <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-modal-in">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                   <Trash2 className="w-5 h-5 text-red-500" />
@@ -1195,13 +1195,13 @@ function App() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={handleCancelDelete}
-                  className="btn-secondary"
+                  className="btn-ghost"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-colors"
+                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-all duration-150 active:scale-98"
                 >
                   Delete Page
                 </button>
@@ -1328,8 +1328,8 @@ function App() {
 
       {/* Widget Delete Confirmation Modal */}
       {showWidgetDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md mx-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-modal-in">
             <h3 className="text-lg font-semibold mb-2">Delete Widget?</h3>
             <p className="text-text-secondary mb-6">
               Are you sure you want to delete this widget? This action cannot be undone.
@@ -1337,13 +1337,13 @@ function App() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleCancelDeleteWidget}
-                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+                className="btn-ghost"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDeleteWidget}
-                className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600"
+                className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-all duration-150 active:scale-98"
               >
                 Delete Widget
               </button>

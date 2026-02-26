@@ -17,7 +17,7 @@ export function Header({
   children,
 }: HeaderProps) {
   return (
-    <header className="glass-card border-b border-border-subtle px-6 py-3 sticky top-0 z-40">
+    <header className="glass-card border-b border-border-subtle/60 px-6 py-3 sticky top-0 z-40">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {storageVerified && (
@@ -31,9 +31,9 @@ export function Header({
           {onEditToggle && (
             <button
               onClick={onEditToggle}
-              className={`p-2 rounded-lg transition-all duration-200 ${
+              className={`p-2 rounded-button transition-all duration-150 ease-out ${
                 isEditMode
-                  ? 'bg-secondary/15 text-secondary'
+                  ? 'bg-secondary/15 text-secondary shadow-sm'
                   : 'text-text-muted hover:text-secondary hover:bg-surface'
               }`}
               title={isEditMode ? 'Exit edit mode' : 'Edit pages'}
@@ -50,7 +50,7 @@ export function Header({
           {onSettingsClick && (
             <button
               onClick={onSettingsClick}
-              className="p-2 rounded-lg text-text-muted hover:text-secondary hover:bg-surface transition-all duration-200"
+              className="p-2 rounded-button text-text-muted hover:text-secondary hover:bg-surface transition-all duration-150 ease-out"
               title="Open settings"
               aria-label="Open settings"
             >

@@ -144,3 +144,18 @@ export interface ChatMessage {
   content: string
   timestamp: string
 }
+
+export interface PomodoroSession {
+  id: string
+  type: 'focus' | 'shortBreak' | 'longBreak'
+  startedAt: string
+  completedAt: string
+  duration: number
+  plannedDuration: number
+  wasCompleted: boolean
+}
+
+export interface PomodoroDayHistory {
+  date: string
+  sessions: PomodoroSession[]
+}

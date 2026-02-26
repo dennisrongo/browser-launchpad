@@ -255,6 +255,15 @@ export const todoListStorage = {
     removeFromStorage(`todo-list-${widgetId}`),
 }
 
+export const pomodoroHistoryStorage = {
+  get: (widgetId: string): Promise<StorageResult<any[]>> => 
+    getFromStorage(`pomodoro-history-${widgetId}`),
+  set: (widgetId: string, history: any[]): Promise<{ success: boolean; error: string | null }> =>
+    setToStorage({ [`pomodoro-history-${widgetId}`]: history }),
+  clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
+    removeFromStorage(`pomodoro-history-${widgetId}`),
+}
+
 export default {
   get: getFromStorage,
   set: setToStorage,
@@ -266,4 +275,5 @@ export default {
   settings: settingsStorage,
   chatHistory: chatHistoryStorage,
   todoList: todoListStorage,
+  pomodoroHistory: pomodoroHistoryStorage,
 }
