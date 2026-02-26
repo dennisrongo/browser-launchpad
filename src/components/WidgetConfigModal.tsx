@@ -1,108 +1,54 @@
 import { useState, useEffect, useRef } from 'react'
-import { Widget, WidgetType, ChatMessage, AIChatWidgetConfig } from '../types'
-import { fetchStraicoModels, validateOpenAIKey, validateStraicoKey, validateApiKeyFormat } from '../utils/ai'
-import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
-import { IconAlert, IconX, IconLoader } from './Icons'
+import { AlertTriangle, Settings, ExternalLink } from 'lucide-react'
+import { Widget, ChatMessage, AIChatWidgetConfig } from '../types'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
   widget: Widget | null
   onSave: (widgetId: string, config: any, title: string) => void
   onCancel: () => void
+  onOpenSettings?: () => void
 }
 
-export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetConfigModalProps) {
+interface GlobalAIConfig {
+  activeProvider: 'openai' | 'straico'
+  openai: { apiKey: string; model: string }
+  straico: { apiKey: string; model: string }
+}
+
+export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSettings }: WidgetConfigModalProps) {
   const [title, setTitle] = useState('')
   const [config, setConfig] = useState<any>({})
-  const [isFetchingModels, setIsFetchingModels] = useState(false)
-  const [modelFetchError, setModelFetchError] = useState<string | null>(null)
-  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false)
-  const [pendingProviderChange, setPendingProviderChange] = useState<'openai' | 'straico' | null>(null)
-  const [pendingModelChange, setPendingModelChange] = useState<string | null>(null)
+  const [globalAIConfig, setGlobalAIConfig] = useState<GlobalAIConfig | null>(null)
   const previousMessagesRef = useRef<ChatMessage[]>([])
-  const [apiKeyValidation, setApiKeyValidation] = useState<{ openai?: string; straico?: string }>({})
-  const [isValidatingKey, setIsValidatingKey] = useState(false)
 
   useEffect(() => {
     if (widget) {
       setTitle(widget.title)
       const configCopy = { ...widget.config }
 
-      // Decode API keys from widget config if present
       if (widget.type === 'ai-chat') {
         const aiConfig = widget.config as AIChatWidgetConfig
-        if (aiConfig.openaiApiKey) {
-          (configCopy as AIChatWidgetConfig).openaiApiKey = decodeApiKey(aiConfig.openaiApiKey)
-        }
-        if (aiConfig.straicoApiKey) {
-          (configCopy as AIChatWidgetConfig).straicoApiKey = decodeApiKey(aiConfig.straicoApiKey)
-        }
         if (aiConfig.messages) {
           previousMessagesRef.current = aiConfig.messages
         }
       }
 
       setConfig(configCopy)
+      loadGlobalAIConfig()
     }
-    // Reset state when widget changes
-    setModelFetchError(null)
-    setIsFetchingModels(false)
-    setShowClearChatConfirm(false)
-    setPendingProviderChange(null)
-    setPendingModelChange(null)
-    setApiKeyValidation({})
-    setIsValidatingKey(false)
   }, [widget])
 
-  // Validate API key on blur
-  const handleApiKeyBlur = async (provider: 'openai' | 'straico', apiKey: string) => {
-    if (!apiKey || apiKey.trim().length === 0) {
-      setApiKeyValidation(prev => ({ ...prev, [provider]: '' }))
-      return
-    }
-
-    // First do client-side format validation
-    const formatCheck = validateApiKeyFormat(provider, apiKey)
-    if (!formatCheck.valid) {
-      setApiKeyValidation(prev => ({ ...prev, [provider]: formatCheck.error || 'Invalid format' }))
-      return
-    }
-
-    // Then do server-side validation
-    setIsValidatingKey(true)
+  const loadGlobalAIConfig = async () => {
     try {
-      const result = provider === 'openai'
-        ? await validateOpenAIKey(apiKey)
-        : await validateStraicoKey(apiKey)
-
-      if (result.valid) {
-        setApiKeyValidation(prev => ({ ...prev, [provider]: '' }))
+      const result = await chrome.storage.local.get(['ai_config'])
+      if (result.ai_config && typeof result.ai_config === 'object' && 'activeProvider' in result.ai_config) {
+        setGlobalAIConfig(result.ai_config as GlobalAIConfig)
       } else {
-        setApiKeyValidation(prev => ({ ...prev, [provider]: result.error || 'Invalid API key' }))
+        setGlobalAIConfig(null)
       }
     } catch (error) {
-      setApiKeyValidation(prev => ({ ...prev, [provider]: 'Validation failed' }))
-    } finally {
-      setIsValidatingKey(false)
-    }
-  }
-
-  const handleFetchModels = async () => {
-    if (!config.straicoApiKey) {
-      setModelFetchError('Please enter your Straico API key first')
-      return
-    }
-
-    setIsFetchingModels(true)
-    setModelFetchError(null)
-
-    try {
-      const models = await fetchStraicoModels(config.straicoApiKey)
-      setConfig({ ...config, straicoModels: models })
-    } catch (error) {
-      setModelFetchError(error instanceof Error ? error.message : 'Failed to fetch models')
-    } finally {
-      setIsFetchingModels(false)
+      console.error('Failed to load global AI config:', error)
     }
   }
 
@@ -112,46 +58,33 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
 
   const handleSave = () => {
     if (title.trim()) {
-      const configToSave = { ...config }
+      onSave(widget.id, { ...config }, title.trim())
+    }
+  }
 
-      // Encode API keys before saving
-      if (widget.type === 'ai-chat') {
-        if ((configToSave as any).openaiApiKey) {
-          (configToSave as any).openaiApiKey = encodeApiKey((configToSave as any).openaiApiKey)
-        }
-        if ((configToSave as any).straicoApiKey) {
-          (configToSave as any).straicoApiKey = encodeApiKey((configToSave as any).straicoApiKey)
-        }
+  const handleOpenSettings = () => {
+    onCancel()
+    onOpenSettings?.()
+  }
+
+  const getProviderDisplayName = (provider: string) => {
+    return provider === 'openai' ? 'OpenAI' : 'Straico'
+  }
+
+  const getModelDisplayName = (provider: string, model: string) => {
+    if (!model) return 'Not selected'
+    if (provider === 'openai') {
+      const modelNames: Record<string, string> = {
+        'gpt-4o-mini': 'GPT-4o Mini',
+        'gpt-4o': 'GPT-4o',
+        'gpt-4o-2024-08-06': 'GPT-4o (2024-08-06)',
+        'gpt-4-turbo': 'GPT-4 Turbo',
+        'gpt-4': 'GPT-4',
+        'gpt-3.5-turbo': 'GPT-3.5 Turbo',
       }
-
-      onSave(widget.id, configToSave, title.trim())
+      return modelNames[model] || model
     }
-  }
-
-  // Handle confirmation to clear chat
-  const handleConfirmClearChat = () => {
-    const newConfig = { ...config, messages: [] }
-
-    if (pendingProviderChange) {
-      newConfig.provider = pendingProviderChange
-      newConfig.model = '' // Reset model when provider changes
-    }
-
-    if (pendingModelChange) {
-      newConfig.model = pendingModelChange
-    }
-
-    setConfig(newConfig)
-    setShowClearChatConfirm(false)
-    setPendingProviderChange(null)
-    setPendingModelChange(null)
-  }
-
-  // Handle cancel - restore previous selection
-  const handleCancelClearChat = () => {
-    setShowClearChatConfirm(false)
-    setPendingProviderChange(null)
-    setPendingModelChange(null)
+    return model
   }
 
   const renderConfigFields = () => {
@@ -284,243 +217,80 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
                 </label>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">OpenWeatherMap API Key (Optional)</label>
-              <input
-                type="password"
-                value={config.apiKey || ''}
-                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder="Enter your API key"
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <p className="text-xs text-text-secondary mt-1">
-                Get a free API key at{' '}
-                <a
-                  href="https://openweathermap.org/api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  openweathermap.org
-                </a>
-              </p>
-            </div>
+            <p className="text-xs text-text-secondary">
+              Configure your OpenWeatherMap API key in <strong>Settings → Weather</strong>.
+            </p>
           </div>
         )
 
       case 'ai-chat':
-        // Check if there are existing messages
-        const hasExistingMessages = config.messages && config.messages.length > 0
+        const activeProvider = globalAIConfig?.activeProvider || 'openai'
+        const providerConfig = globalAIConfig?.[activeProvider]
+        const hasApiKey = !!(providerConfig?.apiKey)
+        const model = providerConfig?.model || ''
 
         return (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">AI Provider</label>
-              <select
-                value={config.provider || 'openai'}
-                onChange={(e) => {
-                  const newProvider = e.target.value as 'openai' | 'straico'
-                  // Check if there are existing messages and provider is actually changing
-                  if (hasExistingMessages && newProvider !== config.provider) {
-                    setPendingProviderChange(newProvider)
-                    setShowClearChatConfirm(true)
-                  } else {
-                    setConfig({ ...config, provider: newProvider, model: '' })
-                  }
-                }}
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="openai">OpenAI</option>
-                <option value="straico">Straico</option>
-              </select>
-              {hasExistingMessages && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                  <IconAlert className="w-3 h-3" />
-                  Changing provider will clear chat history
-                </p>
-              )}
-            </div>
-
-            {/* OpenAI Model Selection Dropdown */}
-            {config.provider === 'openai' && (
-              <div>
-                <label className="block text-sm font-medium text-text mb-1">Model</label>
-                <select
-                  value={config.model || 'gpt-3.5-turbo'}
-                  onChange={(e) => {
-                    const newModel = e.target.value
-                    // Check if there are existing messages and model is actually changing
-                    if (hasExistingMessages && newModel !== config.model) {
-                      setPendingModelChange(newModel)
-                      setShowClearChatConfirm(true)
-                    } else {
-                      setConfig({ ...config, model: newModel })
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                </select>
-                <p className="text-xs text-text-secondary mt-1">
-                  Select the OpenAI model to use for chat completions
-                </p>
-                {hasExistingMessages && config.model && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                    <IconAlert className="w-3 h-3" />
-                    Changing model will clear chat history
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Straico API Key Input */}
-            {config.provider === 'straico' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-text mb-1">Straico API Key</label>
-                  <input
-                    type="password"
-                    value={config.straicoApiKey || ''}
-                    onChange={(e) => {
-                      setConfig({ ...config, straicoApiKey: e.target.value })
-                      // Clear validation when typing
-                      if (apiKeyValidation.straico) {
-                        setApiKeyValidation(prev => ({ ...prev, straico: '' }))
-                      }
-                    }}
-                    onBlur={() => handleApiKeyBlur('straico', config.straicoApiKey || '')}
-                    placeholder="Enter your Straico API key"
-                    className={`w-full px-3 py-2 bg-background text-text border rounded focus:outline-none focus:ring-2 focus:ring-primary ${
-                      apiKeyValidation.straico ? 'border-red-500' : 'border-border'
-                    }`}
-                  />
-                  {apiKeyValidation.straico && (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                      <IconAlert className="w-3 h-3" />
-                      {apiKeyValidation.straico}
-                    </p>
-                  )}
-                  {!apiKeyValidation.straico && (
-                    <p className="text-xs text-text-secondary mt-1">
-                      Get your API key from{' '}
-                      <a
-                        href="https://straico.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        straico.com
-                      </a>
-                    </p>
-                  )}
+            <div className="p-4 bg-surface border border-border rounded-lg">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Settings className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text mb-1">Model</label>
-                  <select
-                    value={config.model || ''}
-                    onChange={(e) => {
-                      const newModel = e.target.value
-                      // Check if there are existing messages and model is actually changing
-                      if (hasExistingMessages && newModel !== config.model) {
-                        setPendingModelChange(newModel)
-                        setShowClearChatConfirm(true)
-                      } else {
-                        setConfig({ ...config, model: newModel })
-                      }
-                    }}
-                    disabled={!config.straicoApiKey || isFetchingModels}
-                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Select a model</option>
-                    {(config.straicoModels || []).map((model: any) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-text-secondary mt-1">
-                    {!config.straicoApiKey
-                      ? 'Enter your API key above to fetch available models'
-                      : isFetchingModels
-                      ? 'Fetching models...'
-                      : (config.straicoModels || []).length === 0
-                      ? 'Click "Fetch Models" to load available models'
-                      : `${(config.straicoModels || []).length} models available`}
+                  <h4 className="font-semibold text-text mb-1">AI Configuration</h4>
+                  <p className="text-sm text-text-secondary">
+                    This widget uses your globally configured AI provider from Settings.
                   </p>
-                {hasExistingMessages && config.model && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                    <IconAlert className="w-3 h-3" />
-                    Changing model will clear chat history
-                  </p>
-                )}
+                </div>
               </div>
-                  {modelFetchError && (
-                    <div className="p-2 glass-card rounded text-sm text-red-600 flex items-center gap-2">
-                      <IconAlert className="w-4 h-4" />
-                      {modelFetchError}
-                    </div>
-                  )}
-                {config.straicoApiKey && (config.straicoModels || []).length === 0 && (
-                  <button
-                    type="button"
-                    onClick={handleFetchModels}
-                    disabled={isFetchingModels}
-                    className="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isFetchingModels ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Fetching...
-                      </>
-                    ) : (
-                      'Fetch Models'
-                    )}
-                  </button>
-                )}
-              </>
-            )}
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">Active Provider:</span>
+                  <span className="font-medium text-text">
+                    {getProviderDisplayName(activeProvider)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">Model:</span>
+                  <span className="font-medium text-text">
+                    {getModelDisplayName(activeProvider, model)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">API Key:</span>
+                  <span className={`font-medium ${hasApiKey ? 'text-green-600' : 'text-red-500'}`}>
+                    {hasApiKey ? 'Configured' : 'Not configured'}
+                  </span>
+                </div>
+              </div>
 
-            {/* OpenAI API Key Input (optional override) */}
-            {config.provider === 'openai' && (
-              <div>
-                <label className="block text-sm font-medium text-text mb-1">OpenAI API Key</label>
-                <input
-                  type="password"
-                  value={config.openaiApiKey || ''}
-                  onChange={(e) => {
-                    setConfig({ ...config, openaiApiKey: e.target.value })
-                    // Clear validation when typing
-                    if (apiKeyValidation.openai) {
-                      setApiKeyValidation(prev => ({ ...prev, openai: '' }))
-                    }
-                  }}
-                  onBlur={() => handleApiKeyBlur('openai', config.openaiApiKey || '')}
-                  placeholder="Enter your OpenAI API key"
-                  className={`w-full px-3 py-2 bg-background text-text border rounded focus:outline-none focus:ring-2 focus:ring-primary ${
-                    apiKeyValidation.openai ? 'border-red-500' : 'border-border'
-                  }`}
-                />
-                  {apiKeyValidation.openai && (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                      <IconAlert className="w-3 h-3" />
-                      {apiKeyValidation.openai}
+              {!hasApiKey && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Please configure your API key in Settings to use this widget.
                     </p>
-                  )}
-                  {!apiKeyValidation.openai && (
-                    <p className="text-xs text-text-secondary mt-1">
-                      Get your API key from{' '}
-                      <a
-                        href="https://platform.openai.com/api-keys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        platform.openai.com
-                      </a>
-                    </p>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleOpenSettings}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Open Settings
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+
+            {(config.messages?.length > 0) && (
+              <div className="p-3 bg-surface border border-border rounded-lg">
+                <p className="text-xs text-text-secondary">
+                  <strong>{config.messages.length}</strong> message(s) in chat history
+                </p>
               </div>
             )}
           </div>
@@ -538,6 +308,151 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
           </div>
         )
 
+      case 'todo':
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-surface border border-border rounded text-center">
+              <p className="text-text-secondary text-sm">
+                To-Do List widget configuration is managed directly in the widget.
+                Use the controls within the widget to add tasks, manage tags, and filter items.
+              </p>
+            </div>
+          </div>
+        )
+
+      case 'pomodoro':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Focus Duration (minutes)</label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={config.focusDuration || 25}
+                onChange={(e) => setConfig({ ...config, focusDuration: parseInt(e.target.value) || 25 })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Short Break (minutes)</label>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={config.shortBreakDuration || 5}
+                onChange={(e) => setConfig({ ...config, shortBreakDuration: parseInt(e.target.value) || 5 })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Long Break (minutes)</label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={config.longBreakDuration || 15}
+                onChange={(e) => setConfig({ ...config, longBreakDuration: parseInt(e.target.value) || 15 })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Sessions Until Long Break</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={config.sessionsUntilLongBreak || 4}
+                onChange={(e) => setConfig({ ...config, sessionsUntilLongBreak: parseInt(e.target.value) || 4 })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="pt-2 border-t border-border space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.autoStartBreaks || false}
+                  onChange={(e) => setConfig({ ...config, autoStartBreaks: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                />
+                <span className="text-sm">Auto-start breaks</span>
+              </label>
+            </div>
+            <p className="text-xs text-text-secondary">
+              Note: Changing durations will apply on the next session.
+            </p>
+          </div>
+        )
+
+      case 'calendar':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">View Mode</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="viewMode"
+                    checked={config.viewMode !== 'week'}
+                    onChange={() => setConfig({ ...config, viewMode: 'month' })}
+                    className="w-4 h-4 text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-sm">Month</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="viewMode"
+                    checked={config.viewMode === 'week'}
+                    onChange={() => setConfig({ ...config, viewMode: 'week' })}
+                    className="w-4 h-4 text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-sm">Week</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">First Day of Week</label>
+              <select
+                value={config.firstDayOfWeek ?? 0}
+                onChange={(e) => setConfig({ ...config, firstDayOfWeek: parseInt(e.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6 })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.showWeekNumbers || false}
+                  onChange={(e) => setConfig({ ...config, showWeekNumbers: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                />
+                <span className="text-sm">Show week numbers</span>
+              </label>
+            </div>
+            <div className="pt-2 border-t border-border">
+              <label className="block text-sm font-medium text-text mb-2">Google Calendar</label>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${config.googleConnected ? 'text-green-600' : 'text-text-secondary'}`}>
+                  Status: {config.googleConnected ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary mt-2">
+                Connect to Google Calendar directly from the widget. Click on the widget to set up the integration.
+              </p>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="p-4 bg-surface border border-border rounded text-center">
@@ -548,82 +463,42 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel }: WidgetCo
   }
 
   return (
-    <>
-      {/* Main Config Modal */}
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
-          <h3 className="text-lg font-semibold mb-4">Configure Widget</h3>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-md w-full mx-4 animate-fade-in">
+        <h3 className="text-lg font-semibold mb-4">Configure Widget</h3>
 
-          <div className="space-y-4 mb-6">
-            {/* Widget Title */}
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">Widget Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Widget title"
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                maxLength={50}
-              />
-            </div>
-
-            {/* Widget-specific configuration */}
-            {renderConfigFields()}
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-text mb-1">Widget Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Widget title"
+              className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              maxLength={50}
+            />
           </div>
 
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!title.trim()}
-              className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save Changes
-            </button>
-          </div>
+          {renderConfigFields()}
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!title.trim()}
+            className="px-4 py-2 bg-primary text-[var(--color-on-primary)] rounded-button hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save Changes
+          </button>
         </div>
       </div>
-
-      {/* Confirmation Dialog for Clearing Chat */}
-      {showClearChatConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
-          <div className="bg-surface border border-border rounded-card shadow-lg p-6 max-w-sm w-full mx-4 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-2">💬</div>
-              <h3 className="text-lg font-semibold mb-2">Clear Chat History?</h3>
-              <p className="text-sm text-text-secondary">
-                {pendingProviderChange
-                  ? `Switching from ${config.provider === 'openai' ? 'OpenAI' : 'Straico'} to ${pendingProviderChange === 'openai' ? 'OpenAI' : 'Straico'} will clear your chat history.`
-                  : 'Changing the model will clear your chat history.'}
-              </p>
-              <p className="text-xs text-text-secondary mt-2">
-                {config.messages?.length || 0} message(s) will be deleted.
-              </p>
-            </div>
-
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={handleCancelClearChat}
-                className="px-4 py-2 bg-background text-text rounded-button hover:bg-surface border border-border"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmClearChat}
-                className="px-4 py-2 bg-primary text-white rounded-button hover:opacity-90"
-              >
-                Clear & Switch
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }

@@ -247,6 +247,14 @@ export const chatHistoryStorage = {
     removeFromStorage(`chat-history-${widgetId}`),
 }
 
+export const todoListStorage = {
+  get: (widgetId: string): Promise<StorageResult<any>> => getFromStorage(`todo-list-${widgetId}`),
+  set: (widgetId: string, config: any): Promise<{ success: boolean; error: string | null }> =>
+    setToStorage({ [`todo-list-${widgetId}`]: config }),
+  clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
+    removeFromStorage(`todo-list-${widgetId}`),
+}
+
 export default {
   get: getFromStorage,
   set: setToStorage,
@@ -257,4 +265,5 @@ export default {
   pages: pagesStorage,
   settings: settingsStorage,
   chatHistory: chatHistoryStorage,
+  todoList: todoListStorage,
 }

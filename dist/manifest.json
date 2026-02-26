@@ -21,14 +21,17 @@
     "newtab": "newtab.html"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "identity"
   ],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.straico.com/*",
-    "https://api.openweathermap.org/*"
+    "https://api.openweathermap.org/*",
+    "https://www.googleapis.com/*",
+    "https://accounts.google.com/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.openweathermap.org https://api.openai.com https://api.straico.com"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.openweathermap.org https://api.openai.com https://api.straico.com https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com"
   }
 }

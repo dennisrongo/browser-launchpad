@@ -22,7 +22,7 @@ export function ClockWidget({ config }: ClockWidgetProps) {
   const formatTime = (date: Date): string => {
     try {
       const options: Intl.DateTimeFormatOptions = {
-        timeZone: config.timezone || 'UTC',
+        timeZone: config.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         hour12: config.format12Hour !== false, // Default to true
         hour: '2-digit',
         minute: '2-digit',

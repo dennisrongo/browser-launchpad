@@ -1,12 +1,14 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { Pencil, Trash2, Plus, X, Link, AlertTriangle, Check, GripVertical } from 'lucide-react'
 import { BookmarkWidgetConfig } from '../types'
 import { getBookmarkIconDisplay } from '../utils/favicon'
-import { IconEdit, IconTrash, IconPlus, IconX, IconLink, IconAlert } from '../components/Icons'
 
 interface BookmarkWidgetProps {
   title: string
   config: BookmarkWidgetConfig
   onConfigChange?: (newConfig: BookmarkWidgetConfig) => void
+  showAddForm?: boolean
+  onAddFormClose?: () => void
 }
 
 export function BookmarkWidget({ title: _title, config, onConfigChange }: BookmarkWidgetProps) {
@@ -143,7 +145,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
         />
       )
     }
-    return <IconLink className="w-4 h-4 flex-shrink-0 text-text-muted" />
+    return <Link className="w-4 h-4 flex-shrink-0 text-text-muted" />
   }
 
   return (
@@ -152,7 +154,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
         {bookmarks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center mb-2">
-              <IconLink className="w-5 h-5 text-text-muted" />
+              <Link className="w-5 h-5 text-text-muted" />
             </div>
             <p className="text-text-muted text-xs">No bookmarks</p>
           </div>
@@ -182,26 +184,17 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                     className="flex-1 min-w-0 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     autoFocus
                   />
-                  <button onClick={handleSaveEdit} className="p-1 text-primary hover:bg-surface rounded" title="Save">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                  <button onClick={() => { setEditingBookmarkId(null); setEditUrl(''); setEditTitle(''); }} className="p-1 text-text-muted hover:bg-surface rounded" title="Cancel">
-                    <IconX className="w-4 h-4" />
-                  </button>
+                   <button onClick={handleSaveEdit} className="p-1 text-primary hover:bg-surface rounded" title="Save">
+                     <Check className="w-4 h-4" />
+                   </button>
+                   <button onClick={() => { setEditingBookmarkId(null); setEditUrl(''); setEditTitle(''); }} className="p-1 text-text-muted hover:bg-surface rounded" title="Cancel">
+                     <X className="w-4 h-4" />
+                   </button>
                 </div>
               ) : (
                 <>
                   <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="9" cy="5" r="1.5" />
-                      <circle cx="9" cy="12" r="1.5" />
-                      <circle cx="9" cy="19" r="1.5" />
-                      <circle cx="15" cy="5" r="1.5" />
-                      <circle cx="15" cy="12" r="1.5" />
-                      <circle cx="15" cy="19" r="1.5" />
-                    </svg>
+                    <GripVertical className="w-3 h-3" />
                   </span>
                   {renderIcon(bookmark)}
                   <a
@@ -215,11 +208,11 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
                   </a>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-text-muted hover:text-primary hover:bg-surface rounded transition-all" title="Edit">
-                      <IconEdit className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-all" title="Delete">
-                      <IconTrash className="w-3.5 h-3.5" />
-                    </button>
+                       <Pencil className="w-3.5 h-3.5" />
+                     </button>
+                     <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-all" title="Delete">
+                       <Trash2 className="w-3.5 h-3.5" />
+                     </button>
                   </div>
                 </>
               )}
@@ -259,7 +252,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
         </div>
       ) : (
         <button onClick={() => setShowAddForm(true)} className="w-full mt-2 btn-secondary text-sm flex items-center justify-center gap-1.5">
-          <IconPlus className="w-3.5 h-3.5" />
+          <Plus className="w-3.5 h-3.5" />
           Add
         </button>
       )}
@@ -268,9 +261,9 @@ export function BookmarkWidget({ title: _title, config, onConfigChange }: Bookma
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="glass-modal rounded-lg p-5 max-w-xs mx-4 animate-slide-up">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                <IconAlert className="w-4 h-4 text-red-500" />
-              </div>
+               <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                 <AlertTriangle className="w-4 h-4 text-red-500" />
+               </div>
               <h3 className="font-semibold">Delete bookmark?</h3>
             </div>
             <p className="text-sm text-text-secondary mb-4">This cannot be undone.</p>

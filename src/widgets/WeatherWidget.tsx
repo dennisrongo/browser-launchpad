@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
+import { CloudSun, AlertTriangle, RefreshCw, Settings } from 'lucide-react'
 import { WeatherWidgetConfig } from '../types'
 import { fetchWeather, getWeatherIconUrl, getWeatherEmoji, formatTemperature, formatCondition } from '../utils/weather'
-import { IconWeather, IconAlert, IconRefresh, IconSettings } from '../components/Icons'
+import { decodeApiKey } from '../utils/security'
 
 interface WeatherWidgetProps {
   title: string
   config: WeatherWidgetConfig
 }
 
-
 export function WeatherWidget({ title, config }: WeatherWidgetProps) {
+  const [globalApiKey, setGlobalApiKey] = useState<string>('')
   const [weather, setWeather] = useState<{
     temp: number
     condition: string
@@ -26,6 +27,43 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     error: null,
   })
   const [refreshing, setRefreshing] = useState(false)
+
+  interface WeatherStorageConfig {
+    apiKey?: string
+  }
+
+  useEffect(() => {
+    const loadGlobalApiKey = async () => {
+      try {
+        const result = await chrome.storage.local.get(['weather_config'])
+        const weatherConfig = result.weather_config as WeatherStorageConfig | undefined
+        if (weatherConfig?.apiKey) {
+          const decodedKey = decodeApiKey(weatherConfig.apiKey)
+          setGlobalApiKey(decodedKey)
+        }
+      } catch (error) {
+        console.error('Failed to load global weather API key:', error)
+      }
+    }
+    loadGlobalApiKey()
+
+    const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.weather_config) {
+        const newConfig = changes.weather_config.newValue as WeatherStorageConfig | undefined
+        if (newConfig?.apiKey) {
+          setGlobalApiKey(decodeApiKey(newConfig.apiKey))
+        } else {
+          setGlobalApiKey('')
+        }
+      }
+    }
+    chrome.storage.onChanged.addListener(listener)
+    return () => chrome.storage.onChanged.removeListener(listener)
+  }, [])
+
+  const getEffectiveApiKey = () => {
+    return globalApiKey || ''
+  }
 
   const fetchWeatherData = async (showRefreshSpinner = false) => {
     if (!config.city || config.city.trim() === '') {
@@ -44,7 +82,8 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     }
 
     try {
-      const data = await fetchWeather(config.city, config.apiKey || '', config.units || 'celsius')
+      const effectiveApiKey = getEffectiveApiKey()
+      const data = await fetchWeather(config.city, effectiveApiKey, config.units || 'celsius')
       setWeather({
         temp: data.temperature,
         condition: data.condition,
@@ -68,7 +107,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
 
   useEffect(() => {
     fetchWeatherData()
-  }, [config.city, config.units, config.apiKey])
+  }, [config.city, config.units, globalApiKey])
 
   useEffect(() => {
     if (!config.city || config.city.trim() === '') return
@@ -78,19 +117,19 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
     }, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [config.city, config.units, config.apiKey])
+  }, [config.city, config.units, globalApiKey])
 
   if (!config.city || config.city.trim() === '') {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-          <IconWeather className="w-6 h-6 text-primary" />
-        </div>
-        <h3 className="text-sm font-semibold mb-1">{title}</h3>
-        <p className="text-text-muted text-xs flex items-center gap-1">
-          <IconSettings className="w-3 h-3" />
-          Configure city
-        </p>
+           <CloudSun className="w-6 h-6 text-primary" />
+         </div>
+         <h3 className="text-sm font-semibold mb-1">{title}</h3>
+         <p className="text-text-muted text-xs flex items-center gap-1">
+           <Settings className="w-3 h-3" />
+           Configure city
+         </p>
       </div>
     )
   }
@@ -98,9 +137,9 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   if (weather.loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-          <IconWeather className="w-6 h-6 text-primary animate-pulse" />
-        </div>
+         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+           <CloudSun className="w-6 h-6 text-primary animate-pulse" />
+         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
         <p className="text-text-muted text-xs">Loading...</p>
       </div>
@@ -110,9 +149,9 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
   if (weather.error) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-2">
-        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
-          <IconAlert className="w-6 h-6 text-red-500" />
-        </div>
+         <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
+           <AlertTriangle className="w-6 h-6 text-red-500" />
+         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
         <p className="text-text-muted text-xs text-center text-red-500">{weather.error}</p>
       </div>
@@ -138,7 +177,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
         className="p-2 text-text-muted hover:text-primary hover:bg-surface rounded-button transition-all duration-200 disabled:opacity-50"
         title="Refresh weather data"
       >
-        <IconRefresh className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
       </button>
     </div>
   )

@@ -1,6 +1,6 @@
-import { IconBookmark, IconWeather, IconAIChat, IconClock, IconX } from './Icons'
+import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar } from 'lucide-react'
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar'
 
 export interface WidgetTypeOption {
   type: WidgetType
@@ -20,25 +20,43 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
     type: 'bookmark',
     name: 'Bookmarks',
     description: 'Save and organize your favorite links',
-    icon: <IconBookmark className="w-7 h-7" />,
+    icon: <Bookmark className="w-7 h-7" />,
   },
   {
     type: 'weather',
     name: 'Weather',
     description: 'Get current weather for any city',
-    icon: <IconWeather className="w-7 h-7" />,
+    icon: <CloudSun className="w-7 h-7" />,
   },
   {
     type: 'ai-chat',
     name: 'AI Chat',
     description: 'Chat with AI using OpenAI or Straico',
-    icon: <IconAIChat className="w-7 h-7" />,
+    icon: <MessageSquare className="w-7 h-7" />,
   },
   {
     type: 'clock',
     name: 'Clock',
     description: 'Display current time for any timezone',
-    icon: <IconClock className="w-7 h-7" />,
+    icon: <Clock className="w-7 h-7" />,
+  },
+  {
+    type: 'todo',
+    name: 'To-Do List',
+    description: 'Manage tasks with tags, priorities & due dates',
+    icon: <CheckSquare className="w-7 h-7" />,
+  },
+  {
+    type: 'pomodoro',
+    name: 'Pomodoro',
+    description: 'Focus timer with work/break cycles',
+    icon: <Timer className="w-7 h-7" />,
+  },
+  {
+    type: 'calendar',
+    name: 'Calendar',
+    description: 'View your schedule with Google Calendar sync',
+    icon: <Calendar className="w-7 h-7" />,
   },
 ]
 
@@ -55,7 +73,7 @@ export function WidgetTypeSelector({ isOpen, onSelect, onCancel }: WidgetTypeSel
             className="p-2 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-200"
             aria-label="Close"
           >
-            <IconX className="w-5 h-5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
         <p className="text-text-secondary mb-6">Choose a widget type to add to your page</p>

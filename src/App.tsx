@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { applyTheme } from './utils/theme'
-import { IconLoader, IconPlus, IconEdit, IconTrash, IconGripVertical, IconPackage, IconAlert } from './components/Icons'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
 import { SettingsModal } from './components/SettingsModal'
+import { MoveWidgetDialog } from './components/MoveWidgetDialog'
 import { Header } from './components/Header'
 import { MainContainer } from './components/MainContainer'
 import type { Widget, WidgetType, Settings } from './types'
@@ -24,12 +25,30 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
     units: 'celsius',
   },
   'ai-chat': {
-    provider: 'openai',
-    model: 'gpt-3.5-turbo',
     messages: [],
   },
   bookmark: {
     bookmarks: [],
+  },
+  todo: {
+    items: [],
+    tags: [],
+    sortBy: 'manual',
+    filter: 'all',
+  },
+  pomodoro: {
+    focusDuration: 25,
+    shortBreakDuration: 5,
+    longBreakDuration: 15,
+    sessionsUntilLongBreak: 4,
+    autoStartBreaks: false,
+    soundEnabled: true,
+  },
+  calendar: {
+    viewMode: 'month',
+    firstDayOfWeek: 0,
+    showWeekNumbers: false,
+    googleConnected: false,
   },
 }
 
@@ -38,6 +57,9 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   weather: 'Weather',
   'ai-chat': 'AI Chat',
   bookmark: 'Bookmarks',
+  todo: 'Todo List',
+  pomodoro: 'Pomodoro',
+  calendar: 'Calendar',
 }
 
 function App() {
@@ -59,9 +81,12 @@ function App() {
   const [editingWidgetTitle, setEditingWidgetTitle] = useState('')
   const [showWidgetConfigModal, setShowWidgetConfigModal] = useState(false)
   const [configuringWidget, setConfiguringWidget] = useState<Widget | null>(null)
+  const [showMoveDialog, setShowMoveDialog] = useState(false)
+  const [widgetToMove, setWidgetToMove] = useState<string | null>(null)
   const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null)
-  const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ column: number; index: number } | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [settings, setSettings] = useState<Settings>({
     id: 'global-settings',
     theme: 'modern-light',
@@ -93,7 +118,17 @@ function App() {
       // Handle pages
       if (pagesResult.data && pagesResult.data.length > 0) {
         console.log('Loaded', pagesResult.data.length, 'pages from Chrome storage')
-        setPages(pagesResult.data)
+        
+        const migratedPages = pagesResult.data.map((page: any) => ({
+          ...page,
+          widgets: page.widgets.map((widget: Widget, index: number) => ({
+            ...widget,
+            column: widget.column ?? 0,
+            order: widget.order ?? index,
+          })),
+        }))
+        
+        setPages(migratedPages)
       } else {
         // Create default page and save to Chrome storage
         const defaultPage = {
@@ -511,11 +546,17 @@ function App() {
     const currentPage = pages[activePage]
     if (!currentPage) return
 
+    const columnCounts = getWidgetsByColumn(currentPage.widgets, settings.grid_columns)
+      .map(col => col.length)
+    const minCount = Math.min(...columnCounts)
+    const targetColumn = columnCounts.findIndex(count => count === minCount)
+
     const newWidget: Widget = {
       id: 'widget-' + Date.now(),
       type,
       page_id: currentPage.id,
-      order: currentPage.widgets.length,
+      column: targetColumn,
+      order: minCount,
       title: DEFAULT_WIDGET_TITLES[type],
       config: DEFAULT_WIDGET_CONFIGS[type],
       created_at: new Date().toISOString(),
@@ -528,16 +569,13 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    // Optimistic UI update - show widget immediately
     const previousPages = pages
     setPages(updatedPages)
     setShowWidgetSelector(false)
 
-    // Save to storage in background
     const result = await pagesStorage.set(updatedPages)
 
     if (!result.success) {
-      // Rollback on error
       console.error('Failed to add widget, rolling back:', result.error)
       setPages(previousPages)
     } else {
@@ -740,27 +778,128 @@ function App() {
     }
   }
 
-  // Widget Drag and Drop Handlers
-  const handleWidgetDragStart = (widgetId: string) => {
-    setDraggedWidgetId(widgetId)
+  const handleMoveWidget = (widgetId: string) => {
+    setWidgetToMove(widgetId)
+    setShowMoveDialog(true)
   }
 
-  const handleWidgetDragOver = (targetWidgetId: string) => {
-    // Don't show drag over if hovering over the dragged widget itself
-    if (draggedWidgetId && draggedWidgetId !== targetWidgetId) {
-      setDragOverWidgetId(targetWidgetId)
+  const handleConfirmMoveWidget = async (targetPageId: string) => {
+    if (!widgetToMove) return
+
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const widget = currentPage.widgets.find((w: Widget) => w.id === widgetToMove)
+    if (!widget) return
+
+    const targetPageIndex = pages.findIndex((p) => p.id === targetPageId)
+    if (targetPageIndex === -1) return
+
+    const targetPage = pages[targetPageIndex]
+    const targetColumnWidgets = targetPage.widgets.filter((w: Widget) => w.column === 0)
+    const maxOrder = targetColumnWidgets.length > 0
+      ? Math.max(...targetColumnWidgets.map((w: Widget) => w.order))
+      : -1
+
+    const movedWidget: Widget = {
+      ...widget,
+      page_id: targetPageId,
+      column: 0,
+      order: maxOrder + 1,
+    }
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: currentPage.widgets.filter((w: Widget) => w.id !== widgetToMove),
+      updated_at: new Date().toISOString(),
+    }
+    updatedPages[targetPageIndex] = {
+      ...targetPage,
+      widgets: [...targetPage.widgets, movedWidget],
+      updated_at: new Date().toISOString(),
+    }
+
+    const previousPages = pages
+    setPages(updatedPages)
+    setShowMoveDialog(false)
+    setWidgetToMove(null)
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      console.error('Failed to move widget, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Widget moved to another page in Chrome storage')
     }
   }
 
-  const handleWidgetDragLeave = () => {
-    // Clear drag over state when leaving a widget
-    setDragOverWidgetId(null)
+  const handleCancelMoveWidget = () => {
+    setShowMoveDialog(false)
+    setWidgetToMove(null)
   }
 
-  const handleWidgetDrop = async () => {
-    if (!draggedWidgetId || !dragOverWidgetId) return
-    if (draggedWidgetId === dragOverWidgetId) {
-      setDragOverWidgetId(null)
+  // Helper: Get widgets organized by column
+  const getWidgetsByColumn = useCallback((widgets: Widget[], numColumns: number): Widget[][] => {
+    const columns: Widget[][] = Array.from({ length: numColumns }, () => [])
+    const sortedWidgets = [...widgets].sort((a, b) => {
+      if (a.column !== b.column) return a.column - b.column
+      return a.order - b.order
+    })
+    sortedWidgets.forEach(widget => {
+      const col = Math.min(widget.column || 0, numColumns - 1)
+      columns[col].push(widget)
+    })
+    return columns
+  }, [])
+
+  // Widget Drag and Drop Handlers
+  const handleWidgetDragStart = (widgetId: string) => {
+    setDraggedWidgetId(widgetId)
+    setDropTarget(null)
+  }
+
+  const handleColumnDragOver = (e: React.DragEvent, column: number) => {
+    e.preventDefault()
+    if (!draggedWidgetId) return
+
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const columnWidgets = getWidgetsByColumn(currentPage.widgets, settings.grid_columns)[column]
+      .filter(w => w.id !== draggedWidgetId)
+
+    if (columnWidgets.length === 0) {
+      setDropTarget({ column, index: 0 })
+      return
+    }
+
+    const container = e.currentTarget
+    const containerRect = container.getBoundingClientRect()
+    const mouseY = e.clientY
+
+    let targetIndex = columnWidgets.length
+    for (let i = 0; i < columnWidgets.length; i++) {
+      const widgetEl = container.querySelector(`[data-widget-id="${columnWidgets[i].id}"]`)
+      if (widgetEl) {
+        const rect = widgetEl.getBoundingClientRect()
+        const midY = rect.top + rect.height / 2
+        if (mouseY < midY) {
+          targetIndex = i
+          break
+        }
+      }
+    }
+
+    setDropTarget({ column, index: targetIndex })
+  }
+
+  const handleColumnDrop = async (e: React.DragEvent, targetColumn: number) => {
+    e.preventDefault()
+    if (!draggedWidgetId || !dropTarget) {
+      setDraggedWidgetId(null)
+      setDropTarget(null)
       return
     }
 
@@ -769,22 +908,60 @@ function App() {
 
     const widgets = [...currentPage.widgets]
     const draggedIndex = widgets.findIndex((w: Widget) => w.id === draggedWidgetId)
-    const targetIndex = widgets.findIndex((w: Widget) => w.id === dragOverWidgetId)
 
-    if (draggedIndex === -1 || targetIndex === -1) {
+    if (draggedIndex === -1) {
       setDraggedWidgetId(null)
-      setDragOverWidgetId(null)
+      setDropTarget(null)
       return
     }
 
-    // Remove dragged widget and insert at new position
-    const [draggedWidget] = widgets.splice(draggedIndex, 1)
-    widgets.splice(targetIndex, 0, draggedWidget)
+    const draggedWidget = widgets[draggedIndex]
+    const oldColumn = draggedWidget.column || 0
 
-    // Update order field for all widgets
-    widgets.forEach((w: Widget, index: number) => {
-      w.order = index
-    })
+    const targetColumnWidgets = widgets
+      .filter(w => (w.column || 0) === targetColumn && w.id !== draggedWidgetId)
+      .sort((a, b) => a.order - b.order)
+
+    const insertIndex = Math.min(dropTarget.index, targetColumnWidgets.length)
+
+    widgets.splice(draggedIndex, 1)
+
+    const updatedWidget = { ...draggedWidget, column: targetColumn }
+    widgets.push(updatedWidget)
+
+    if (oldColumn === targetColumn) {
+      const columnWidgets = widgets.filter(w => (w.column || 0) === targetColumn).sort((a, b) => a.order - b.order)
+      const draggedFromOrder = draggedWidget.order
+      const targetOrder = insertIndex
+
+      columnWidgets.forEach(w => {
+        if (w.id === draggedWidget.id) return
+        const currentOrder = w.order
+        if (draggedFromOrder < targetOrder) {
+          if (currentOrder > draggedFromOrder && currentOrder <= targetOrder) {
+            w.order = currentOrder - 1
+          }
+        } else {
+          if (currentOrder >= targetOrder && currentOrder < draggedFromOrder) {
+            w.order = currentOrder + 1
+          }
+        }
+      })
+      updatedWidget.order = targetOrder
+    } else {
+      const newColumnWidgets = widgets.filter(w => (w.column || 0) === targetColumn)
+      newColumnWidgets.forEach(w => {
+        if (w.order >= insertIndex) {
+          w.order += 1
+        }
+      })
+      updatedWidget.order = insertIndex
+
+      const oldColumnWidgets = widgets.filter(w => (w.column || 0) === oldColumn)
+      oldColumnWidgets.sort((a, b) => a.order - b.order).forEach((w, idx) => {
+        w.order = idx
+      })
+    }
 
     const updatedPages = [...pages]
     updatedPages[activePage] = {
@@ -793,17 +970,14 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
-    // Optimistic UI update - show reorder immediately
     const previousPages = pages
     setPages(updatedPages)
     setDraggedWidgetId(null)
-    setDragOverWidgetId(null)
+    setDropTarget(null)
 
-    // Save to storage in background
     const result = await pagesStorage.set(updatedPages)
 
     if (!result.success) {
-      // Rollback on error
       console.error('Failed to reorder widgets, rolling back:', result.error)
       setPages(previousPages)
     } else {
@@ -813,7 +987,7 @@ function App() {
 
   const handleWidgetDragEnd = () => {
     setDraggedWidgetId(null)
-    setDragOverWidgetId(null)
+    setDropTarget(null)
   }
 
   const handleSettingsChange = (newSettings: Settings) => {
@@ -824,13 +998,50 @@ function App() {
   // Show loading state during initialization
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-background text-text flex items-center justify-center bg-gradient-mesh">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <IconLoader className="w-8 h-8 text-primary animate-spin" />
+      <div className="min-h-screen bg-background text-text bg-gradient-mesh">
+        {/* Header Skeleton */}
+        <header className="border-b border-border-subtle px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-24 bg-surface animate-pulse rounded"></div>
+            <div className="flex gap-2">
+              <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
+              <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
+            </div>
           </div>
-          <p className="text-text-secondary">Loading Browser Launchpad...</p>
-        </div>
+          {/* Page tabs skeleton */}
+          <div className="flex gap-2 mt-3">
+            <div className="h-10 w-20 bg-surface animate-pulse rounded-button"></div>
+            <div className="h-10 w-24 bg-surface animate-pulse rounded-button"></div>
+            <div className="h-10 w-16 bg-surface animate-pulse rounded-button"></div>
+          </div>
+        </header>
+        
+        {/* Main Content Skeleton */}
+        <main className="p-6">
+          <div 
+            className="grid gap-6"
+            style={{
+              gridTemplateColumns: `repeat(${settings.grid_columns}, minmax(0, 1fr))`
+            }}
+          >
+            {[...Array(6)].map((_, i) => (
+              <div 
+                key={i} 
+                className="glass-card rounded-card p-4 animate-pulse"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-5 w-24 bg-surface rounded"></div>
+                  <div className="h-6 w-6 bg-surface rounded"></div>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-20 bg-surface rounded"></div>
+                  <div className="h-4 w-3/4 bg-surface rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
@@ -839,22 +1050,27 @@ function App() {
     <div className="min-h-screen bg-background text-text">
       <Header
         storageVerified={storageVerified}
+        isEditMode={isEditMode}
         onSettingsClick={() => setShowSettings(true)}
+        onEditToggle={() => setIsEditMode(!isEditMode)}
       >
         {/* Page Navigation */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex justify-between items-center mt-3">
+          <div className="flex gap-2 flex-wrap">
           {pages.map((page, index) => (
             <div
               key={page.id}
-              draggable={editingPageId !== page.id}
+              draggable={isEditMode && editingPageId !== page.id}
               onDragStart={(e) => handleDragStart(e, page.id)}
               onDragOver={(e) => handleDragOver(e, page.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, page.id)}
               onDragEnd={handleDragEnd}
-              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out cursor-move ${
+              className={`group relative flex items-center rounded-button transition-all duration-200 ease-in-out ${
+                isEditMode ? 'cursor-move' : ''
+              } ${
                 activePage === index
-                  ? 'bg-primary text-white font-semibold shadow-md'
+                  ? 'bg-primary text-[var(--color-on-primary)] font-semibold shadow-md'
                   : 'bg-background text-text hover:bg-surface'
               } ${
                 draggedPageId === page.id
@@ -863,6 +1079,10 @@ function App() {
               } ${
                 dragOverPageId === page.id && draggedPageId !== page.id
                   ? 'shadow-md scale-105 border-2 border-primary'
+                  : ''
+              } ${
+                isEditMode && activePage === index
+                  ? 'ring-2 ring-primary/30'
                   : ''
               }`}
             >
@@ -873,73 +1093,87 @@ function App() {
                   onChange={(e) => setEditingPageName(e.target.value)}
                   onKeyDown={(e) => handleRenameKeyDown(e, page.id)}
                   onBlur={() => handleSaveRename(page.id)}
-                  className="px-3 py-2 bg-white text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="px-3 py-2 bg-surface text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                   maxLength={50}
                 />
               ) : (
                 <>
-                  {/* Drag handle */}
-                  <div className="absolute left-0 top-0 bottom-0 px-1 flex items-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
-                    <span className="text-lg">⋮⋮</span>
-                  </div>
+                  {isEditMode && (
+                    <div className="px-1 flex items-center cursor-grab active:cursor-grabbing text-lg opacity-50 hover:opacity-100 transition-opacity">
+                      <span>⋮⋮</span>
+                    </div>
+                  )}
                   <button
                     onClick={() => setActivePage(index)}
-                    onDoubleClick={() => handleStartRename(page.id, page.name)}
-                    className="px-4 py-2 min-w-[80px] pl-6"
+                    onDoubleClick={isEditMode ? () => handleStartRename(page.id, page.name) : undefined}
+                    className={`px-3 py-2 min-w-[60px]`}
                   >
                     {page.name}
                   </button>
-                  {/* Action buttons - shown on hover */}
-                  <div className="absolute right-0 top-0 hidden group-hover:flex items-center h-full">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleStartRename(page.id, page.name)
-                      }}
-                      className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors"
-                      title="Rename page (double-click)"
-                    >
-                      <IconEdit className="w-4 h-4" />
-                    </button>
-                    {pages.length > 1 && (
+                  {isEditMode && (
+                    <div className="flex items-center pr-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleStartDelete(page.id)
+                          handleStartRename(page.id, page.name)
                         }}
-                        className="px-2 py-2 hover:bg-black/10 rounded-r-button transition-colors hover:text-red-500"
-                        title="Delete page"
+                        className="p-1.5 hover:bg-black/10 rounded transition-colors opacity-50 hover:opacity-100"
+                        title="Rename page"
                       >
-                        <IconTrash className="w-4 h-4" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </div>
+                      {pages.length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleStartDelete(page.id)
+                          }}
+                          className="p-1.5 hover:bg-black/10 rounded transition-colors hover:text-red-500 opacity-50 hover:opacity-100"
+                          title="Delete page"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
           ))}
-          <div className="relative">
-            <button
-              onClick={handleAddPage}
-              disabled={pages.length >= MAX_PAGES}
-              className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out flex items-center gap-2 ${
-                pages.length >= MAX_PAGES
-                  ? 'bg-surface text-text-muted border border-border cursor-not-allowed opacity-50'
-                  : 'btn-secondary'
-              }`}
-              title={pages.length >= MAX_PAGES ? `Maximum ${MAX_PAGES} pages allowed` : 'Add a new page'}
-            >
-              <IconPlus className="w-4 h-4" />
-              Add Page
-            </button>
-            {showLimitMessage && (
-              <div className="absolute top-full mt-2 left-0 glass-card px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap flex items-center gap-2 text-amber-600 border-amber-500/20">
-                <IconAlert className="w-4 h-4" />
-                Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
-              </div>
-            )}
+          {isEditMode && (
+            <div className="relative">
+              <button
+                onClick={handleAddPage}
+                disabled={pages.length >= MAX_PAGES}
+                className={`px-4 py-2 rounded-button transition-all duration-200 ease-in-out flex items-center gap-2 ${
+                  pages.length >= MAX_PAGES
+                    ? 'bg-surface text-text-muted border border-border cursor-not-allowed opacity-50'
+                    : 'btn-secondary'
+                }`}
+                title={pages.length >= MAX_PAGES ? `Maximum ${MAX_PAGES} pages allowed` : 'Add a new page'}
+              >
+                <Plus className="w-4 h-4" />
+                Add Page
+              </button>
+              {showLimitMessage && (
+                <div className="absolute top-full mt-2 left-0 glass-card px-3 py-2 rounded-button text-sm shadow-lg animate-fade-in z-50 whitespace-nowrap flex items-center gap-2 text-amber-600 border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4" />
+                  Maximum page limit reached ({MAX_PAGES} pages). Delete a page to add more.
+                </div>
+              )}
+            </div>
+          )}
           </div>
+          {isEditMode && (
+            <button
+              onClick={handleAddWidget}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Widget
+            </button>
+          )}
         </div>
 
         {/* Delete Confirmation Modal */}
@@ -948,7 +1182,7 @@ function App() {
             <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-slide-up">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <IconTrash className="w-5 h-5 text-red-500" />
+                  <Trash2 className="w-5 h-5 text-red-500" />
                 </div>
                 <h3 className="text-lg font-semibold">Delete Page?</h3>
               </div>
@@ -982,69 +1216,80 @@ function App() {
           {pages[activePage] && pages[activePage].widgets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                <IconPackage className="w-8 h-8 text-primary" />
+                <Package className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-xl font-semibold mb-2">No widgets yet</h2>
-              <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
-              <button
-                onClick={handleAddWidget}
-                className="btn-primary flex items-center gap-2"
-              >
-                <IconPlus className="w-4 h-4" />
-                Add Widget
-              </button>
+              {isEditMode ? (
+                <>
+                  <p className="text-text-secondary mb-4">Add widgets to customize your dashboard</p>
+                  <button
+                    onClick={handleAddWidget}
+                    className="btn-primary flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Widget
+                  </button>
+                </>
+              ) : (
+                <p className="text-text-secondary">Enter edit mode to add widgets</p>
+              )}
             </div>
           ) : (
-            <>
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={handleAddWidget}
-                  className="btn-primary flex items-center gap-2"
-                >
-                  <IconPlus className="w-4 h-4" />
-                  Add Widget
-                </button>
-              </div>
-              <div
-                className={`grid ${
-                  settings.grid_columns === 1
-                    ? 'grid-cols-1'
-                    : settings.grid_columns === 2
-                    ? 'grid-cols-1 md:grid-cols-2'
-                    : settings.grid_columns === 3
-                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                    : settings.grid_columns === 4
-                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                    : settings.grid_columns === 5
-                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
-                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
-                }`}
-                style={{ gap: `${settings.grid_gap}px` }}
-              >
-                {pages[activePage]?.widgets.map((widget: Widget) => (
-                  <WidgetCard
-                    key={widget.id}
-                    widget={widget}
-                    onEdit={handleEditWidget}
-                    onEditTitle={handleEditWidgetTitle}
-                    onDelete={handleDeleteWidget}
-                    onConfigChange={handleWidgetConfigChange}
-                    editingWidgetId={editingWidgetId}
-                    editingWidgetTitle={editingWidgetTitle}
-                    onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
-                    onSaveTitle={handleSaveWidgetTitle}
-                    onTitleKeyDown={handleWidgetTitleKeyDown}
-                    draggedWidgetId={draggedWidgetId}
-                    dragOverWidgetId={dragOverWidgetId}
-                    onDragStart={handleWidgetDragStart}
-                    onDragOver={handleWidgetDragOver}
-                    onDragLeave={handleWidgetDragLeave}
-                    onDrop={handleWidgetDrop}
-                    onDragEnd={handleWidgetDragEnd}
-                  />
-                ))}
-              </div>
-            </>
+            <div 
+              className="columns-container"
+              style={{ gap: `${settings.grid_gap}px` }}
+            >
+              {Array.from({ length: settings.grid_columns }).map((_, columnIndex) => {
+                const columnWidgets = getWidgetsByColumn(
+                  pages[activePage]?.widgets || [],
+                  settings.grid_columns
+                )[columnIndex] || []
+                
+                return (
+                  <div
+                    key={columnIndex}
+                    className="column"
+                    style={{ gap: `${settings.grid_gap}px` }}
+                    onDragOver={(e) => handleColumnDragOver(e, columnIndex)}
+                    onDrop={(e) => handleColumnDrop(e, columnIndex)}
+                  >
+                    {columnWidgets.map((widget, index) => (
+                      <div key={widget.id} data-widget-id={widget.id}>
+                        {draggedWidgetId && 
+                         dropTarget?.column === columnIndex && 
+                         dropTarget?.index === index && (
+                          <div className="drop-indicator" style={{ marginBottom: `${settings.grid_gap}px` }} />
+                        )}
+                        <div style={{ marginBottom: `${settings.grid_gap}px` }}>
+                           <WidgetCard
+                              widget={widget}
+                              pageWidgets={pages[activePage]?.widgets || []}
+                              onEdit={handleEditWidget}
+                              onEditTitle={handleEditWidgetTitle}
+                              onMove={handleMoveWidget}
+                              onDelete={handleDeleteWidget}
+                              onConfigChange={handleWidgetConfigChange}
+                              editingWidgetId={editingWidgetId}
+                              editingWidgetTitle={editingWidgetTitle}
+                              onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
+                              onSaveTitle={handleSaveWidgetTitle}
+                              onTitleKeyDown={handleWidgetTitleKeyDown}
+                              draggedWidgetId={draggedWidgetId}
+                              onDragStart={handleWidgetDragStart}
+                              onDragEnd={handleWidgetDragEnd}
+                            />
+                         </div>
+                      </div>
+                    ))}
+                    {draggedWidgetId && 
+                     dropTarget?.column === columnIndex && 
+                     dropTarget?.index === columnWidgets.length && (
+                      <div className="drop-indicator" />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
       </MainContainer>
@@ -1062,6 +1307,16 @@ function App() {
         widget={configuringWidget}
         onSave={handleSaveWidgetConfig}
         onCancel={handleCancelWidgetConfig}
+        onOpenSettings={() => setShowSettings(true)}
+      />
+
+      {/* Move Widget Dialog */}
+      <MoveWidgetDialog
+        isOpen={showMoveDialog}
+        pages={pages}
+        currentPageId={pages[activePage]?.id}
+        onSelect={handleConfirmMoveWidget}
+        onCancel={handleCancelMoveWidget}
       />
 
       {/* Settings Modal */}

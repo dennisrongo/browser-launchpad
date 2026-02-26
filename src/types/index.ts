@@ -1,3 +1,5 @@
+import type { ThemeName } from '../utils/theme'
+
 export interface Page {
   id: string
   name: string
@@ -7,12 +9,13 @@ export interface Page {
   updated_at: string
 }
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar'
 
 export interface Widget {
   id: string
   type: WidgetType
   page_id: string
+  column: number
   order: number
   title: string
   config: WidgetConfig
@@ -24,6 +27,9 @@ export type WidgetConfig =
   | WeatherWidgetConfig
   | AIChatWidgetConfig
   | ClockWidgetConfig
+  | TodoWidgetConfig
+  | PomodoroWidgetConfig
+  | CalendarWidgetConfig
 
 export interface BookmarkWidgetConfig {
   bookmarks: Bookmark[]
@@ -42,18 +48,12 @@ export interface WeatherWidgetConfig {
   apiKey?: string
 }
 
-export interface AIChatModel {
-  id: string
-  name: string
-}
-
 export interface AIChatWidgetConfig {
-  provider: 'openai' | 'straico'
-  model: string
+  messages: ChatMessage[]
+  provider?: 'openai' | 'straico'
   openaiApiKey?: string
   straicoApiKey?: string
-  straicoModels?: AIChatModel[]
-  messages: ChatMessage[]
+  model?: string
 }
 
 export interface ClockWidgetConfig {
@@ -64,9 +64,74 @@ export interface ClockWidgetConfig {
   fontSize?: 'small' | 'medium' | 'large' | 'xlarge'
 }
 
+export interface TodoTag {
+  id: string
+  name: string
+  color: string
+}
+
+export interface TodoItem {
+  id: string
+  text: string
+  completed: boolean
+  priority: 'low' | 'medium' | 'high'
+  tagIds: string[]
+  dueDate?: string
+  archived: boolean
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TodoWidgetConfig {
+  items: TodoItem[]
+  tags: TodoTag[]
+  sortBy: 'manual' | 'priority' | 'dueDate'
+  filter: 'all' | 'active' | 'completed' | 'archived'
+}
+
+export interface PomodoroWidgetConfig {
+  focusDuration: number
+  shortBreakDuration: number
+  longBreakDuration: number
+  sessionsUntilLongBreak: number
+  autoStartBreaks: boolean
+  soundEnabled: boolean
+}
+
+export interface CalendarWidgetConfig {
+  viewMode: 'month' | 'week'
+  firstDayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  showWeekNumbers: boolean
+  googleConnected: boolean
+  googleTokens?: {
+    access_token: string
+    refresh_token?: string
+    expires_at: number
+  }
+  selectedCalendars?: string[]
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  colorId?: string
+  calendarId?: string
+}
+
+export interface GoogleCalendar {
+  id: string
+  summary: string
+  primary?: boolean
+  backgroundColor?: string
+}
+
 export interface Settings {
   id: string
-  theme: 'modern-light' | 'dark-elegance'
+  theme: ThemeName
   grid_columns: number
   grid_gap: number
   created_at: string
@@ -75,7 +140,7 @@ export interface Settings {
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
 }
