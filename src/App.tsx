@@ -214,6 +214,12 @@ function App() {
   // Keyboard navigation for pages
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement
+      const isEditable = target.tagName === 'INPUT' || 
+                         target.tagName === 'TEXTAREA' || 
+                         target.isContentEditable
+      if (isEditable) return
+
       if (event.key === 'ArrowRight') {
         event.preventDefault()
         setActivePage((prev) => {
