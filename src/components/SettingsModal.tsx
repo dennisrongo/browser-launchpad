@@ -124,6 +124,17 @@ const themeOptions: ThemeOption[] = [
     surface: '#180510',
     isDark: true,
   },
+  {
+    id: 'sage-meadow',
+    name: 'Sage Meadow',
+    description: 'Sage green with teal accents on charcoal',
+    primary: '#70936c',
+    secondary: '#619e66',
+    accent: '#46b972',
+    neutral: '#757a8a',
+    surface: '#17181c',
+    isDark: true,
+  },
 ]
 import type { Settings } from '../types'
 

@@ -9,6 +9,7 @@ export type ThemeName =
   | 'arctic-frost'
   | 'crimson-night'
   | 'plum-blossom'
+  | 'sage-meadow'
 
 const allThemes: ThemeName[] = [
   'modern-light',
@@ -21,6 +22,7 @@ const allThemes: ThemeName[] = [
   'arctic-frost',
   'crimson-night',
   'plum-blossom',
+  'sage-meadow',
 ]
 
 export function applyTheme(theme: ThemeName): void {

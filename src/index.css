@@ -243,6 +243,30 @@
     --glass-border: rgba(141, 12, 94, 0.5);
   }
 
+  [data-theme="sage-meadow"] {
+    --color-primary: #70936c;
+    --color-primary-light: #8da88a;
+    --color-on-primary: #ffffff;
+    --color-secondary: #619e66;
+    --color-secondary-light: #81b185;
+    --color-on-secondary: #ffffff;
+    --color-accent: #46b972;
+    --color-accent-light: #6bc78e;
+    --color-neutral: #757a8a;
+    --color-neutral-light: #9195a1;
+    --color-background: #17181c;
+    --color-surface: rgba(31, 33, 39, 0.92);
+    --color-surface-elevated: #2f3137;
+    --color-text: #f1f2f3;
+    --color-text-secondary: #c8cad0;
+    --color-text-muted: #9195a1;
+    --color-border: rgba(70, 73, 83, 0.8);
+    --color-border-subtle: rgba(100, 103, 113, 0.4);
+    --glass-blur: 16px;
+    --glass-bg: rgba(31, 33, 39, 0.85);
+    --glass-border: rgba(70, 73, 83, 0.5);
+  }
+
   * {
     @apply border-border;
   }
