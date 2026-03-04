@@ -1,6 +1,6 @@
 import { useState, memo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus } from 'lucide-react'
+import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText } from 'lucide-react'
 import { Widget } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
@@ -9,6 +9,7 @@ import { AIChatWidget } from '../widgets/AIChatWidget'
 import { TodoWidget } from '../widgets/TodoWidget'
 import { PomodoroWidget } from '../widgets/PomodoroWidget'
 import { CalendarWidget } from '../widgets/CalendarWidget'
+import { NotesWidget } from '../widgets/NotesWidget'
 
 interface WidgetCardProps {
   widget: Widget
@@ -55,9 +56,20 @@ function WidgetCardComponent({
   const updateMenuPosition = () => {
     if (menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect()
+      const menuWidth = 176
+      const padding = 8
+      
+      let left = rect.right - menuWidth
+      
+      if (left < padding) {
+        left = padding
+      } else if (left + menuWidth > window.innerWidth - padding) {
+        left = window.innerWidth - menuWidth - padding
+      }
+      
       setMenuPosition({
         top: rect.bottom + 4,
-        left: rect.right - 176,
+        left,
       })
     }
   }
@@ -112,6 +124,14 @@ function WidgetCardComponent({
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
           />
         )
+      case 'notes':
+        return (
+          <NotesWidget
+            title={widget.title}
+            config={widget.config as any}
+            onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+          />
+        )
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full">
@@ -140,6 +160,8 @@ function WidgetCardComponent({
         return <Timer className="w-4 h-4" />
       case 'calendar':
         return <Calendar className="w-4 h-4" />
+      case 'notes':
+        return <FileText className="w-4 h-4" />
       default:
         return <Package className="w-4 h-4" />
     }
@@ -154,9 +176,6 @@ function WidgetCardComponent({
 
   return (
     <div
-      draggable={!isEditing}
-      onDragStart={() => onDragStart?.(widget.id)}
-      onDragEnd={() => onDragEnd?.()}
       style={{ contain: 'layout style paint' }}
       className={`
         group relative glass-card rounded-card
@@ -166,7 +185,12 @@ function WidgetCardComponent({
       `}
     >
       {!isEditing && (
-        <div className="absolute top-3 left-3 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div
+          draggable
+          onDragStart={() => onDragStart?.(widget.id)}
+          onDragEnd={() => onDragEnd?.()}
+          className="absolute top-3 left-3 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        >
           <GripVertical className="w-4 h-4 text-text-muted" />
         </div>
       )}
