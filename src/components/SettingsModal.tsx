@@ -113,6 +113,17 @@ const themeOptions: ThemeOption[] = [
     surface: '#110d26',
     isDark: true,
   },
+  {
+    id: 'plum-blossom',
+    name: 'Plum Blossom',
+    description: 'Rich plum with warm peach',
+    primary: '#ef43b0',
+    secondary: '#d260a4',
+    accent: '#ff7700',
+    neutral: '#9f2d71',
+    surface: '#180510',
+    isDark: true,
+  },
 ]
 import type { Settings } from '../types'
 
@@ -417,13 +428,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     try {
       const allData = await chrome.storage.local.get(null)
       let exportData = { ...allData }
-      if (!includeApiKeysInExport && exportData.ai_config) {
-        const aiConfig = exportData.ai_config as AIProviderConfig
-        exportData = { ...exportData, ai_config: { ...aiConfig, openai: { ...aiConfig.openai, apiKey: '' }, straico: { ...aiConfig.straico, apiKey: '' } } }
-        console.log('⚠️ API keys excluded from export')
-      }
-      if (!includeApiKeysInExport && exportData.weather_config) {
-        exportData = { ...exportData, weather_config: { ...exportData.weather_config, apiKey: '' } }
+      if (!includeApiKeysInExport) {
+        if (exportData.ai_config) {
+          const aiConfig = exportData.ai_config as AIProviderConfig
+          exportData = { ...exportData, ai_config: { ...aiConfig, openai: { ...aiConfig.openai, apiKey: '' }, straico: { ...aiConfig.straico, apiKey: '' } } }
+        }
+        if (exportData.weather_config) {
+          exportData = { ...exportData, weather_config: { ...exportData.weather_config, apiKey: '' } }
+        }
+        if (exportData.google_calendar_config) {
+          exportData = { ...exportData, google_calendar_config: { ...exportData.google_calendar_config, clientId: '' } }
+        }
+        delete exportData.google_calendar_tokens
+        delete exportData.google_calendars
+        console.log('⚠️ API keys and OAuth tokens excluded from export')
       }
       const finalExportData = { version: '1.0.0', exportDate: new Date().toISOString(), data: exportData }
       const jsonString = JSON.stringify(finalExportData, null, 2)
@@ -450,14 +468,37 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
   const handleImportClick = () => { fileInputRef.current?.click() }
 
+  const VALID_WIDGET_TYPES = ['bookmark', 'weather', 'ai-chat', 'clock', 'todo', 'pomodoro', 'calendar', 'notes'] as const
+
   const validateImportData = (importData: any): { valid: boolean; error?: string } => {
     if (!importData || typeof importData !== 'object') return { valid: false, error: 'Invalid file: not a valid JSON object' }
     if (!importData.version) return { valid: false, error: 'Invalid file: missing version information' }
-    if (importData.version !== '1.0.0') return { valid: false, error: 'Incompatible version: ' + importData.version + '. This extension supports version 1.0.0' }
+    const versionParts = importData.version.split('.')
+    if (versionParts.length !== 3 || !versionParts.every((p: string) => /^\d+$/.test(p))) {
+      return { valid: false, error: 'Invalid version format. Expected semver (e.g., 1.0.0)' }
+    }
+    const [major] = versionParts.map(Number)
+    if (major !== 1) return { valid: false, error: 'Incompatible version: ' + importData.version + '. This extension supports version 1.x.x' }
     if (!importData.data || typeof importData.data !== 'object') return { valid: false, error: 'Invalid file: missing or invalid data section' }
     const data = importData.data
     const hasValidStructure = Array.isArray(data.pages) || (typeof data.settings === 'object' && data.settings !== null) || typeof data.ai_config === 'object'
     if (!hasValidStructure) return { valid: false, error: 'Invalid file: data does not contain valid pages, settings, or configuration' }
+    if (Array.isArray(data.pages)) {
+      for (let i = 0; i < data.pages.length; i++) {
+        const page = data.pages[i]
+        if (!page || typeof page !== 'object') return { valid: false, error: `Invalid page at index ${i}: not a valid object` }
+        if (typeof page.id !== 'string' || !page.id) return { valid: false, error: `Invalid page at index ${i}: missing or invalid id` }
+        if (typeof page.name !== 'string') return { valid: false, error: `Invalid page "${page.id}": missing or invalid name` }
+        if (!Array.isArray(page.widgets)) return { valid: false, error: `Invalid page "${page.id}": widgets must be an array` }
+        for (let j = 0; j < page.widgets.length; j++) {
+          const widget = page.widgets[j]
+          if (!widget || typeof widget !== 'object') return { valid: false, error: `Invalid widget at index ${j} in page "${page.id}": not a valid object` }
+          if (typeof widget.id !== 'string' || !widget.id) return { valid: false, error: `Invalid widget at index ${j} in page "${page.id}": missing or invalid id` }
+          if (!VALID_WIDGET_TYPES.includes(widget.type)) return { valid: false, error: `Invalid widget "${widget.id}": unknown type "${widget.type}". Valid types: ${VALID_WIDGET_TYPES.join(', ')}` }
+          if (typeof widget.title !== 'string') return { valid: false, error: `Invalid widget "${widget.id}": missing or invalid title` }
+        }
+      }
+    }
     const dataString = JSON.stringify(data)
     const maliciousPatterns = [/<script[^>]*>/i, /javascript:/i, /on\w+\s*=/i, /<iframe/i, /<embed/i, /<object/i, /eval\s*\(/i, /document\.write/i, /fromCharCode/i, /\\u003c/i, /&#60;/]
     for (const pattern of maliciousPatterns) {
@@ -478,41 +519,127 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   }
 
   const handleConfirmImport = async () => {
-    if (!pendingImportData) return
+    if (!pendingImportData || !pendingImportData.data) {
+      console.warn('[Import] No pending import data')
+      return
+    }
+    
+    const importData = pendingImportData.data
+    const BACKUP_KEY = '__import_backup__'
+    let backupData: Record<string, unknown> | null = null
+    
+    setShowImportConfirm(false)
+    
     try {
+      console.log('[Import] Starting...')
+      
+      const existingData = await chrome.storage.local.get(null)
+      const hasExistingData = existingData && Object.keys(existingData).length > 0
+      console.log('[Import] Has existing data:', hasExistingData)
+      
+      if (hasExistingData) {
+        backupData = { ...existingData }
+        await chrome.storage.local.set({ [BACKUP_KEY]: backupData })
+        console.log('[Import] Backup created')
+      }
+      
       if (importMode === 'replace') {
+        console.log('[Import] Replace mode - clearing and setting data')
         await chrome.storage.local.clear()
-        await chrome.storage.local.set(pendingImportData)
-        console.log('✓ Data imported successfully (replace mode)')
+        await chrome.storage.local.set(importData)
+        console.log('[Import] Data set successfully')
       } else {
-        const existingData = await chrome.storage.local.get(null)
-        const existingPages = (existingData.pages as any[]) || []
-        const importPages = (pendingImportData.pages as any[]) || []
-        const existingPageMap = new Map(existingPages.map((p: any) => [p.id, p]))
+        console.log('[Import] Merge mode')
+        const currentData = await chrome.storage.local.get(null)
+        delete currentData[BACKUP_KEY]
+        
+        const existingPages = (currentData.pages as any[]) || []
+        const importPages = (importData.pages as any[]) || []
+        
         const mergedPages = [...existingPages]
-        for (const importPage of importPages) { if (!existingPageMap.has(importPage.id)) mergedPages.push(importPage) }
-        const mergedData = { ...existingData, ...pendingImportData, pages: mergedPages }
+        const existingPageIds = new Set(existingPages.map(p => p.id))
+        
+        for (const importPage of importPages) {
+          if (existingPageIds.has(importPage.id)) {
+            const idx = mergedPages.findIndex(p => p.id === importPage.id)
+            if (idx >= 0) {
+              const existingWidgets = mergedPages[idx].widgets || []
+              const importWidgets = importPage.widgets || []
+              const existingWidgetIds = new Set(existingWidgets.map((w: any) => w.id))
+              const mergedWidgets = [...existingWidgets]
+              for (const widget of importWidgets) {
+                if (!existingWidgetIds.has(widget.id)) {
+                  mergedWidgets.push(widget)
+                }
+              }
+              mergedPages[idx] = {
+                ...mergedPages[idx],
+                ...importPage,
+                widgets: mergedWidgets,
+                updated_at: new Date().toISOString()
+              }
+            }
+          } else {
+            mergedPages.push(importPage)
+          }
+        }
+        
+        const mergedData = { ...currentData, ...importData, pages: mergedPages }
         await chrome.storage.local.clear()
         await chrome.storage.local.set(mergedData)
-        console.log('✓ Data imported successfully (merge mode)')
+        console.log('[Import] Merge complete')
       }
-      setImportStatus({ type: 'success', message: `Data imported successfully! (${importMode} mode) Reloading...` })
-      setShowImportConfirm(false)
-      setTimeout(() => { window.location.reload() }, 1500)
+      
+      if (backupData) {
+        try {
+          await chrome.storage.local.remove(BACKUP_KEY)
+          console.log('[Import] Backup cleared')
+        } catch (e) {
+          console.warn('[Import] Backup cleanup failed (non-critical):', e)
+        }
+      }
+      
+      setImportStatus({ 
+        type: 'success', 
+        message: `Data imported successfully! (${importMode} mode) Reloading...` 
+      })
+      setPendingImportData(null)
+      setImportMode('replace')
+      
+      console.log('[Import] Success - reloading in 1.5s')
+      setTimeout(() => window.location.reload(), 1500)
+      
     } catch (error) {
-      console.error('Failed to import data:', error)
+      console.error('[Import] Error:', error)
+      
       let errorMessage = 'Failed to import data'
       if (error instanceof Error) {
-        if (error.message.includes('QuotaExceededError')) errorMessage = 'Storage quota exceeded. The data is too large to import.'
-        else if (error.message.includes('DataCloneError')) errorMessage = 'Invalid data format in import file.'
-        else errorMessage = `Import failed: ${error.message}`
+        if (error.message.includes('QuotaExceededError')) {
+          errorMessage = 'Storage quota exceeded. The data is too large to import.'
+        } else if (error.message.includes('DataCloneError')) {
+          errorMessage = 'Invalid data format in import file.'
+        } else {
+          errorMessage = `Import failed: ${error.message}`
+        }
       }
+      
+      if (backupData) {
+        try {
+          console.log('[Import] Restoring backup...')
+          await chrome.storage.local.clear()
+          await chrome.storage.local.set(backupData)
+          await chrome.storage.local.remove(BACKUP_KEY)
+          errorMessage += ' Your data has been restored.'
+        } catch (e) {
+          console.error('[Import] Restore failed:', e)
+          errorMessage += ' Could not restore backup.'
+        }
+      }
+      
       setImportStatus({ type: 'error', message: errorMessage })
-      setShowImportConfirm(false)
-      setTimeout(() => setImportStatus({ type: null, message: '' }), 7000)
+      setPendingImportData(null)
+      setImportMode('replace')
     }
-    setPendingImportData(null)
-    setImportMode('replace')
   }
 
   const handleCancelImport = () => { setShowImportConfirm(false); setPendingImportData(null); setImportMode('replace') }
@@ -523,10 +650,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     try {
       const MAX_FILE_SIZE = 10 * 1024 * 1024
       if (file.size > MAX_FILE_SIZE) throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 10MB.`)
-      if (!file.name.endsWith('.json') && file.type !== 'application/json') throw new Error('Invalid file type. Please select a JSON file (.json).')
       const text = await file.text()
       let importData
-      try { importData = JSON.parse(text) } catch (parseError) { throw new Error('Invalid JSON syntax. Please check the file format.') }
+      try { 
+        importData = JSON.parse(text) 
+      } catch (parseError) { 
+        const fileName = file.name || 'unknown'
+        const fileType = file.type || 'unknown'
+        throw new Error(`Invalid JSON syntax in "${fileName}" (type: ${fileType}). Please select a valid JSON file.`)
+      }
       const validation = validateImportData(importData)
       if (!validation.valid) throw new Error(validation.error || 'Invalid import file format')
       setPendingImportData(importData)
@@ -551,22 +683,22 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={handleBackdropClick}>
-      <div className="glass-modal rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in scrollbar-thin">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4" onClick={handleBackdropClick}>
+      <div className="glass-modal rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-modal-in scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gradient">Settings</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gradient">Settings</h2>
           <button onClick={handleCancel} className="p-2 text-text-muted hover:text-text hover:bg-surface rounded-button transition-all duration-150" aria-label="Close settings">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 mb-6 p-1 bg-surface/50 rounded-lg">
+        <div className="flex gap-1 mb-6 p-1 bg-surface/50 rounded-lg overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-button transition-all duration-150 ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-button transition-all duration-150 whitespace-nowrap ${
                 activeTab === tab.id ? 'bg-primary text-[var(--color-on-primary)] shadow-sm' : 'text-text-secondary hover:text-text hover:bg-surface'
               }`}
             >
@@ -614,20 +746,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                       setSettings(updatedSettings)
                       onSettingsChange(updatedSettings)
                     }}
-                    className={`p-4 rounded-card border-2 transition-all duration-200 text-left ${
+                    className={`p-3 sm:p-4 rounded-card border-2 transition-all duration-200 text-left ${
                       theme === themeOption.id ? 'border-primary bg-primary/5 shadow-glow-primary' : 'border-border hover:border-primary/40 hover:bg-surface/50'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <div className="font-semibold mb-1">{themeOption.name}</div>
-                        <div className="text-sm text-text-secondary">{themeOption.description}</div>
+                        <div className="text-sm text-text-secondary truncate">{themeOption.description}</div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-shrink-0">
                         {[themeOption.primary, themeOption.secondary, themeOption.accent, themeOption.neutral, themeOption.surface].map((color, idx) => (
                           <div
                             key={idx}
-                            className="w-4 h-4 rounded-full shadow-sm ring-1 ring-black/10"
+                            className="w-3 h-3 sm:w-4 sm:h-4 rounded-full shadow-sm ring-1 ring-black/10"
                             style={{ backgroundColor: color }}
                           />
                         ))}

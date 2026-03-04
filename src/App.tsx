@@ -50,6 +50,9 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
     showWeekNumbers: false,
     googleConnected: false,
   },
+  notes: {
+    content: '',
+  },
 }
 
 const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
@@ -60,6 +63,7 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   todo: 'Todo List',
   pomodoro: 'Pomodoro',
   calendar: 'Calendar',
+  notes: 'Notes',
 }
 
 function App() {
@@ -1000,7 +1004,7 @@ function App() {
     return (
       <div className="min-h-screen bg-background text-text bg-gradient-mesh">
         {/* Header Skeleton */}
-        <header className="border-b border-border-subtle px-6 py-3">
+        <header className="border-b border-border-subtle px-4 sm:px-6 py-2 sm:py-3">
           <div className="flex items-center justify-between">
             <div className="h-4 w-24 bg-surface animate-pulse rounded"></div>
             <div className="flex gap-2">
@@ -1017,12 +1021,9 @@ function App() {
         </header>
         
         {/* Main Content Skeleton */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           <div 
-            className="grid gap-6"
-            style={{
-              gridTemplateColumns: `repeat(${settings.grid_columns}, minmax(0, 1fr))`
-            }}
+            className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           >
             {[...Array(6)].map((_, i) => (
               <div 
@@ -1055,8 +1056,8 @@ function App() {
         onEditToggle={() => setIsEditMode(!isEditMode)}
       >
         {/* Page Navigation */}
-        <div className="flex justify-between items-center mt-3">
-          <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-3">
+          <div className="flex gap-2 flex-wrap overflow-x-auto scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
           {pages.map((page, index) => (
             <div
               key={page.id}
@@ -1168,47 +1169,13 @@ function App() {
           {isEditMode && (
             <button
               onClick={handleAddWidget}
-              className="btn-primary flex items-center gap-2"
+              className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               Add Widget
             </button>
           )}
         </div>
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-            <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-modal-in">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </div>
-                <h3 className="text-lg font-semibold">Delete Page?</h3>
-              </div>
-              <p className="text-text-secondary mb-6">
-                Are you sure you want to delete this page? This action cannot be undone.
-                {pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets &&
-                  pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets.length > 0 &&
-                  ' All widgets on this page will also be deleted.'}
-              </p>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={handleCancelDelete}
-                  className="btn-ghost"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-all duration-150 active:scale-98"
-                >
-                  Delete Page
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </Header>
 
       <MainContainer>
@@ -1326,10 +1293,44 @@ function App() {
         onSettingsChange={handleSettingsChange}
       />
 
+      {/* Page Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
+          <div className="glass-modal rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md animate-modal-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <h3 className="text-lg font-semibold">Delete Page?</h3>
+            </div>
+            <p className="text-text-secondary mb-6">
+              Are you sure you want to delete this page? This action cannot be undone.
+              {pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets &&
+                pages[pageToDelete ? pages.findIndex((p) => p.id === pageToDelete) : 0]?.widgets.length > 0 &&
+                ' All widgets on this page will also be deleted.'}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelDelete}
+                className="btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-all duration-150 active:scale-98"
+              >
+                Delete Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Widget Delete Confirmation Modal */}
       {showWidgetDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-          <div className="glass-modal rounded-lg p-6 max-w-md mx-4 animate-modal-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
+          <div className="glass-modal rounded-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-md animate-modal-in">
             <h3 className="text-lg font-semibold mb-2">Delete Widget?</h3>
             <p className="text-text-secondary mb-6">
               Are you sure you want to delete this widget? This action cannot be undone.

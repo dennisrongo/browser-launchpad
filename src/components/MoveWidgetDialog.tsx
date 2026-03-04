@@ -21,8 +21,8 @@ export function MoveWidgetDialog({
   const availablePages = pages.filter((page) => page.id !== currentPageId)
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="glass-modal rounded-lg p-6 max-w-md mx-4 w-full animate-slide-up">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-modal rounded-lg p-4 sm:p-6 w-full max-w-md animate-slide-up max-h-[90vh] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gradient">Move Widget</h2>
           <button

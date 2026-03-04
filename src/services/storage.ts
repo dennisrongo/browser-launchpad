@@ -264,6 +264,15 @@ export const pomodoroHistoryStorage = {
     removeFromStorage(`pomodoro-history-${widgetId}`),
 }
 
+export const notesStorage = {
+  get: (widgetId: string): Promise<StorageResult<any>> => 
+    getFromStorage(`notes-${widgetId}`),
+  set: (widgetId: string, config: any): Promise<{ success: boolean; error: string | null }> =>
+    setToStorage({ [`notes-${widgetId}`]: config }),
+  clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
+    removeFromStorage(`notes-${widgetId}`),
+}
+
 export default {
   get: getFromStorage,
   set: setToStorage,
@@ -276,4 +285,5 @@ export default {
   chatHistory: chatHistoryStorage,
   todoList: todoListStorage,
   pomodoroHistory: pomodoroHistoryStorage,
+  notes: notesStorage,
 }

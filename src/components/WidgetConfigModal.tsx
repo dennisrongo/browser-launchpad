@@ -453,6 +453,18 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
           </div>
         )
 
+      case 'notes':
+        return (
+          <div className="space-y-4">
+            <div className="p-4 bg-surface border border-border rounded text-center">
+              <p className="text-text-secondary text-sm">
+                Notes widget is managed directly in the widget.
+                Use the Edit button within the widget to write and format your note in Markdown.
+              </p>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="p-4 bg-surface border border-border rounded text-center">
@@ -463,8 +475,8 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div className="glass-modal rounded-lg p-6 max-w-md w-full mx-4 animate-modal-in">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
+      <div className="glass-modal rounded-lg p-4 sm:p-6 w-full max-w-md animate-modal-in max-h-[90vh] overflow-y-auto scrollbar-thin">
         <h3 className="text-lg font-semibold mb-4">Configure Widget</h3>
 
           <div className="space-y-4 mb-6">

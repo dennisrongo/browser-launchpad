@@ -17,7 +17,7 @@ export function Header({
   children,
 }: HeaderProps) {
   return (
-    <header className="glass-card border-b border-border-subtle/60 px-6 py-3 sticky top-0 z-40">
+    <header className="glass-card border-b border-border-subtle/60 px-4 sm:px-6 py-2 sm:py-3 sticky top-0 z-40">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {storageVerified && (

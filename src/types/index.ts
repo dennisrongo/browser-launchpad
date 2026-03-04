@@ -9,7 +9,7 @@ export interface Page {
   updated_at: string
 }
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes'
 
 export interface Widget {
   id: string
@@ -30,6 +30,7 @@ export type WidgetConfig =
   | TodoWidgetConfig
   | PomodoroWidgetConfig
   | CalendarWidgetConfig
+  | NotesWidgetConfig
 
 export interface BookmarkWidgetConfig {
   bookmarks: Bookmark[]
@@ -110,6 +111,10 @@ export interface CalendarWidgetConfig {
     expires_at: number
   }
   selectedCalendars?: string[]
+}
+
+export interface NotesWidgetConfig {
+  content: string
 }
 
 export interface CalendarEvent {

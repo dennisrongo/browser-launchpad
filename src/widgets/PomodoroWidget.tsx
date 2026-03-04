@@ -568,10 +568,9 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
             
             {timerState.isRunning && (
               <div 
-                className="absolute inset-0 rounded-full opacity-30"
+                className="absolute inset-0 rounded-full pomodoro-glow"
                 style={{
                   background: 'radial-gradient(circle, var(--color-primary) 0%, transparent 70%)',
-                  animation: 'pomodoroGlow 2s ease-in-out infinite',
                 }}
               />
             )}

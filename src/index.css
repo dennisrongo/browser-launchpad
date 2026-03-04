@@ -219,6 +219,30 @@
     --glass-border: rgba(85, 64, 100, 0.5);
   }
 
+  [data-theme="plum-blossom"] {
+    --color-primary: #ef43b0;
+    --color-primary-light: #f372c4;
+    --color-on-primary: #ffffff;
+    --color-secondary: #d260a4;
+    --color-secondary-light: #dd88bb;
+    --color-on-secondary: #ffffff;
+    --color-accent: #ff7700;
+    --color-accent-light: #ff9233;
+    --color-neutral: #9f2d71;
+    --color-neutral-light: #c7388e;
+    --color-background: #180510;
+    --color-surface: rgba(33, 8, 22, 0.92);
+    --color-surface-elevated: #2f041f;
+    --color-text: #fde8f5;
+    --color-text-secondary: #f7a1d7;
+    --color-text-muted: #c7388e;
+    --color-border: rgba(141, 12, 94, 0.7);
+    --color-border-subtle: rgba(188, 16, 125, 0.4);
+    --glass-blur: 16px;
+    --glass-bg: rgba(33, 8, 22, 0.85);
+    --glass-border: rgba(141, 12, 94, 0.5);
+  }
+
   * {
     @apply border-border;
   }
@@ -390,8 +414,15 @@
 
   .columns-container {
     display: flex;
+    flex-direction: column;
     width: 100%;
     align-items: flex-start;
+  }
+
+  @media (min-width: 640px) {
+    .columns-container {
+      flex-direction: row;
+    }
   }
 
   .column {
@@ -400,6 +431,12 @@
     flex-direction: column;
     min-width: 0;
     min-height: 100px;
+  }
+
+  @media (max-width: 639px) {
+    .column {
+      width: 100%;
+    }
   }
 
   .column.drag-over {
@@ -480,6 +517,28 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-muted);
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 639px) {
+    .btn-primary,
+    .btn-secondary,
+    .btn-ghost {
+      min-height: 44px;
+    }
+
+    .input-base {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
 }
 
 @keyframes fadeIn {
@@ -529,11 +588,18 @@
 
 @keyframes pomodoroGlow {
   0%, 100% {
-    opacity: 0.2;
-    transform: scale(0.95);
+    opacity: 0.15;
+    transform: scale(1);
+    filter: blur(12px);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(1.02);
+    opacity: 0.45;
+    transform: scale(1.08);
+    filter: blur(16px);
   }
+}
+
+.pomodoro-glow {
+  will-change: transform, opacity, filter;
+  animation: pomodoroGlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

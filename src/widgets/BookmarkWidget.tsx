@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Pencil, Trash2, X, Link, AlertTriangle, Check, GripVertical } from 'lucide-react'
+import { Pencil, Trash2, X, Link, AlertTriangle, GripVertical, RefreshCw } from 'lucide-react'
 import { BookmarkWidgetConfig } from '../types'
 import { getBookmarkIconDisplay } from '../utils/favicon'
 
@@ -21,12 +21,15 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
     }
     setInternalShowAddForm(false)
   }, [externalShowAddForm, onAddFormClose])
+  
   const [newUrl, setNewUrl] = useState('')
   const [newTitle, setNewTitle] = useState('')
   const [isFetching, setIsFetching] = useState(false)
-  const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editingBookmark, setEditingBookmark] = useState<{ id: string; url: string; title: string } | null>(null)
   const [editUrl, setEditUrl] = useState('')
   const [editTitle, setEditTitle] = useState('')
+  const [editIsFetching, setEditIsFetching] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [bookmarkToDelete, setBookmarkToDelete] = useState<string | null>(null)
   const [draggedBookmarkId, setDraggedBookmarkId] = useState<string | null>(null)
@@ -40,18 +43,37 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
     }
     try {
       setIsFetching(true)
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'text/html,application/xhtml+xml' },
-      })
-      if (!response.ok) return null
-      const text = await response.text()
-      const match = text.match(/<title[^>]*>([^<]+)<\/title>/i)
-      return match && match[1] ? match[1].trim() : null
-    } catch {
+      console.log('[BookmarkWidget] Fetching title for:', url)
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        const response = await chrome.runtime.sendMessage({ type: 'FETCH_PAGE_TITLE', url })
+        console.log('[BookmarkWidget] Response:', response)
+        return response?.success ? response.title : null
+      }
+      console.log('[BookmarkWidget] Chrome runtime not available')
+      return null
+    } catch (error) {
+      console.error('[BookmarkWidget] Error:', error)
       return null
     } finally {
       setIsFetching(false)
+    }
+  }, [])
+
+  const fetchTitleForEdit = useCallback(async (url: string): Promise<string | null> => {
+    if (!url || !url.match(/^https?:\/\//i)) {
+      return null
+    }
+    try {
+      setEditIsFetching(true)
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        const response = await chrome.runtime.sendMessage({ type: 'FETCH_PAGE_TITLE', url })
+        return response?.success ? response.title : null
+      }
+      return null
+    } catch {
+      return null
+    } finally {
+      setEditIsFetching(false)
     }
   }, [])
 
@@ -98,20 +120,35 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
     setBookmarkToDelete(null)
   }
 
-  const handleStartEdit = (bookmark: { id: string; url: string; title: string; icon?: string }) => {
-    setEditingBookmarkId(bookmark.id)
+  const handleStartEdit = (bookmark: { id: string; url: string; title: string }) => {
+    setEditingBookmark(bookmark)
     setEditUrl(bookmark.url)
     setEditTitle(bookmark.title)
+    setShowEditDialog(true)
+  }
+
+  const handleFetchEditTitle = async () => {
+    if (!editUrl) return
+    const fetchedTitle = await fetchTitleForEdit(editUrl)
+    if (fetchedTitle) setEditTitle(fetchedTitle)
   }
 
   const handleSaveEdit = () => {
-    if (!editingBookmarkId || !isValidUrl(editUrl)) return
+    if (!editingBookmark || !isValidUrl(editUrl)) return
     onConfigChange?.({
       bookmarks: bookmarks.map(b =>
-        b.id === editingBookmarkId ? { ...b, url: editUrl, title: editTitle } : b
+        b.id === editingBookmark.id ? { ...b, url: editUrl.trim(), title: editTitle.trim() || editUrl.trim() } : b
       ),
     })
-    setEditingBookmarkId(null)
+    setShowEditDialog(false)
+    setEditingBookmark(null)
+    setEditUrl('')
+    setEditTitle('')
+  }
+
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false)
+    setEditingBookmark(null)
     setEditUrl('')
     setEditTitle('')
   }
@@ -170,7 +207,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
           bookmarks.map((bookmark) => (
             <div
               key={bookmark.id}
-              draggable={editingBookmarkId !== bookmark.id}
+              draggable
               onDragStart={() => handleDragStart(bookmark.id)}
               onDragOver={(e) => handleDragOver(e, bookmark.id)}
               onDragLeave={() => setDragOverBookmarkId(null)}
@@ -182,48 +219,27 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
                 'hover:bg-surface'
               }`}
             >
-              {editingBookmarkId === bookmark.id ? (
-                <div className="flex-1 flex items-center gap-2">
-                   <input
-                     type="url"
-                     value={editUrl}
-                     onChange={(e) => setEditUrl(e.target.value)}
-                     placeholder="URL"
-                     className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all duration-100"
-                     autoFocus
-                   />
-                    <button onClick={handleSaveEdit} className="p-1.5 text-accent hover:bg-accent/10 rounded-button transition-all duration-100" title="Save">
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => { setEditingBookmarkId(null); setEditUrl(''); setEditTitle(''); }} className="p-1.5 text-text-muted hover:bg-surface rounded-button transition-all duration-100" title="Cancel">
-                      <X className="w-4 h-4" />
-                    </button>
-                </div>
-              ) : (
-                <>
-                  <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="w-3 h-3" />
-                  </span>
-                  {renderIcon(bookmark)}
-                  <a
-                    href={bookmark.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
-                    title={bookmark.url}
-                  >
-                    {bookmark.title}
-                  </a>
-                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                     <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-100" title="Edit">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-button transition-all duration-100" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                   </div>
-                </>
-              )}
+              <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                <GripVertical className="w-3 h-3" />
+              </span>
+              {renderIcon(bookmark)}
+              <a
+                href={bookmark.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
+                title={bookmark.url}
+              >
+                {bookmark.title}
+              </a>
+              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-100" title="Edit">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-button transition-all duration-100" title="Delete">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -231,42 +247,123 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
 
       {showAddForm ? (
         <div className="pt-2 border-t border-border-subtle/60 space-y-2">
-                   <input
-                     type="url"
-                     value={newUrl}
-                     onChange={(e) => setNewUrl(e.target.value)}
-                     onBlur={handleUrlBlur}
-                     placeholder="https://example.com"
-                     className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all duration-100"
-             disabled={isFetching}
-             autoFocus
-           />
-           <input
-             type="text"
-             value={newTitle}
-             onChange={(e) => setNewTitle(e.target.value)}
-             placeholder="Title"
-             className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-100"
-           />
-           {isFetching && <p className="text-xs text-text-muted">Fetching title...</p>}
-           <div className="flex gap-2">
-             <button onClick={handleAddBookmark} disabled={!newUrl.trim() || isFetching} className="flex-1 btn-primary text-sm disabled:opacity-50">
-               Add
-             </button>
-              <button onClick={() => { handleCloseAddForm(); setNewUrl(''); setNewTitle(''); }} className="btn-ghost text-sm">
+          <div>
+            <label className="block text-xs text-text-muted mb-1">URL</label>
+            <input
+              type="url"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              onBlur={handleUrlBlur}
+              placeholder="https://example.com"
+              className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all duration-100"
+              disabled={isFetching}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Title</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Title"
+                className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-100"
+              />
+              <button 
+                onClick={async () => {
+                  if (newUrl) {
+                    const title = await fetchPageTitle(newUrl)
+                    if (title) setNewTitle(title)
+                  }
+                }}
+                disabled={!newUrl || isFetching || !isValidUrl(newUrl)}
+                className="px-2.5 py-1.5 text-sm btn-ghost border border-border rounded-input hover:bg-surface disabled:opacity-50 transition-all"
+                title="Fetch title from URL"
+              >
+                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            {isFetching && <p className="text-xs text-text-muted mt-1">Fetching title...</p>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleAddBookmark} disabled={!newUrl.trim() || isFetching} className="flex-1 btn-primary text-sm disabled:opacity-50">
+              Add
+            </button>
+            <button onClick={() => { handleCloseAddForm(); setNewUrl(''); setNewTitle(''); }} className="btn-ghost text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showEditDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="glass-modal rounded-lg p-5 max-w-sm mx-4 w-full animate-modal-in">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Edit Bookmark</h3>
+              <button onClick={handleCloseEditDialog} className="p-1 text-text-muted hover:text-text hover:bg-surface rounded transition-all">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-text-muted mb-1">URL</label>
+                <input
+                  type="url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all duration-100"
+                  disabled={editIsFetching}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-text-muted mb-1">Title</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Bookmark title"
+                    className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-100"
+                    disabled={editIsFetching}
+                  />
+                  <button 
+                    onClick={handleFetchEditTitle} 
+                    disabled={!editUrl || editIsFetching || !isValidUrl(editUrl)}
+                    className="px-3 py-2 text-sm btn-ghost border border-border rounded-input hover:bg-surface disabled:opacity-50 transition-all"
+                    title="Fetch title from URL"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${editIsFetching ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                {editIsFetching && <p className="text-xs text-text-muted mt-1">Fetching title...</p>}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <button onClick={handleCloseEditDialog} className="btn-ghost text-sm">
                 Cancel
+              </button>
+              <button 
+                onClick={handleSaveEdit} 
+                disabled={!editUrl.trim() || !isValidUrl(editUrl)} 
+                className="px-4 py-2 text-sm btn-primary disabled:opacity-50"
+              >
+                Save
               </button>
             </div>
           </div>
-       ) : null}
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
           <div className="glass-modal rounded-lg p-5 max-w-xs mx-4 animate-modal-in">
             <div className="flex items-center gap-2 mb-3">
-               <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                 <AlertTriangle className="w-4 h-4 text-red-500" />
-               </div>
+              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+              </div>
               <h3 className="font-semibold">Delete bookmark?</h3>
             </div>
             <p className="text-sm text-text-secondary mb-4">This cannot be undone.</p>

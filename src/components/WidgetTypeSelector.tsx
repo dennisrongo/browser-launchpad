@@ -1,6 +1,6 @@
-import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar } from 'lucide-react'
+import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText } from 'lucide-react'
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes'
 
 export interface WidgetTypeOption {
   type: WidgetType
@@ -58,14 +58,20 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
     description: 'View your schedule with Google Calendar sync',
     icon: <Calendar className="w-7 h-7" />,
   },
+  {
+    type: 'notes',
+    name: 'Notes',
+    description: 'Write and view Markdown-formatted notes',
+    icon: <FileText className="w-7 h-7" />,
+  },
 ]
 
 export function WidgetTypeSelector({ isOpen, onSelect, onCancel }: WidgetTypeSelectorProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="glass-modal rounded-lg p-6 max-w-2xl mx-4 w-full animate-slide-up">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-modal rounded-lg p-4 sm:p-6 w-full max-w-2xl animate-slide-up max-h-[90vh] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gradient">Add Widget</h2>
           <button

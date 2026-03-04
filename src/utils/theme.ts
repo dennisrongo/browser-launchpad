@@ -8,6 +8,7 @@ export type ThemeName =
   | 'caramel-comfort'
   | 'arctic-frost'
   | 'crimson-night'
+  | 'plum-blossom'
 
 const allThemes: ThemeName[] = [
   'modern-light',
@@ -19,23 +20,28 @@ const allThemes: ThemeName[] = [
   'caramel-comfort',
   'arctic-frost',
   'crimson-night',
+  'plum-blossom',
 ]
 
 export function applyTheme(theme: ThemeName): void {
   document.documentElement.classList.remove('dark')
   allThemes.forEach(() => document.documentElement.removeAttribute(`data-theme`))
 
-  if (theme === 'dark-elegance') {
+  if (theme === 'dark-elegance' || theme === 'plum-blossom') {
     document.documentElement.classList.add('dark')
-  } else if (theme !== 'modern-light') {
+  }
+  if (theme !== 'modern-light' && theme !== 'dark-elegance') {
     document.documentElement.setAttribute('data-theme', theme)
   }
 }
 
 export function getAppliedTheme(): ThemeName {
+  const dataTheme = document.documentElement.getAttribute('data-theme') as ThemeName | null
+  if (dataTheme) {
+    return dataTheme
+  }
   if (document.documentElement.classList.contains('dark')) {
     return 'dark-elegance'
   }
-  const dataTheme = document.documentElement.getAttribute('data-theme') as ThemeName | null
-  return dataTheme || 'modern-light'
+  return 'modern-light'
 }

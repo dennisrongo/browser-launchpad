@@ -1,2 +1,4 @@
 .playwright-cli/
 .playwright/
+
+node_modules/
