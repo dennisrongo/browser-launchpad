@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
+import { extractBookmarkPages, getStoredGoogleDriveConfig, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { applyTheme } from './utils/theme'
+import { logger } from './utils/logger'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
@@ -9,7 +11,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { MoveWidgetDialog } from './components/MoveWidgetDialog'
 import { Header } from './components/Header'
 import { MainContainer } from './components/MainContainer'
-import type { Widget, WidgetType, Settings } from './types'
+import type { Page, Settings, Widget, WidgetType } from './types'
 
 const MAX_PAGES = 10
 
@@ -66,6 +68,16 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   notes: 'Notes',
 }
 
+function hasBookmarkSyncPayloadChanged(change: chrome.storage.StorageChange): boolean {
+  const previousPages = Array.isArray(change.oldValue) ? (change.oldValue as Page[]) : []
+  const nextPages = Array.isArray(change.newValue) ? (change.newValue as Page[]) : []
+
+  return (
+    JSON.stringify(extractBookmarkPages(previousPages)) !==
+    JSON.stringify(extractBookmarkPages(nextPages))
+  )
+}
+
 function App() {
   const [pages, setPages] = useState<any[]>([])
   const [activePage, setActivePage] = useState(0)
@@ -91,6 +103,7 @@ function App() {
   const [dropTarget, setDropTarget] = useState<{ column: number; index: number } | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const googleDriveAutoSyncTimerRef = useRef<number | null>(null)
   const [settings, setSettings] = useState<Settings>({
     id: 'global-settings',
     theme: 'modern-light',
@@ -189,17 +202,45 @@ function App() {
 
   // Listen for storage changes from other contexts
   useEffect(() => {
+    const scheduleGoogleDriveAutoSync = async () => {
+      const googleDriveConfig = await getStoredGoogleDriveConfig()
+
+      if (!googleDriveConfig.autoSyncEnabled) {
+        return
+      }
+
+      if (googleDriveAutoSyncTimerRef.current !== null) {
+        window.clearTimeout(googleDriveAutoSyncTimerRef.current)
+      }
+
+      googleDriveAutoSyncTimerRef.current = window.setTimeout(() => {
+        void syncLocalDataToGoogleDrive().catch((error) => {
+          logger.error('Google Drive auto-sync failed', error)
+        })
+
+        googleDriveAutoSyncTimerRef.current = null
+      }, 1500)
+    }
+
     const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
       if (areaName === 'local') {
+        let shouldAutoSync = false
+
         if (changes.pages) {
           console.log('Storage changed, reloading pages')
           setPages((changes.pages.newValue ?? []) as any[])
+          shouldAutoSync = hasBookmarkSyncPayloadChanged(changes.pages)
         }
         if (changes.settings) {
           const newSettings = changes.settings.newValue as Settings
           console.log('Settings changed, updating theme')
           setSettings(newSettings)
           applyTheme(newSettings.theme)
+          shouldAutoSync = true
+        }
+
+        if (shouldAutoSync) {
+          void scheduleGoogleDriveAutoSync()
         }
       }
     }
@@ -207,6 +248,10 @@ function App() {
     chrome.storage.onChanged.addListener(listener)
 
     return () => {
+      if (googleDriveAutoSyncTimerRef.current !== null) {
+        window.clearTimeout(googleDriveAutoSyncTimerRef.current)
+      }
+
       chrome.storage.onChanged.removeListener(listener)
     }
   }, [])

@@ -23,6 +23,12 @@
   "background": {
     "service_worker": "background.js"
   },
+  "oauth2": {
+    "client_id": "59450688067-pumeg8a8aknnq4ek5qp098190m3qh6fd.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata"
+    ]
+  },
   "permissions": [
     "storage",
     "identity"

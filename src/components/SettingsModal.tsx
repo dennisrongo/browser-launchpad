@@ -1,9 +1,45 @@
-import { useState, useEffect, useRef } from 'react'
-import { Palette, Puzzle, Database, Info, X, Eye, EyeOff, Upload, Download, RefreshCw, AlertTriangle, Cloud, Loader2, Calendar } from 'lucide-react'
-import { settingsStorage } from '../services/storage'
-import { encodeApiKey, decodeApiKey, logApiKeyInfo } from '../utils/security'
-import { fetchStraicoModels, StraicoModel, getOpenAIModels, OpenAIModel } from '../utils/ai'
+import { useEffect, useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  Calendar,
+  Cloud,
+  Database,
+  Download,
+  Eye,
+  EyeOff,
+  Info,
+  Loader2,
+  Palette,
+  Puzzle,
+  RefreshCw,
+  Upload,
+  X,
+} from 'lucide-react'
+
+import type { Settings } from '../types'
 import type { ThemeName } from '../utils/theme'
+import type {
+  GoogleDriveConfig,
+  GoogleDriveManifestConfig,
+  GoogleDriveSyncState,
+} from '../services/googleDriveSync'
+import type { StraicoModel } from '../utils/ai'
+
+import {
+  disconnectGoogleDrive,
+  getGoogleDriveManifestConfig,
+  getGoogleDriveSyncState,
+  getStoredGoogleDriveConfig,
+  initiateGoogleDriveAuth,
+  isGoogleDriveAuthorized,
+  resetGoogleDriveSyncState,
+  restoreLocalDataFromGoogleDrive,
+  setGoogleDriveConfig,
+  syncLocalDataToGoogleDrive,
+} from '../services/googleDriveSync'
+import { settingsStorage } from '../services/storage'
+import { fetchStraicoModels } from '../utils/ai'
+import { decodeApiKey, encodeApiKey, logApiKeyInfo } from '../utils/security'
 
 type ThemeOption = {
   id: ThemeName
@@ -136,7 +172,6 @@ const themeOptions: ThemeOption[] = [
     isDark: true,
   },
 ]
-import type { Settings } from '../types'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -163,6 +198,11 @@ interface WeatherConfig {
 
 interface GoogleCalendarConfig {
   clientId: string
+}
+
+interface StatusMessage {
+  type: 'success' | 'error' | null
+  message: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -195,6 +235,23 @@ const DEFAULT_GOOGLE_CALENDAR_CONFIG: GoogleCalendarConfig = {
   clientId: '',
 }
 
+const DEFAULT_GOOGLE_DRIVE_CONFIG: GoogleDriveConfig = {
+  autoSyncEnabled: false,
+}
+
+const DEFAULT_GOOGLE_DRIVE_MANIFEST_CONFIG: GoogleDriveManifestConfig = {
+  clientId: '',
+  isConfigured: false,
+  scopes: [],
+}
+
+const DEFAULT_GOOGLE_DRIVE_SYNC_STATE: GoogleDriveSyncState = {
+  lastSyncedAt: null,
+  lastRestoredAt: null,
+  lastError: null,
+  syncFileId: null,
+}
+
 type SettingsTab = 'appearance' | 'integrations' | 'data' | 'about'
 
 const tabs: { id: SettingsTab; label: string; icon: JSX.Element }[] = [
@@ -213,17 +270,27 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>(DEFAULT_WEATHER_CONFIG)
   const [googleCalendarConfig, setGoogleCalendarConfig] = useState<GoogleCalendarConfig>(DEFAULT_GOOGLE_CALENDAR_CONFIG)
+  const [googleDriveSyncConfig, setGoogleDriveSyncConfig] = useState<GoogleDriveConfig>(DEFAULT_GOOGLE_DRIVE_CONFIG)
+  const [googleDriveManifestConfig, setGoogleDriveManifestConfig] = useState<GoogleDriveManifestConfig>(DEFAULT_GOOGLE_DRIVE_MANIFEST_CONFIG)
+  const [googleDriveSyncStatus, setGoogleDriveSyncStatus] = useState<GoogleDriveSyncState>(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false, weather: false, googleCalendar: false })
   const [isFetchingModels, setIsFetchingModels] = useState(false)
   const [modelFetchError, setModelFetchError] = useState<string | null>(null)
-  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' })
+  const [importStatus, setImportStatus] = useState<StatusMessage>({ type: null, message: '' })
+  const [googleDriveStatusMessage, setGoogleDriveStatusMessage] = useState<StatusMessage>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showImportConfirm, setShowImportConfirm] = useState(false)
+  const [showDriveRestoreConfirm, setShowDriveRestoreConfirm] = useState(false)
   const [pendingImportData, setPendingImportData] = useState<any>(null)
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('replace')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
+  const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false)
+  const [isConnectingGoogleDrive, setIsConnectingGoogleDrive] = useState(false)
+  const [isSyncingGoogleDrive, setIsSyncingGoogleDrive] = useState(false)
+  const [isRestoringGoogleDrive, setIsRestoringGoogleDrive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const extensionId = chrome.runtime.id
 
   useEffect(() => {
     if (isOpen) {
@@ -231,18 +298,36 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       loadAIConfig()
       loadWeatherConfig()
       loadGoogleCalendarConfig()
+      loadGoogleDriveState()
     }
   }, [isOpen])
 
   useEffect(() => {
-    const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+    const listener = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== 'local') {
+        return
+      }
+
       if (changes.settings) {
         const newSettings = changes.settings.newValue as Settings
         setSettings(newSettings)
         setGridColumns(newSettings.grid_columns)
+        setGridGap(newSettings.grid_gap)
         setTheme(newSettings.theme)
       }
+
+      if (
+        changes.google_drive_config ||
+        changes.google_drive_tokens ||
+        changes.google_drive_sync_state
+      ) {
+        void loadGoogleDriveState()
+      }
     }
+
     chrome.storage.onChanged.addListener(listener)
     return () => chrome.storage.onChanged.removeListener(listener)
   }, [])
@@ -312,12 +397,37 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     }
   }
 
+  const loadGoogleDriveState = async () => {
+    try {
+      const [storedConfig, manifestConfig, syncState, authorized] = await Promise.all([
+        getStoredGoogleDriveConfig(),
+        Promise.resolve(getGoogleDriveManifestConfig()),
+        getGoogleDriveSyncState(),
+        isGoogleDriveAuthorized(),
+      ])
+
+      setGoogleDriveSyncConfig(storedConfig)
+      setGoogleDriveManifestConfig(manifestConfig)
+      setGoogleDriveSyncStatus(syncState)
+      setIsGoogleDriveConnected(authorized)
+    } catch (error) {
+      console.error('Failed to load Google Drive state:', error)
+    }
+  }
+
   const handleSave = async () => {
     if (gridColumns < 1 || gridColumns > 6) {
       setValidationError('Grid columns must be between 1 and 6')
       return
     }
-    const updatedSettings: Settings = { ...settings, grid_columns: gridColumns, grid_gap: gridGap, theme: theme, updated_at: new Date().toISOString() }
+
+    const updatedSettings: Settings = {
+      ...settings,
+      grid_columns: gridColumns,
+      grid_gap: gridGap,
+      theme,
+      updated_at: new Date().toISOString(),
+    }
     const result = await settingsStorage.set(updatedSettings)
     if (result.success) {
       console.log('✓ Settings saved to Chrome storage')
@@ -347,6 +457,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ google_calendar_config: encodedGoogleCalendarConfig })
         console.log('✓ Google Calendar config saved to Chrome storage (encoded)')
       } catch (error) { console.error('Failed to save Google Calendar config:', error) }
+      try {
+        await setGoogleDriveConfig(googleDriveSyncConfig)
+        console.log('✓ Google Drive config saved to Chrome storage')
+      } catch (error) { console.error('Failed to save Google Drive config:', error) }
       onClose()
     } else {
       console.error('Failed to save settings:', result.error)
@@ -357,9 +471,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setGridColumns(settings.grid_columns)
     setGridGap(settings.grid_gap)
     setTheme(settings.theme)
-    loadAIConfig()
-    loadWeatherConfig()
-    loadGoogleCalendarConfig()
+    void loadAIConfig()
+    void loadWeatherConfig()
+    void loadGoogleCalendarConfig()
+    void loadGoogleDriveState()
+    setShowDriveRestoreConfirm(false)
+    setGoogleDriveStatusMessage({ type: null, message: '' })
     setValidationError(null)
     onClose()
   }
@@ -376,6 +493,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setAIConfig(DEFAULT_AI_CONFIG)
       setWeatherConfig(DEFAULT_WEATHER_CONFIG)
       setGoogleCalendarConfig(DEFAULT_GOOGLE_CALENDAR_CONFIG)
+      setGoogleDriveSyncConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
+      setGoogleDriveSyncStatus(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
+      setIsGoogleDriveConnected(false)
+      setGoogleDriveStatusMessage({ type: null, message: '' })
       onSettingsChange(defaultSettings)
       try {
         const emptyConfig: AIProviderConfig = { 
@@ -394,6 +515,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ google_calendar_config: DEFAULT_GOOGLE_CALENDAR_CONFIG })
         console.log('✓ Google Calendar config reset to defaults')
       } catch (error) { console.error('Failed to reset Google Calendar config:', error) }
+      try {
+        await disconnectGoogleDrive()
+        await setGoogleDriveConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
+        await resetGoogleDriveSyncState()
+        console.log('✓ Google Drive config reset to defaults')
+      } catch (error) { console.error('Failed to reset Google Drive config:', error) }
       setShowResetConfirm(false)
       setValidationError(null)
     } else {
@@ -435,6 +562,96 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     }
   }
 
+  const formatSyncDate = (value: string | null) => {
+    if (!value) {
+      return 'Never'
+    }
+
+    return new Date(value).toLocaleString()
+  }
+
+  const handleConnectGoogleDrive = async () => {
+    setIsConnectingGoogleDrive(true)
+    setGoogleDriveStatusMessage({ type: null, message: '' })
+
+    try {
+      await initiateGoogleDriveAuth()
+      await loadGoogleDriveState()
+      setGoogleDriveStatusMessage({
+        type: 'success',
+        message: 'Google Drive connected. You can sync from the Data tab now.',
+      })
+    } catch (error) {
+      setGoogleDriveStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to connect Google Drive.',
+      })
+    } finally {
+      setIsConnectingGoogleDrive(false)
+    }
+  }
+
+  const handleDisconnectGoogleDrive = async () => {
+    setGoogleDriveStatusMessage({ type: null, message: '' })
+
+    try {
+      await disconnectGoogleDrive()
+      await loadGoogleDriveState()
+      setGoogleDriveStatusMessage({
+        type: 'success',
+        message: 'Google Drive disconnected.',
+      })
+    } catch (error) {
+      setGoogleDriveStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to disconnect Google Drive.',
+      })
+    }
+  }
+
+  const handleSyncGoogleDrive = async () => {
+    setIsSyncingGoogleDrive(true)
+    setGoogleDriveStatusMessage({ type: null, message: '' })
+
+    try {
+      await syncLocalDataToGoogleDrive()
+      await loadGoogleDriveState()
+      setGoogleDriveStatusMessage({
+        type: 'success',
+        message: 'Bookmark widgets and settings synced to Google Drive.',
+      })
+    } catch (error) {
+      setGoogleDriveStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to sync to Google Drive.',
+      })
+    } finally {
+      setIsSyncingGoogleDrive(false)
+    }
+  }
+
+  const handleRestoreGoogleDrive = async () => {
+    setIsRestoringGoogleDrive(true)
+    setGoogleDriveStatusMessage({ type: null, message: '' })
+
+    try {
+      await restoreLocalDataFromGoogleDrive()
+      await loadGoogleDriveState()
+      setGoogleDriveStatusMessage({
+        type: 'success',
+        message: 'Bookmark widgets and settings were restored from Google Drive.',
+      })
+      setShowDriveRestoreConfirm(false)
+    } catch (error) {
+      setGoogleDriveStatusMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to restore from Google Drive.',
+      })
+    } finally {
+      setIsRestoringGoogleDrive(false)
+    }
+  }
+
   const handleExportData = async () => {
     try {
       const allData = await chrome.storage.local.get(null)
@@ -452,7 +669,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         }
         delete exportData.google_calendar_tokens
         delete exportData.google_calendars
+        delete exportData.google_drive_tokens
+        delete exportData.google_drive_sync_state
         console.log('⚠️ API keys and OAuth tokens excluded from export')
+      } else {
+        delete exportData.google_drive_tokens
       }
       const finalExportData = { version: '1.0.0', exportDate: new Date().toISOString(), data: exportData }
       const jsonString = JSON.stringify(finalExportData, null, 2)
@@ -1017,12 +1238,222 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 </div>
               </div>
             </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">Google Drive Sync</h3>
+              <p className="text-sm text-text-secondary mb-4">
+                Authenticate with Google Drive from Settings so Browser Launchpad can back up your bookmark widgets and global settings.
+              </p>
+              <div className="p-4 glass-card rounded-card">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-6 h-6 text-primary" />
+                    <div>
+                      <h4 className="font-semibold">Manifest OAuth Configuration</h4>
+                      <p className="text-xs text-text-muted">
+                        {googleDriveManifestConfig.isConfigured
+                          ? 'Manifest client ID detected'
+                          : 'Manifest client ID still needs to be configured'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full border ${
+                    googleDriveManifestConfig.isConfigured
+                      ? 'border-green-500/30 bg-green-500/10 text-green-600'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-600'
+                  }`}>
+                    {googleDriveManifestConfig.isConfigured ? 'Configured' : 'Manifest update required'}
+                  </span>
+                </div>
+
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1.5">Client ID from manifest</label>
+                  <div className="input-base text-xs font-mono break-all">
+                    {googleDriveManifestConfig.clientId || 'Not configured yet'}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1.5">
+                    Chrome&apos;s <strong className="text-text">getAuthToken</strong> flow reads the Google OAuth client ID from <strong className="text-text">manifest.json</strong>, not from a Settings field.
+                  </p>
+                </div>
+
+                {!googleDriveManifestConfig.isConfigured && (
+                  <div className="mb-4 p-3 rounded-button text-sm bg-amber-500/10 text-amber-700 border border-amber-500/20">
+                    Google Drive sign-in is unavailable until you replace the placeholder client ID in <strong className="text-text">public/manifest.json</strong>, run <strong className="text-text">npm run build</strong>, and reload the extension in <strong className="text-text">chrome://extensions</strong>.
+                  </div>
+                )}
+
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1.5">Extension ID</label>
+                  <div className="input-base text-xs font-mono break-all">{extensionId}</div>
+                  <p className="text-xs text-text-muted mt-1.5">
+                    Use this exact value as the <strong className="text-text">Item ID</strong> when you create the Chrome Extension OAuth client in Google Cloud.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={handleConnectGoogleDrive}
+                    disabled={isConnectingGoogleDrive || !googleDriveManifestConfig.isConfigured}
+                    className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isConnectingGoogleDrive ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      'Connect Google Drive'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogleDrive}
+                    disabled={!isGoogleDriveConnected || isConnectingGoogleDrive}
+                    className="btn-secondary"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+
+                {googleDriveStatusMessage.type && (
+                  <div className={`mb-4 p-3 rounded-button text-sm border ${
+                    googleDriveStatusMessage.type === 'success'
+                      ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                      : 'bg-red-500/10 text-red-600 border-red-500/20'
+                  }`}>
+                    {googleDriveStatusMessage.message}
+                  </div>
+                )}
+
+                <div className="p-3 bg-surface/50 rounded-lg text-xs text-text-secondary">
+                  <strong className="text-text">Current setup steps:</strong>
+                  <ol className="list-decimal list-inside mt-2 space-y-1">
+                    <li>Create or choose a project in Google Cloud Console.</li>
+                    <li>Enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Drive API</a>.</li>
+                    <li>If Google Auth Platform is not set up yet, open <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Auth Platform</a> and complete Branding, Audience, and Data Access first.</li>
+                    <li>Open <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Auth Platform → Clients</a>.</li>
+                    <li>Create a new OAuth client with <strong className="text-text">Application type → Chrome Extension</strong>.</li>
+                    <li>Paste the extension ID shown above into <strong className="text-text">Item ID</strong>.</li>
+                    <li>Copy the generated Client ID into <strong className="text-text">public/manifest.json</strong> under <strong className="text-text">oauth2.client_id</strong>.</li>
+                    <li>Run <strong className="text-text">npm run build</strong> so <strong className="text-text">dist/manifest.json</strong> is regenerated.</li>
+                    <li>Reload the unpacked extension in <strong className="text-text">chrome://extensions</strong>.</li>
+                    <li>Return here and click <strong className="text-text">Connect Google Drive</strong>.</li>
+                  </ol>
+                  <p className="mt-3">
+                    If you are using an unpacked extension and the ID ever changes, update the same Item ID in Google Cloud before reconnecting. Chrome recommends keeping the extension ID stable when you rely on OAuth.
+                  </p>
+                </div>
+              </div>
+            </div>
           </>
         )}
 
         {/* Data Tab */}
         {activeTab === 'data' && (
           <>
+            <div className="glass-card rounded-card p-4 mb-6">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Google Drive Sync</h3>
+                  <p className="text-sm text-text-secondary">
+                    Syncs your global settings and bookmark widgets to Google Drive&apos;s private app data folder. Other widget data stays local.
+                  </p>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full border ${
+                  isGoogleDriveConnected
+                    ? 'border-green-500/30 bg-green-500/10 text-green-600'
+                    : 'border-border bg-surface/60 text-text-muted'
+                }`}>
+                  {isGoogleDriveConnected ? 'Connected' : 'Connect in Integrations'}
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                <div className="p-3 rounded-button bg-surface/50">
+                  <p className="text-xs text-text-muted mb-1">Last synced</p>
+                  <p className="text-sm font-medium">{formatSyncDate(googleDriveSyncStatus.lastSyncedAt)}</p>
+                </div>
+                <div className="p-3 rounded-button bg-surface/50">
+                  <p className="text-xs text-text-muted mb-1">Last restored</p>
+                  <p className="text-sm font-medium">{formatSyncDate(googleDriveSyncStatus.lastRestoredAt)}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mb-4">
+                <button
+                  onClick={handleSyncGoogleDrive}
+                  disabled={!isGoogleDriveConnected || isSyncingGoogleDrive || isRestoringGoogleDrive}
+                  className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSyncingGoogleDrive ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      <span>Sync to Google Drive</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowDriveRestoreConfirm(true)}
+                  disabled={!isGoogleDriveConnected || isSyncingGoogleDrive || isRestoringGoogleDrive}
+                  className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRestoringGoogleDrive ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Restoring...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Restore from Drive</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="mb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={googleDriveSyncConfig.autoSyncEnabled}
+                    onChange={(e) =>
+                      setGoogleDriveSyncConfig((prev) => ({
+                        ...prev,
+                        autoSyncEnabled: e.target.checked,
+                      }))
+                    }
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-0"
+                  />
+                  <span className="text-sm text-text-secondary">Auto-sync after bookmark or settings changes</span>
+                </label>
+                <p className="text-xs text-text-muted mt-1.5">
+                  Auto-sync runs while the dashboard is open and only uploads your saved settings plus bookmark widget data.
+                </p>
+              </div>
+
+              {googleDriveSyncStatus.lastError && !googleDriveStatusMessage.type && (
+                <div className="mb-3 p-3 rounded-button text-sm bg-red-500/10 text-red-600 border border-red-500/20">
+                  {googleDriveSyncStatus.lastError}
+                </div>
+              )}
+
+              {googleDriveStatusMessage.type && (
+                <div className={`p-3 rounded-button text-sm border ${
+                  googleDriveStatusMessage.type === 'success'
+                    ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                    : 'bg-red-500/10 text-red-600 border-red-500/20'
+                }`}>
+                  {googleDriveStatusMessage.message}
+                </div>
+              )}
+            </div>
+
             <h3 className="text-lg font-semibold mb-3">Data Management</h3>
             <div className="flex flex-wrap gap-3 mb-4">
               <button onClick={handleExportData} className="btn-primary flex items-center gap-2" title="Export all data to JSON file">
@@ -1093,6 +1524,49 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowResetConfirm(false)} className="btn-secondary">Cancel</button>
               <button onClick={handleResetToDefaults} className="px-4 py-2 bg-red-500 text-white font-medium rounded-button hover:bg-red-600 transition-colors">Reset to Defaults</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Drive Restore Confirmation Modal */}
+      {showDriveRestoreConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+          <div className="glass-modal rounded-lg p-6 max-w-md w-full mx-4 animate-slide-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Download className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">Restore from Google Drive?</h3>
+            </div>
+            <p className="text-text-secondary mb-4">
+              This replaces the local bookmark widgets on your pages with the Google Drive version and reapplies the saved global settings.
+            </p>
+            <p className="text-sm text-text-muted mb-6">
+              Other widget data such as notes, todo items, calendar tokens, and API keys will stay local.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDriveRestoreConfirm(false)}
+                className="btn-secondary"
+                disabled={isRestoringGoogleDrive}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRestoreGoogleDrive}
+                className="btn-primary flex items-center gap-2"
+                disabled={isRestoringGoogleDrive}
+              >
+                {isRestoringGoogleDrive ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  'Restore Now'
+                )}
+              </button>
             </div>
           </div>
         </div>
