@@ -14,6 +14,33 @@ A modern Chrome Extension that replaces the new tab page with a customizable, wi
 - **Grid Layout**: Customize the number of columns (1-6)
 - **Import/Export**: Backup and restore your data
 
+## Screenshots
+
+### Dashboard Overview
+The main dashboard with multiple widgets including AI Chat, Todo, Notes, Bookmarks, Clock, Weather, and Pomodoro timer. Navigate between pages using the tabs at the top.
+
+![Dashboard Overview](public/screenshots/1.png)
+
+### Theme & Layout Settings
+Customize your dashboard appearance with grid layout options (1-6 columns, adjustable spacing) and choose from multiple themes including Modern Light, Dark Elegance, Vintage Rose, and more.
+
+![Theme & Layout Settings](public/screenshots/2.png)
+
+### Data & Sync Settings
+Sync your settings and bookmarks to Google Drive for backup, or use the import/export functionality to manage your data locally.
+
+![Data & Sync Settings](public/screenshots/3.png)
+
+### API Integrations
+Configure your AI providers (OpenAI, Straico) and Weather API keys to enable the AI Chat and Weather widgets.
+
+![API Integrations](public/screenshots/4.png)
+
+### Widget Selection
+Add widgets to your dashboard from a variety of options: Bookmarks, Weather, AI Chat, Clock, To-Do List, Pomodoro, Calendar, and Notes.
+
+![Widget Selection](public/screenshots/5.png)
+
 ## Tech Stack
 
 - **Frontend**: React + TypeScript
