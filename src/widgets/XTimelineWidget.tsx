@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo, useMemo } from 'react'
-import { Twitter, AlertTriangle, RefreshCw, Pause, Play, RotateCcw } from 'lucide-react'
+import { Twitter, AlertTriangle, RefreshCw, Pause, Play, RotateCcw, ExternalLink } from 'lucide-react'
 import type { XTimelineWidgetConfig, XTweet } from '../types'
 
 interface XTimelineWidgetProps {
@@ -34,29 +34,85 @@ function formatRelativeTime(createdAt: string): string {
   }
 }
 
+const URL_REGEX = /(https?:\/\/[^\s]+)|(@\w+)/g
+
+function renderTweetText(text: string) {
+  const parts = text.split(URL_REGEX)
+  return parts.map((part, index) => {
+    if (!part) return null
+    if (part.startsWith('http')) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+    }
+    if (part.startsWith('@')) {
+      const username = part.slice(1)
+      return (
+        <a
+          key={index}
+          href={`https://x.com/${username}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+    }
+    return part
+  })
+}
+
 function NestedTweet({ tweet }: { tweet: XTweet }) {
   if (!tweet.text && !tweet.authorHandle) return null
 
   return (
     <div className="mt-2 ml-2 pl-3 border-l-2 border-border/60">
       <div className="flex items-center gap-1.5 min-w-0">
-        {tweet.authorProfileImage ? (
-          <img
-            src={tweet.authorProfileImage.replace('_normal', '_mini')}
-            alt=""
-            className="w-4 h-4 rounded-full flex-shrink-0"
-          />
-        ) : (
-          <div className="w-4 h-4 rounded-full bg-surface flex items-center justify-center flex-shrink-0">
-            <Twitter className="w-2 h-2 text-text-muted" />
-          </div>
-        )}
-        <span className="text-xs font-medium text-text-secondary truncate">
+        <a
+          href={`https://x.com/${tweet.authorHandle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0"
+        >
+          {tweet.authorProfileImage ? (
+            <img
+              src={tweet.authorProfileImage.replace('_normal', '_mini')}
+              alt=""
+              className="w-4 h-4 rounded-full"
+            />
+          ) : (
+            <div className="w-4 h-4 rounded-full bg-surface flex items-center justify-center">
+              <Twitter className="w-2 h-2 text-text-muted" />
+            </div>
+          )}
+        </a>
+        <a
+          href={`https://x.com/${tweet.authorHandle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-text-secondary truncate hover:underline"
+        >
           {tweet.authorName}
-        </span>
-        <span className="text-[10px] text-text-muted truncate">
+        </a>
+        <a
+          href={`https://x.com/${tweet.authorHandle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-text-muted truncate hover:underline"
+        >
           @{tweet.authorHandle}
-        </span>
+        </a>
         {tweet.createdAt && (
           <span className="text-[10px] text-text-muted flex-shrink-0">
             {formatRelativeTime(tweet.createdAt)}
@@ -65,7 +121,7 @@ function NestedTweet({ tweet }: { tweet: XTweet }) {
       </div>
       {tweet.text && (
         <p className="text-xs text-text-muted leading-snug mt-0.5 break-words line-clamp-2">
-          {tweet.text}
+          {renderTweetText(tweet.text)}
         </p>
       )}
     </div>
@@ -294,36 +350,59 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
       <>
         <div className="flex-1 overflow-hidden">
           {visibleTweets.map((tweet) => (
-            <a
+            <div
               key={tweet.id}
-              href={tweet.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-2 py-2.5 hover:bg-surface/60 rounded-lg transition-colors duration-150 group"
+              className="px-2 py-2.5 hover:bg-surface/60 rounded-lg transition-colors duration-150 group"
             >
               <div className="flex items-start gap-2.5">
-                {tweet.authorProfileImage ? (
-                  <img
-                    src={tweet.authorProfileImage.replace('_normal', '_bigger')}
-                    alt=""
-                    className="w-8 h-8 rounded-full flex-shrink-0 mt-0.5"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Twitter className="w-3.5 h-3.5 text-text-muted" />
-                  </div>
-                )}
+                <a
+                  href={`https://x.com/${tweet.authorHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 mt-0.5"
+                >
+                  {tweet.authorProfileImage ? (
+                    <img
+                      src={tweet.authorProfileImage.replace('_normal', '_bigger')}
+                      alt=""
+                      className="w-8 h-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center">
+                      <Twitter className="w-3.5 h-3.5 text-text-muted" />
+                    </div>
+                  )}
+                </a>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 min-w-0">
-                    <span className="text-sm font-semibold text-text truncate">
+                    <a
+                      href={`https://x.com/${tweet.authorHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-text truncate hover:underline"
+                    >
                       {tweet.authorName}
-                    </span>
-                    <span className="text-xs text-text-muted truncate">
+                    </a>
+                    <a
+                      href={`https://x.com/${tweet.authorHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-text-muted truncate hover:underline"
+                    >
                       @{tweet.authorHandle}
-                    </span>
+                    </a>
                     <span className="text-xs text-text-muted flex-shrink-0">
                       {formatRelativeTime(tweet.createdAt)}
                     </span>
+                    <a
+                      href={tweet.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 text-text-muted hover:text-primary rounded-button transition-all duration-150 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                      title="Open tweet"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
                   {tweet.replyTo && (
                     <p className="text-[10px] text-text-muted mb-0.5">
@@ -331,12 +410,12 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                     </p>
                   )}
                   <p className="text-sm text-text-secondary leading-snug mt-0.5 break-words line-clamp-3">
-                    {tweet.text}
+                    {renderTweetText(tweet.text)}
                   </p>
                   {tweet.quotedTweet && <NestedTweet tweet={tweet.quotedTweet} />}
                 </div>
               </div>
-            </a>
+            </div>
           ))}
         </div>
         {totalPages > 1 && (
