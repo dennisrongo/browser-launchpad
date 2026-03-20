@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo, useMemo } from 'react'
-import { Twitter, AlertTriangle, RefreshCw, Settings, ExternalLink } from 'lucide-react'
+import { Twitter, AlertTriangle, RefreshCw, Pause, Play, RotateCcw } from 'lucide-react'
 import type { XTimelineWidgetConfig } from '../types'
 
 interface XTimelineWidgetProps {
@@ -52,6 +52,20 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
     authenticated: false,
   })
   const [refreshing, setRefreshing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  const tweetsPerPage = Math.max(1, Math.min(10, config.tweetsPerPage || 3))
+  const scrollIntervalSeconds = Math.max(3, Math.min(30, config.scrollIntervalSeconds || 5))
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(state.tweets.length / tweetsPerPage)
+  }, [state.tweets.length, tweetsPerPage])
+
+  const visibleTweets = useMemo(() => {
+    const start = currentPage * tweetsPerPage
+    return state.tweets.slice(start, start + tweetsPerPage)
+  }, [state.tweets, currentPage, tweetsPerPage])
 
   const getXCookies = useCallback(async (): Promise<{ authToken: string; ct0: string } | null> => {
     try {
@@ -101,6 +115,7 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
             error: null,
             authenticated: true,
           })
+          setCurrentPage(0)
         } else {
           setState({
             tweets: [],
@@ -125,19 +140,16 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
     [config.timelineType, getXCookies]
   )
 
-  // Check auth on mount
   useEffect(() => {
     getXCookies().then((cookies) => {
       setState((prev) => ({ ...prev, authenticated: !!cookies }))
     })
   }, [getXCookies])
 
-  // Fetch timeline on mount and when config changes
   useEffect(() => {
     fetchTimeline()
   }, [fetchTimeline])
 
-  // Auto-refresh interval
   useEffect(() => {
     const minutes = Math.max(1, Math.min(config.refreshMinutes || 5, 60))
     const intervalMs = minutes * 60 * 1000
@@ -148,6 +160,24 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
 
     return () => clearInterval(interval)
   }, [config.refreshMinutes, fetchTimeline])
+
+  useEffect(() => {
+    if (isPaused || state.tweets.length === 0 || totalPages <= 1) return
+
+    const interval = setInterval(() => {
+      setCurrentPage((prev) => (prev + 1) % totalPages)
+    }, scrollIntervalSeconds * 1000)
+
+    return () => clearInterval(interval)
+  }, [isPaused, totalPages, scrollIntervalSeconds, state.tweets.length])
+
+  const handleReset = useCallback(() => {
+    setCurrentPage(0)
+  }, [])
+
+  const handleTogglePause = useCallback(() => {
+    setIsPaused((prev) => !prev)
+  }, [])
 
   const getContent = useMemo(() => {
     if (!state.authenticated && !state.loading) {
@@ -233,50 +263,69 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
     }
 
     return (
-      <div className="flex-1 overflow-y-auto scrollbar-thin space-y-0 -mx-1 px-1">
-        {state.tweets.map((tweet) => (
-          <a
-            key={tweet.id}
-            href={tweet.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block px-2 py-2.5 hover:bg-surface/60 rounded-lg transition-colors duration-150 group"
-          >
-            <div className="flex items-start gap-2.5">
-              {tweet.authorProfileImage ? (
-                <img
-                  src={tweet.authorProfileImage.replace('_normal', '_bigger')}
-                  alt=""
-                  className="w-8 h-8 rounded-full flex-shrink-0 mt-0.5"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Twitter className="w-3.5 h-3.5 text-text-muted" />
+      <>
+        <div className="flex-1 overflow-hidden">
+          {visibleTweets.map((tweet) => (
+            <a
+              key={tweet.id}
+              href={tweet.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-2 py-2.5 hover:bg-surface/60 rounded-lg transition-colors duration-150 group"
+            >
+              <div className="flex items-start gap-2.5">
+                {tweet.authorProfileImage ? (
+                  <img
+                    src={tweet.authorProfileImage.replace('_normal', '_bigger')}
+                    alt=""
+                    className="w-8 h-8 rounded-full flex-shrink-0 mt-0.5"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Twitter className="w-3.5 h-3.5 text-text-muted" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-sm font-semibold text-text truncate">
+                      {tweet.authorName}
+                    </span>
+                    <span className="text-xs text-text-muted truncate">
+                      @{tweet.authorHandle}
+                    </span>
+                    <span className="text-xs text-text-muted flex-shrink-0">
+                      {formatRelativeTime(tweet.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-text-secondary leading-snug mt-0.5 break-words line-clamp-3">
+                    {tweet.text}
+                  </p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-sm font-semibold text-text truncate">
-                    {tweet.authorName}
-                  </span>
-                  <span className="text-xs text-text-muted truncate">
-                    @{tweet.authorHandle}
-                  </span>
-                  <span className="text-xs text-text-muted flex-shrink-0">
-                    {formatRelativeTime(tweet.createdAt)}
-                  </span>
-                  <ExternalLink className="w-3 h-3 text-text-muted opacity-0 group-hover:opacity-100 flex-shrink-0 ml-auto transition-opacity" />
-                </div>
-                <p className="text-sm text-text-secondary leading-snug mt-0.5 break-words whitespace-pre-wrap">
-                  {tweet.text}
-                </p>
               </div>
-            </div>
-          </a>
-        ))}
-      </div>
+            </a>
+          ))}
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-border/50">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i)}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                  i === currentPage
+                    ? 'bg-primary w-3'
+                    : 'bg-text-muted/30 hover:bg-text-muted/50'
+                }`}
+                title={`Page ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </>
     )
-  }, [state, refreshing, title, fetchTimeline])
+  }, [state, refreshing, title, fetchTimeline, visibleTweets, currentPage, totalPages])
+
+  const showPaginationControls = state.tweets.length > 0 && !state.loading && !state.error && state.authenticated
 
   return (
     <div className="flex flex-col h-full">
@@ -284,14 +333,34 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
         <span className="text-xs text-text-muted">
           {config.timelineType === 'foryou' ? 'For You' : 'Following'}
         </span>
-        <button
-          onClick={() => fetchTimeline(true)}
-          disabled={refreshing}
-          className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-150 disabled:opacity-50"
-          title="Refresh timeline"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-1">
+          {showPaginationControls && totalPages > 1 && (
+            <>
+              <button
+                onClick={handleTogglePause}
+                className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-150"
+                title={isPaused ? 'Resume auto-scroll' : 'Pause auto-scroll'}
+              >
+                {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={handleReset}
+                className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-150"
+                title="Reset to first page"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => fetchTimeline(true)}
+            disabled={refreshing}
+            className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-150 disabled:opacity-50"
+            title="Refresh timeline"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
       {getContent}
     </div>

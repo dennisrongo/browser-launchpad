@@ -510,6 +510,34 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
                 How often to refresh the timeline (1-60 minutes). Default is 5 minutes.
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Tweets per page</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={config.tweetsPerPage || 3}
+                onChange={(e) => setConfig({ ...config, tweetsPerPage: Math.max(1, Math.min(10, parseInt(e.target.value) || 3)) })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-text-secondary mt-1">
+                Number of tweets to show at once (1-10). Default is 3.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Cycle speed (seconds)</label>
+              <input
+                type="number"
+                min="3"
+                max="30"
+                value={config.scrollIntervalSeconds || 5}
+                onChange={(e) => setConfig({ ...config, scrollIntervalSeconds: Math.max(3, Math.min(30, parseInt(e.target.value) || 5)) })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-text-secondary mt-1">
+                How long to show each page before scrolling (3-30 seconds). Default is 5 seconds.
+              </p>
+            </div>
           </div>
         )
 

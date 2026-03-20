@@ -121,6 +121,8 @@ export interface NotesWidgetConfig {
 export interface XTimelineWidgetConfig {
   refreshMinutes: number
   timelineType: 'foryou' | 'following'
+  tweetsPerPage: number
+  scrollIntervalSeconds: number
 }
 
 export interface CalendarEvent {

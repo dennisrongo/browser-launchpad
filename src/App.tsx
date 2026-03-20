@@ -58,6 +58,8 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
   'x-timeline': {
     refreshMinutes: 5,
     timelineType: 'following',
+    tweetsPerPage: 3,
+    scrollIntervalSeconds: 5,
   },
 }
 
