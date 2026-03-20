@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Launchpad - Your Ultimate New Tab Dashboard</title>
+  <meta name="description" content="Transform your new tab page into a powerful, customizable dashboard with widgets, themes, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a24;
+      --bg-card-hover: #22222e;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #6b6b7b;
+      --accent-primary: #8b5cf6;
+      --accent-secondary: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(139, 92, 246, 0.3);
+      --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+      --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Background Effects */
+    .bg-effects {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.4;
+      animation: float 20s ease-in-out infinite;
+    }
+
+    .bg-orb-1 {
+      width: 600px;
+      height: 600px;
+      background: var(--accent-primary);
+      top: -200px;
+      right: -100px;
+      animation-delay: 0s;
+    }
+
+    .bg-orb-2 {
+      width: 400px;
+      height: 400px;
+      background: var(--accent-secondary);
+      bottom: -100px;
+      left: -100px;
+      animation-delay: -7s;
+    }
+
+    .bg-orb-3 {
+      width: 300px;
+      height: 300px;
+      background: #3b82f6;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -14s;
+      opacity: 0.2;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -30px) scale(1.05); }
+      50% { transform: translate(-20px, 20px) scale(0.95); }
+      75% { transform: translate(20px, 30px) scale(1.02); }
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navigation */
+    nav {
+      padding: 20px 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-cta {
+      background: var(--accent-gradient);
+      color: white;
+      padding: 10px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 120px 0 80px;
+    }
+
+    .hero-content {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: var(--accent-primary);
+      margin-bottom: 24px;
+      animation: fadeInDown 0.8s ease forwards;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.8s ease 0.2s forwards;
+      opacity: 0;
+    }
+
+    .hero h1 span {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-description {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      animation: fadeInUp 0.8s ease 0.4s forwards;
+      opacity: 0;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.8s ease 0.6s forwards;
+      opacity: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: white;
+      box-shadow: 0 4px 24px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-top: 64px;
+      animation: fadeInUp 0.8s ease 0.8s forwards;
+      opacity: 0;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 100px 0;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .section-label {
+      display: inline-block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--accent-primary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .section-description {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent-gradient);
+      transform: scaleX(0);
+      transition: transform 0.4s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px);
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .feature-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(139, 92, 246, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Widgets Showcase */
+    .widgets {
+      padding: 100px 0;
+      background: var(--bg-secondary);
+    }
+
+    .widgets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+      margin-top: 48px;
+    }
+
+    .widget-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .widget-item:hover {
+      border-color: var(--border-glow);
+      transform: scale(1.05);
+    }
+
+    .widget-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .widget-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    /* Screenshots Section */
+    .screenshots {
+      padding: 100px 0;
+    }
+
+    .screenshots-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .screenshot-item {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      transition: all 0.4s ease;
+    }
+
+    .screenshot-item:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-glow);
+      border-color: var(--border-glow);
+    }
+
+    .screenshot-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+
+    .screenshot-item:hover img {
+      transform: scale(1.05);
+    }
+
+    .screenshot-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    }
+
+    .screenshot-label {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* Installation Section */
+    .installation {
+      padding: 100px 0;
+      background: var(--bg-secondary);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+      margin-top: 48px;
+    }
+
+    .step {
+      position: relative;
+      padding-left: 80px;
+    }
+
+    .step-number {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 56px;
+      height: 56px;
+      background: var(--accent-gradient);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .step h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      color: var(--text-secondary);
+    }
+
+    /* CTA Section */
+    .cta {
+      padding: 100px 0;
+      text-align: center;
+    }
+
+    .cta-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+      animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .cta-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cta h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .cta p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 32px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .footer-copy {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.8s ease;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+
+      .hero-stats {
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .cta-box {
+        padding: 40px 24px;
+      }
+
+      footer .container {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="bg-effects">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <a href="#" class="logo">
+        <div class="logo-icon">🚀</div>
+        <span>Browser Launchpad</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#widgets">Widgets</a></li>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="#install">Install</a></li>
+      </ul>
+      <a href="https://github.com/dennisrongo/browser-launchpad/releases" class="nav-cta" target="_blank" rel="noopener">Download</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span>v1.0.0 Now Available</span>
+        </div>
+        <h1>Transform Your New Tab Into a <span>Powerful Dashboard</span></h1>
+        <p class="hero-description">
+          Replace your boring new tab page with a stunning, customizable dashboard. 
+          Organize your life with widgets, themes, and powerful integrations.
+        </p>
+        <div class="hero-buttons">
+          <a href="https://github.com/dennisrongo/browser-launchpad/releases" class="btn btn-primary" target="_blank" rel="noopener">
+            <span>⬇️</span> Download Extension
+          </a>
+          <a href="#features" class="btn btn-secondary">
+            <span>✨</span> Explore Features
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <div class="stat-value">8+</div>
+            <div class="stat-label">Widgets</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">5+</div>
+            <div class="stat-label">Themes</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">∞</div>
+            <div class="stat-label">Customization</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Why Choose Browser Launchpad?</span>
+        <h2 class="section-title">Everything You Need, Right in Your New Tab</h2>
+        <p class="section-description">
+          Powerful features that transform your browsing experience and boost your productivity.
+        </p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <div class="feature-icon">📑</div>
+          <h3>Multiple Pages</h3>
+          <p>Create and organize your dashboard into multiple pages. Keep work and personal widgets separate.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">🎨</div>
+          <h3>Beautiful Themes</h3>
+          <p>Choose from multiple themes including Modern Light, Dark Elegance, and Vintage Rose.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">📐</div>
+          <h3>Customizable Layout</h3>
+          <p>Adjust grid columns from 1-6 and customize spacing to create your perfect layout.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">☁️</div>
+          <h3>Cloud Sync</h3>
+          <p>Backup and sync your data to Google Drive. Never lose your settings again.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">📤</div>
+          <h3>Import / Export</h3>
+          <p>Export your data as JSON for backups or import configurations easily.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">🔌</div>
+          <h3>API Integrations</h3>
+          <p>Connect OpenAI, Straico, and OpenWeatherMap for powerful AI and weather features.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Widgets Section -->
+  <section class="widgets" id="widgets">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Powerful Widgets</span>
+        <h2 class="section-title">8 Amazing Widgets to Supercharge Your Tab</h2>
+        <p class="section-description">
+          Add widgets to your dashboard and customize them to fit your needs.
+        </p>
+      </div>
+      <div class="widgets-grid">
+        <div class="widget-item reveal">
+          <div class="widget-icon">📌</div>
+          <div class="widget-name">Bookmarks</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">🌤️</div>
+          <div class="widget-name">Weather</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">💬</div>
+          <div class="widget-name">AI Chat</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">⏰</div>
+          <div class="widget-name">Clock</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">✅</div>
+          <div class="widget-name">To-Do</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">🍅</div>
+          <div class="widget-name">Pomodoro</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">📝</div>
+          <div class="widget-name">Notes</div>
+        </div>
+        <div class="widget-item reveal">
+          <div class="widget-icon">📅</div>
+          <div class="widget-name">Calendar</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section class="screenshots" id="screenshots">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">See It In Action</span>
+        <h2 class="section-title">Screenshots</h2>
+        <p class="section-description">
+          Get a glimpse of what your new tab page can look like with Browser Launchpad.
+        </p>
+      </div>
+      <div class="screenshots-gallery">
+        <div class="screenshot-item reveal">
+          <img src="screenshots/1.png" alt="Dashboard Overview" loading="lazy">
+          <div class="screenshot-overlay">
+            <div class="screenshot-label">Dashboard Overview</div>
+          </div>
+        </div>
+        <div class="screenshot-item reveal">
+          <img src="screenshots/2.png" alt="Theme & Layout Settings" loading="lazy">
+          <div class="screenshot-overlay">
+            <div class="screenshot-label">Theme & Layout Settings</div>
+          </div>
+        </div>
+        <div class="screenshot-item reveal">
+          <img src="screenshots/3.png" alt="Data & Sync Settings" loading="lazy">
+          <div class="screenshot-overlay">
+            <div class="screenshot-label">Data & Sync Settings</div>
+          </div>
+        </div>
+        <div class="screenshot-item reveal">
+          <img src="screenshots/4.png" alt="API Integrations" loading="lazy">
+          <div class="screenshot-overlay">
+            <div class="screenshot-label">API Integrations</div>
+          </div>
+        </div>
+        <div class="screenshot-item reveal">
+          <img src="screenshots/5.png" alt="Widget Selection" loading="lazy">
+          <div class="screenshot-overlay">
+            <div class="screenshot-label">Widget Selection</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation Section -->
+  <section class="installation" id="install">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Get Started</span>
+        <h2 class="section-title">Install in Minutes</h2>
+        <p class="section-description">
+          Follow these simple steps to transform your new tab page.
+        </p>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-number">1</div>
+          <h3>Download</h3>
+          <p>Download the latest release from GitHub or the Chrome Web Store.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-number">2</div>
+          <h3>Extract</h3>
+          <p>Extract the ZIP file to a folder on your computer.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-number">3</div>
+          <h3>Load in Chrome</h3>
+          <p>Open chrome://extensions, enable Developer mode, and click "Load unpacked".</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-number">4</div>
+          <h3>Enjoy!</h3>
+          <p>Open a new tab and start customizing your dashboard!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta">
+    <div class="container">
+      <div class="cta-box">
+        <div class="cta-content">
+          <h2>Ready to Transform Your New Tab?</h2>
+          <p>Download Browser Launchpad today and take control of your new tab page.</p>
+          <a href="https://github.com/dennisrongo/browser-launchpad/releases" class="btn btn-primary" target="_blank" rel="noopener">
+            <span>⬇️</span> Download Now
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-icon">🚀</div>
+        <span>Browser Launchpad</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="https://github.com/dennisrongo/browser-launchpad" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="https://github.com/dennisrongo/browser-launchpad/issues" target="_blank" rel="noopener">Report Issue</a></li>
+      </ul>
+      <div class="footer-copy">
+        © 2024 Dennis Rongo. MIT License.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll Reveal Animation
+    const revealElements = document.querySelectorAll('.reveal');
+
+    const revealOnScroll = () => {
+      const windowHeight = window.innerHeight;
+      const elementVisible = 100;
+
+      revealElements.forEach((element) => {
+        const elementTop = element.getBoundingClientRect().top;
+        if (elementTop < windowHeight - elementVisible) {
+          element.classList.add('active');
+        }
+      });
+    };
+
+    window.addEventListener('scroll', revealOnScroll);
+    revealOnScroll(); // Initial check
+  </script>
+</body>
+</html>
