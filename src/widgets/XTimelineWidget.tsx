@@ -1,24 +1,14 @@
 import { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { Twitter, AlertTriangle, RefreshCw, Pause, Play, RotateCcw } from 'lucide-react'
-import type { XTimelineWidgetConfig } from '../types'
+import type { XTimelineWidgetConfig, XTweet } from '../types'
 
 interface XTimelineWidgetProps {
   title: string
   config: XTimelineWidgetConfig
 }
 
-interface Tweet {
-  id: string
-  authorName: string
-  authorHandle: string
-  authorProfileImage?: string
-  text: string
-  createdAt: string
-  url: string
-}
-
 interface TimelineState {
-  tweets: Tweet[]
+  tweets: XTweet[]
   loading: boolean
   error: string | null
   authenticated: boolean
@@ -42,6 +32,44 @@ function formatRelativeTime(createdAt: string): string {
   } catch {
     return ''
   }
+}
+
+function NestedTweet({ tweet }: { tweet: XTweet }) {
+  if (!tweet.text && !tweet.authorHandle) return null
+
+  return (
+    <div className="mt-2 ml-2 pl-3 border-l-2 border-border/60">
+      <div className="flex items-center gap-1.5 min-w-0">
+        {tweet.authorProfileImage ? (
+          <img
+            src={tweet.authorProfileImage.replace('_normal', '_mini')}
+            alt=""
+            className="w-4 h-4 rounded-full flex-shrink-0"
+          />
+        ) : (
+          <div className="w-4 h-4 rounded-full bg-surface flex items-center justify-center flex-shrink-0">
+            <Twitter className="w-2 h-2 text-text-muted" />
+          </div>
+        )}
+        <span className="text-xs font-medium text-text-secondary truncate">
+          {tweet.authorName}
+        </span>
+        <span className="text-[10px] text-text-muted truncate">
+          @{tweet.authorHandle}
+        </span>
+        {tweet.createdAt && (
+          <span className="text-[10px] text-text-muted flex-shrink-0">
+            {formatRelativeTime(tweet.createdAt)}
+          </span>
+        )}
+      </div>
+      {tweet.text && (
+        <p className="text-xs text-text-muted leading-snug mt-0.5 break-words line-clamp-2">
+          {tweet.text}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: XTimelineWidgetProps) {
@@ -297,9 +325,15 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                       {formatRelativeTime(tweet.createdAt)}
                     </span>
                   </div>
+                  {tweet.replyTo && (
+                    <p className="text-[10px] text-text-muted mb-0.5">
+                      Replying to @{tweet.replyTo.authorHandle}
+                    </p>
+                  )}
                   <p className="text-sm text-text-secondary leading-snug mt-0.5 break-words line-clamp-3">
                     {tweet.text}
                   </p>
+                  {tweet.quotedTweet && <NestedTweet tweet={tweet.quotedTweet} />}
                 </div>
               </div>
             </a>

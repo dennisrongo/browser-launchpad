@@ -24,6 +24,7 @@ Add and customize widgets to build your perfect dashboard:
 | **Pomodoro** | Focus timer with customizable focus, short break, and long break durations |
 | **Calendar** | Month or week view with Google Calendar integration |
 | **Notes** | Simple markdown notes for quick reminders |
+| **X Timeline** | Display your X (Twitter) timeline with "For You" or "Following" feeds, auto-refresh and auto-scroll |
 
 #### Widget Interactions
 - **Drag and drop** widgets to reorder them within a page

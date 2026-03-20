@@ -125,6 +125,18 @@ export interface XTimelineWidgetConfig {
   scrollIntervalSeconds: number
 }
 
+export interface XTweet {
+  id: string
+  authorName: string
+  authorHandle: string
+  authorProfileImage?: string
+  text: string
+  createdAt: string
+  url: string
+  quotedTweet?: XTweet
+  replyTo?: XTweet
+}
+
 export interface CalendarEvent {
   id: string
   title: string

@@ -47,15 +47,7 @@ async function fetchPageTitle(url: string): Promise<string | null> {
   }
 }
 
-interface XTweet {
-  id: string
-  authorName: string
-  authorHandle: string
-  authorProfileImage?: string
-  text: string
-  createdAt: string
-  url: string
-}
+import type { XTweet } from './types'
 
 // X GraphQL API query IDs (may need updating if X changes them)
 const X_QUERY_IDS = {
@@ -170,6 +162,48 @@ function extractTweetFromResult(tweetResult: Record<string, unknown> | undefined
   const screenName = userLegacy.screen_name as string | undefined
   if (!restId || !screenName) return null
 
+  const quotedStatusResult = (legacy.quoted_status_result ?? tweet.quoted_status_result) as Record<string, unknown> | undefined
+  const quotedStatusLegacy = legacy.quoted_status as Record<string, unknown> | undefined
+  
+  let quotedTweet: XTweet | undefined
+  if (quotedStatusResult?.result) {
+    quotedTweet = extractTweetFromResult(quotedStatusResult.result as Record<string, unknown>) ?? undefined
+  } else if (quotedStatusLegacy) {
+    const quotedUser = quotedStatusLegacy.user as Record<string, unknown> | undefined
+    const quotedRestId = quotedStatusLegacy.id_str as string | undefined
+    const quotedScreenName = quotedUser?.screen_name as string | undefined
+    if (quotedRestId && quotedScreenName) {
+      quotedTweet = {
+        id: quotedRestId,
+        authorName: (quotedUser?.name as string) || quotedScreenName,
+        authorHandle: quotedScreenName,
+        authorProfileImage: (quotedUser?.profile_image_url_https as string) || undefined,
+        text: (quotedStatusLegacy.full_text as string) || '',
+        createdAt: (quotedStatusLegacy.created_at as string) || '',
+        url: `https://x.com/${quotedScreenName}/status/${quotedRestId}`,
+      }
+    }
+  }
+
+  if (quotedTweet) {
+    console.log('[Background] Extracted quoted tweet for', restId, quotedTweet)
+  }
+
+  let replyTo: XTweet | undefined
+  const inReplyToStatusIdStr = legacy.in_reply_to_status_id_str as string | undefined
+  const inReplyToScreenName = legacy.in_reply_to_screen_name as string | undefined
+  if (inReplyToStatusIdStr && inReplyToScreenName) {
+    console.log('[Background] Found reply for tweet', restId, 'replying to', inReplyToScreenName)
+    replyTo = {
+      id: inReplyToStatusIdStr,
+      authorName: inReplyToScreenName,
+      authorHandle: inReplyToScreenName,
+      text: '',
+      createdAt: '',
+      url: `https://x.com/${inReplyToScreenName}/status/${inReplyToStatusIdStr}`,
+    }
+  }
+
   return {
     id: restId,
     authorName: (userLegacy.name as string) || screenName,
@@ -178,6 +212,8 @@ function extractTweetFromResult(tweetResult: Record<string, unknown> | undefined
     text: (legacy.full_text as string) || '',
     createdAt: (legacy.created_at as string) || '',
     url: `https://x.com/${screenName}/status/${restId}`,
+    quotedTweet,
+    replyTo,
   }
 }
 
