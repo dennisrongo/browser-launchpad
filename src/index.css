@@ -469,14 +469,45 @@
     border-radius: 8px;
   }
 
+  .widget-wrapper {
+    position: relative;
+    z-index: auto;
+    isolation: isolate;
+  }
+
   .drop-indicator {
-    height: 56px;
     background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
     border-radius: 8px;
     border: 2px dashed var(--color-primary);
     background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
     animation: dropPulse 0.8s ease-in-out infinite;
     box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+
+  .widget-content {
+    padding: 1rem;
+    min-height: 160px;
+    transition: all 150ms ease-out;
+    overflow: hidden;
+  }
+
+  .widget-content-collapsed {
+    padding: 0;
+    min-height: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .widget-card-collapsed {
+    transition: all 150ms ease-out;
+  }
+
+  .widget-dragging {
+    border: 2px solid var(--color-primary) !important;
+    box-shadow: 
+      0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent),
+      0 0 20px color-mix(in srgb, var(--color-primary) 20%, transparent) !important;
   }
 
   @keyframes dropPulse {

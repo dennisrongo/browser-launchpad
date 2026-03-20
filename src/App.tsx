@@ -916,45 +916,75 @@ function App() {
     return columns
   }, [])
 
-  // Widget Drag and Drop Handlers
-  const handleWidgetDragStart = (widgetId: string) => {
-    setDraggedWidgetId(widgetId)
-    setDropTarget(null)
-  }
-
-  const handleColumnDragOver = (e: React.DragEvent, column: number) => {
-    e.preventDefault()
+  // Document-level drag handler to catch dragover events in empty column space
+  useEffect(() => {
     if (!draggedWidgetId) return
 
-    const currentPage = pages[activePage]
-    if (!currentPage) return
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      
+      const currentPage = pages[activePage]
+      if (!currentPage) return
 
-    const columnWidgets = getWidgetsByColumn(currentPage.widgets, settings.grid_columns)[column]
-      .filter(w => w.id !== draggedWidgetId)
+      const columnsContainer = document.querySelector('.columns-container')
+      if (!columnsContainer) return
 
-    if (columnWidgets.length === 0) {
-      setDropTarget({ column, index: 0 })
-      return
-    }
+      const columns = columnsContainer.querySelectorAll('.column')
+      const mouseX = e.clientX
+      const mouseY = e.clientY
 
-    const container = e.currentTarget
-    const containerRect = container.getBoundingClientRect()
-    const mouseY = e.clientY
+      let targetColumn = -1
+      columns.forEach((col, idx) => {
+        const rect = col.getBoundingClientRect()
+        if (mouseX >= rect.left && mouseX <= rect.right && mouseY >= rect.top - 20) {
+          targetColumn = idx
+        }
+      })
 
-    let targetIndex = columnWidgets.length
-    for (let i = 0; i < columnWidgets.length; i++) {
-      const widgetEl = container.querySelector(`[data-widget-id="${columnWidgets[i].id}"]`)
-      if (widgetEl) {
-        const rect = widgetEl.getBoundingClientRect()
-        const midY = rect.top + rect.height / 2
-        if (mouseY < midY) {
+      if (targetColumn === -1) {
+        return
+      }
+
+      const columnWidgets = getWidgetsByColumn(currentPage.widgets, settings.grid_columns)[targetColumn]
+        .filter(w => w.id !== draggedWidgetId)
+
+      const container = columns[targetColumn] as HTMLElement
+      if (!container) return
+      const containerRect = container.getBoundingClientRect()
+      const relativeY = mouseY - containerRect.top
+
+      const HEADER_HEIGHT = 48
+      const GAP = settings.grid_gap
+
+      let targetIndex = columnWidgets.length
+      let currentY = 0
+
+      for (let i = 0; i < columnWidgets.length; i++) {
+        const slotHeight = HEADER_HEIGHT + GAP
+        const slotMidY = currentY + slotHeight / 2
+
+        if (relativeY < slotMidY) {
           targetIndex = i
           break
         }
+        currentY += slotHeight
       }
+
+      setDropTarget({ column: targetColumn, index: targetIndex })
     }
 
-    setDropTarget({ column, index: targetIndex })
+    document.addEventListener('dragover', handleDragOver)
+    return () => document.removeEventListener('dragover', handleDragOver)
+  }, [draggedWidgetId, pages, activePage, settings.grid_columns, settings.grid_gap])
+
+  // Widget Drag and Drop Handlers
+  const handleWidgetDragPrepare = (widgetId: string) => {
+    setDraggedWidgetId(widgetId)
+  }
+
+  const handleWidgetDragStart = (widgetId: string) => {
+    setDraggedWidgetId(widgetId)
+    setDropTarget(null)
   }
 
   const handleColumnDrop = async (e: React.DragEvent, targetColumn: number) => {
@@ -1270,47 +1300,66 @@ function App() {
                   settings.grid_columns
                 )[columnIndex] || []
                 
+                const nonDraggedWidgets = columnWidgets.filter(w => w.id !== draggedWidgetId)
+                const nonDraggedCount = nonDraggedWidgets.length
+                
                 return (
                   <div
                     key={columnIndex}
                     className="column"
-                    style={{ gap: `${settings.grid_gap}px` }}
-                    onDragOver={(e) => handleColumnDragOver(e, columnIndex)}
+                    onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleColumnDrop(e, columnIndex)}
                   >
-                    {columnWidgets.map((widget, index) => (
-                      <div key={widget.id} data-widget-id={widget.id}>
-                        {draggedWidgetId && 
-                         dropTarget?.column === columnIndex && 
-                         dropTarget?.index === index && (
-                          <div className="drop-indicator" style={{ marginBottom: `${settings.grid_gap}px` }} />
-                        )}
-                        <div style={{ marginBottom: `${settings.grid_gap}px` }}>
-                           <WidgetCard
-                              widget={widget}
-                              pageWidgets={pages[activePage]?.widgets || []}
-                              onEdit={handleEditWidget}
-                              onEditTitle={handleEditWidgetTitle}
-                              onMove={handleMoveWidget}
-                              onDelete={handleDeleteWidget}
-                              onConfigChange={handleWidgetConfigChange}
-                              editingWidgetId={editingWidgetId}
-                              editingWidgetTitle={editingWidgetTitle}
-                              onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
-                              onSaveTitle={handleSaveWidgetTitle}
-                              onTitleKeyDown={handleWidgetTitleKeyDown}
-                              draggedWidgetId={draggedWidgetId}
-                              onDragStart={handleWidgetDragStart}
-                              onDragEnd={handleWidgetDragEnd}
-                            />
+                    {columnWidgets.map((widget) => {
+                       const isDraggedWidget = widget.id === draggedWidgetId
+                       const displayIndex = nonDraggedWidgets.findIndex(w => w.id === widget.id)
+                       
+                       return (
+                         <div 
+                           key={widget.id} 
+                           data-widget-id={widget.id} 
+                           className="widget-wrapper"
+                           style={{ marginBottom: `${settings.grid_gap}px` }}
+                         >
+                           {draggedWidgetId && 
+                            !isDraggedWidget &&
+                            dropTarget?.column === columnIndex && 
+                            dropTarget?.index === displayIndex && (
+                             <div 
+                               className="drop-indicator" 
+                               style={{ 
+                                 marginBottom: `${settings.grid_gap}px`,
+                                 height: '48px'
+                               }} 
+                             />
+                           )}
+                            <WidgetCard
+                               widget={widget}
+                               pageWidgets={pages[activePage]?.widgets || []}
+                               onEdit={handleEditWidget}
+                               onEditTitle={handleEditWidgetTitle}
+                               onMove={handleMoveWidget}
+                               onDelete={handleDeleteWidget}
+                               onConfigChange={handleWidgetConfigChange}
+                               editingWidgetId={editingWidgetId}
+                               editingWidgetTitle={editingWidgetTitle}
+                               onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}
+                               onSaveTitle={handleSaveWidgetTitle}
+                               onTitleKeyDown={handleWidgetTitleKeyDown}
+                               draggedWidgetId={draggedWidgetId}
+                               onDragStart={handleWidgetDragStart}
+                               onDragEnd={handleWidgetDragEnd}
+                               onDragPrepare={handleWidgetDragPrepare}
+                               isCollapsed={!!draggedWidgetId}
+                             />
                          </div>
-                      </div>
-                    ))}
+                       )
+                     })}
                     {draggedWidgetId && 
-                     dropTarget?.column === columnIndex && 
-                     dropTarget?.index === columnWidgets.length && (
-                      <div className="drop-indicator" />
-                    )}
+                      dropTarget?.column === columnIndex && 
+                      dropTarget?.index === nonDraggedCount && (
+                       <div className="drop-indicator" style={{ height: '48px' }} />
+                     )}
                   </div>
                 )
               })}

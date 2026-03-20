@@ -28,6 +28,8 @@ interface WidgetCardProps {
   draggedWidgetId?: string | null
   onDragStart?: (widgetId: string) => void
   onDragEnd?: () => void
+  onDragPrepare?: (widgetId: string) => void
+  isCollapsed?: boolean
 }
 
 function WidgetCardComponent({
@@ -45,12 +47,15 @@ function WidgetCardComponent({
   onTitleKeyDown,
   draggedWidgetId,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  onDragPrepare,
+  isCollapsed = false
 }: WidgetCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [showAddBookmark, setShowAddBookmark] = useState(false)
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const isEditing = editingWidgetId === widget.id
   const isDragging = draggedWidgetId === widget.id
 
@@ -181,34 +186,38 @@ function WidgetCardComponent({
 
   return (
     <div
-      style={{ contain: 'layout' }}
+      ref={cardRef}
+      draggable={!isEditing}
+      onDragStart={(e) => {
+        if (isEditing) return
+        e.stopPropagation()
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart?.(widget.id)
+      }}
+      onDragEnd={(e) => {
+        e.stopPropagation()
+        onDragEnd?.()
+      }}
       className={`
         group relative glass-card rounded-card
         transition-all duration-150 ease-out overflow-hidden
-        hover:shadow-glass-hover
-        ${isDragging ? 'opacity-50 scale-[0.97] shadow-lg' : 'shadow-glass'}
+        hover:shadow-glass-hover cursor-grab active:cursor-grabbing
+        shadow-glass
+        ${isCollapsed ? 'widget-card-collapsed' : ''}
+        ${isDragging ? 'widget-dragging' : ''}
       `}
     >
-      {!isEditing && (
-        <div
-          draggable={true}
-          onDragStart={(e) => {
-            e.stopPropagation()
-            onDragStart?.(widget.id)
-          }}
-          onDragEnd={(e) => {
-            e.stopPropagation()
-            onDragEnd?.()
-          }}
-          className="absolute top-3 left-3 z-20 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 -m-1"
-        >
-          <GripVertical className="w-4 h-4 text-text-muted" />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle/60">
-        <div className="flex items-center gap-2.5 flex-1 pl-7">
-          <div className="text-secondary">
+      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border-subtle/60">
+        <div className="flex items-center gap-2.5 flex-1">
+          {!isEditing && (
+            <div
+              className="cursor-grab active:cursor-grabbing"
+              onMouseDown={() => onDragPrepare?.(widget.id)}
+            >
+              <GripVertical className="w-4 h-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </div>
+          )}
+          <div className="text-secondary pointer-events-none">
             {getWidgetIcon()}
           </div>
           {isEditing ? (
@@ -218,14 +227,16 @@ function WidgetCardComponent({
               onChange={(e) => onTitleChange?.(widget.id, e.target.value)}
               onKeyDown={(e) => onTitleKeyDown?.(e, widget.id)}
               onBlur={() => onSaveTitle?.(widget.id)}
+              onMouseDown={(e) => e.stopPropagation()}
               className="input-base flex-1 py-1 text-sm font-semibold"
               autoFocus
               maxLength={50}
             />
           ) : (
             <h3
-              className="font-semibold text-text cursor-pointer hover:text-primary transition-colors duration-200 text-sm"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={() => onEdit?.(widget.id)}
+              className="font-semibold text-text hover:text-primary transition-colors duration-200 text-sm cursor-pointer"
               title="Click to edit title"
             >
               {widget.title}
@@ -235,7 +246,7 @@ function WidgetCardComponent({
         {!isEditing && (
           <div className="flex items-center gap-2">
             {hasAIContext && (
-              <span className="text-xs px-2 py-0.5 rounded flex items-center gap-1 badge-accent" title="This chat is context-aware and can reference your widgets">
+              <span className="text-xs px-2 py-0.5 rounded flex items-center gap-1 badge-accent pointer-events-none" title="This chat is context-aware and can reference your widgets">
                 <Info className="w-3 h-3" />
                 Context
               </span>
@@ -243,7 +254,13 @@ function WidgetCardComponent({
             <div className="relative">
             <button
               ref={menuButtonRef}
-              onClick={() => {
+              draggable={false}
+              onMouseDown={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
                 if (!showMenu) updateMenuPosition()
                 setShowMenu(!showMenu)
               }}
@@ -329,7 +346,9 @@ function WidgetCardComponent({
         )}
       </div>
 
-      <div className="p-4 min-h-[160px]">
+      <div 
+        className={`widget-content ${isCollapsed ? 'widget-content-collapsed' : ''}`}
+      >
         {renderWidget()}
       </div>
     </div>
@@ -344,6 +363,7 @@ export const WidgetCard = memo(WidgetCardComponent, (prevProps, nextProps) => {
     prevProps.editingWidgetId === nextProps.editingWidgetId &&
     prevProps.editingWidgetTitle === nextProps.editingWidgetTitle &&
     prevProps.draggedWidgetId === nextProps.draggedWidgetId &&
+    prevProps.isCollapsed === nextProps.isCollapsed &&
     prevProps.pageWidgets?.length === nextProps.pageWidgets?.length &&
     JSON.stringify(prevProps.widget.config) === JSON.stringify(nextProps.widget.config)
   )
