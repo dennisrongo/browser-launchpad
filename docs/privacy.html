@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Browser Launchpad</title>
+  <meta name="description" content="Browser Launchpad Privacy Policy - Learn how we handle your data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a24;
+      --bg-card-hover: #22222e;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #6b6b7b;
+      --accent-primary: #8b5cf6;
+      --accent-secondary: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(139, 92, 246, 0.3);
+      --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+      --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Background Effects */
+    .bg-effects {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.4;
+      animation: float 20s ease-in-out infinite;
+    }
+
+    .bg-orb-1 {
+      width: 600px;
+      height: 600px;
+      background: var(--accent-primary);
+      top: -200px;
+      right: -100px;
+      animation-delay: 0s;
+    }
+
+    .bg-orb-2 {
+      width: 400px;
+      height: 400px;
+      background: var(--accent-secondary);
+      bottom: -100px;
+      left: -100px;
+      animation-delay: -7s;
+    }
+
+    .bg-orb-3 {
+      width: 300px;
+      height: 300px;
+      background: #3b82f6;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -14s;
+      opacity: 0.2;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -30px) scale(1.05); }
+      50% { transform: translate(-20px, 20px) scale(0.95); }
+      75% { transform: translate(20px, 30px) scale(1.02); }
+    }
+
+    /* Container */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navigation */
+    nav {
+      padding: 20px 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--text-primary);
+    }
+
+    .nav-links a.active {
+      position: relative;
+    }
+
+    .nav-links a.active::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent-gradient);
+      border-radius: 2px;
+    }
+
+    /* Main Content */
+    main {
+      padding: 140px 0 80px;
+      min-height: 100vh;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .page-header h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .page-header h1 span {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-header p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+    }
+
+    .last-updated {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: var(--accent-primary);
+      margin-top: 16px;
+    }
+
+    /* Content Sections */
+    .content-section {
+      margin-bottom: 40px;
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .content-section:nth-child(2) { animation-delay: 0.1s; }
+    .content-section:nth-child(3) { animation-delay: 0.2s; }
+    .content-section:nth-child(4) { animation-delay: 0.3s; }
+    .content-section:nth-child(5) { animation-delay: 0.4s; }
+    .content-section:nth-child(6) { animation-delay: 0.5s; }
+    .content-section:nth-child(7) { animation-delay: 0.6s; }
+    .content-section:nth-child(8) { animation-delay: 0.7s; }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+    }
+
+    .section-card:hover {
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .section-card h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-card h2 .icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .section-card p {
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .section-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Lists */
+    .content-list {
+      list-style: none;
+      margin: 16px 0;
+    }
+
+    .content-list li {
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    .content-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-gradient);
+      border-radius: 50%;
+    }
+
+    /* Subsection */
+    .subsection {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .subsection h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    /* Highlight Box */
+    .highlight-box {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    .highlight-box p {
+      color: var(--text-primary);
+      font-weight: 500;
+      margin: 0;
+    }
+
+    /* Rights Grid */
+    .rights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .right-item {
+      background: rgba(139, 92, 246, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .right-item:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-2px);
+    }
+
+    .right-item .icon {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .right-item h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .right-item p {
+      font-size: 0.875rem;
+      margin: 0;
+    }
+
+    /* Contact */
+    .contact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .contact-card p {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .contact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-gradient);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .contact-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .footer-copy {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+
+      .section-card {
+        padding: 24px;
+      }
+
+      .rights-grid {
+        grid-template-columns: 1fr;
+      }
+
+      footer .container {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="bg-effects">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">🚀</div>
+        <span>Browser Launchpad</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="index.html#widgets">Widgets</a></li>
+        <li><a href="index.html#screenshots">Screenshots</a></li>
+        <li><a href="index.html#install">Install</a></li>
+        <li><a href="privacy.html" class="active">Privacy Policy</a></li>
+      </ul>
+      <a href="https://github.com/dennisrongo/browser-launchpad/releases" class="nav-cta" target="_blank" rel="noopener" style="background: var(--accent-gradient); color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Download</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h1>Privacy <span>Policy</span></h1>
+        <p>Your privacy is important to us. This policy explains what data we collect and how we use it.</p>
+        <div class="last-updated">
+          <span>📅</span> Last updated: March 18, 2026
+        </div>
+      </div>
+
+      <!-- Overview -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">📋</span> Overview</h2>
+          <p>Browser Launchpad is a Chrome extension that replaces your new tab page with a customizable widget dashboard. Your privacy is important to us. This policy explains what data we collect and how we use it.</p>
+        </div>
+      </div>
+
+      <!-- Data Collection -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">💾</span> Data Collection</h2>
+          <p>We believe in transparency about what data we collect and how we use it.</p>
+          
+          <div class="subsection">
+            <h3>Data Stored Locally</h3>
+            <p>All user data is stored locally on your device using Chrome's Storage API:</p>
+            <ul class="content-list">
+              <li>Widget configurations (bookmarks, notes, todos, clock settings)</li>
+              <li>Theme preferences and layout settings</li>
+              <li>API keys you provide for optional integrations</li>
+            </ul>
+            <div class="highlight-box">
+              <p>This data never leaves your device unless you explicitly enable Google Drive sync.</p>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Optional Google Services</h3>
+            <p>If you choose to connect Google services, the extension accesses:</p>
+            <ul class="content-list">
+              <li><strong>Google Calendar</strong>: Read-only access to display your upcoming events</li>
+              <li><strong>Google Drive</strong>: App-specific folder access to back up your bookmarks and settings</li>
+            </ul>
+            <p>We only request the minimum permissions necessary. We do not access your files, emails, or other Google data.</p>
+          </div>
+
+          <div class="subsection">
+            <h3>Third-Party API Calls</h3>
+            <p>When you use certain widgets, data is sent to third-party services:</p>
+            <ul class="content-list">
+              <li><strong>Weather Widget</strong>: Your configured city name is sent to OpenWeatherMap</li>
+              <li><strong>AI Chat Widget</strong>: Your messages are sent to OpenAI or Straico (based on your configuration)</li>
+            </ul>
+            <p>These calls only occur when you actively use these features.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data We Do NOT Collect -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">🚫</span> Data We Do NOT Collect</h2>
+          <p>We are committed to protecting your privacy. We do not collect:</p>
+          <ul class="content-list">
+            <li>We do not collect analytics or usage data</li>
+            <li>We do not track your browsing history</li>
+            <li>We do not sell or share any data with third parties</li>
+            <li>We do not use data for advertising</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Data Storage & Security -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">🔒</span> Data Storage & Security</h2>
+          <ul class="content-list">
+            <li>All data is stored locally in Chrome's secure storage</li>
+            <li>API keys are encoded before storage</li>
+            <li>OAuth tokens are managed by Chrome's identity API</li>
+            <li>Google Drive backups are stored in a private app-specific folder only you can access</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Your Rights -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">⚡</span> Your Rights</h2>
+          <p>You have full control over your data. Here are your rights:</p>
+          <div class="rights-grid">
+            <div class="right-item">
+              <div class="icon">📤</div>
+              <h4>Export Your Data</h4>
+              <p>Settings → Data → Export Data</p>
+            </div>
+            <div class="right-item">
+              <div class="icon">🗑️</div>
+              <h4>Delete Your Data</h4>
+              <p>Settings → Reset All Data</p>
+            </div>
+            <div class="right-item">
+              <div class="icon">🔌</div>
+              <h4>Disconnect Google Services</h4>
+              <p>Settings → Integrations → Disconnect</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Changes to This Policy -->
+      <div class="content-section">
+        <div class="section-card">
+          <h2><span class="icon">📝</span> Changes to This Policy</h2>
+          <p>We may update this privacy policy from time to time. Changes will be reflected in the "Last updated" date above. We encourage you to review this policy periodically to stay informed about how we protect your privacy.</p>
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="content-section">
+        <div class="contact-card">
+          <h2><span class="icon">💬</span> Contact</h2>
+          <p>If you have questions about this privacy policy, please reach out through our GitHub repository.</p>
+          <a href="https://github.com/dennisrongo/browser-launchpad" class="contact-link" target="_blank" rel="noopener">
+            <span>🐙</span> Open GitHub Issue
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-icon">🚀</div>
+        <span>Browser Launchpad</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="https://github.com/dennisrongo/browser-launchpad" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="https://github.com/dennisrongo/browser-launchpad/issues" target="_blank" rel="noopener">Report Issue</a></li>
+      </ul>
+      <div class="footer-copy">
+        © 2026 Dennis Rongo. MIT License.
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
