@@ -31,7 +31,8 @@
   },
   "permissions": [
     "storage",
-    "identity"
+    "identity",
+    "cookies"
   ],
   "host_permissions": [
     "<all_urls>"

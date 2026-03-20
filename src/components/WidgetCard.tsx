@@ -1,6 +1,6 @@
 import { useState, memo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText } from 'lucide-react'
+import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter } from 'lucide-react'
 import { Widget } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
@@ -10,6 +10,7 @@ import { TodoWidget } from '../widgets/TodoWidget'
 import { PomodoroWidget } from '../widgets/PomodoroWidget'
 import { CalendarWidget } from '../widgets/CalendarWidget'
 import { NotesWidget } from '../widgets/NotesWidget'
+import { XTimelineWidget } from '../widgets/XTimelineWidget'
 
 interface WidgetCardProps {
   widget: Widget
@@ -132,6 +133,8 @@ function WidgetCardComponent({
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
           />
         )
+      case 'x-timeline':
+        return <XTimelineWidget title={widget.title} config={widget.config as any} />
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full">
@@ -162,6 +165,8 @@ function WidgetCardComponent({
         return <Calendar className="w-4 h-4" />
       case 'notes':
         return <FileText className="w-4 h-4" />
+      case 'x-timeline':
+        return <Twitter className="w-4 h-4" />
       default:
         return <Package className="w-4 h-4" />
     }
@@ -176,20 +181,26 @@ function WidgetCardComponent({
 
   return (
     <div
-      style={{ contain: 'layout style paint' }}
+      style={{ contain: 'layout' }}
       className={`
         group relative glass-card rounded-card
         transition-all duration-150 ease-out overflow-hidden
-        hover:shadow-glass-hover hover-lift
+        hover:shadow-glass-hover
         ${isDragging ? 'opacity-50 scale-[0.97] shadow-lg' : 'shadow-glass'}
       `}
     >
       {!isEditing && (
         <div
-          draggable
-          onDragStart={() => onDragStart?.(widget.id)}
-          onDragEnd={() => onDragEnd?.()}
-          className="absolute top-3 left-3 z-10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          draggable={true}
+          onDragStart={(e) => {
+            e.stopPropagation()
+            onDragStart?.(widget.id)
+          }}
+          onDragEnd={(e) => {
+            e.stopPropagation()
+            onDragEnd?.()
+          }}
+          className="absolute top-3 left-3 z-20 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 -m-1"
         >
           <GripVertical className="w-4 h-4 text-text-muted" />
         </div>

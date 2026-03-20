@@ -55,6 +55,10 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
   notes: {
     content: '',
   },
+  'x-timeline': {
+    refreshMinutes: 5,
+    timelineType: 'following',
+  },
 }
 
 const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
@@ -66,6 +70,7 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   pomodoro: 'Pomodoro',
   calendar: 'Calendar',
   notes: 'Notes',
+  'x-timeline': 'X Timeline',
 }
 
 function hasBookmarkSyncPayloadChanged(change: chrome.storage.StorageChange): boolean {

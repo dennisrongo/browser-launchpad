@@ -1,6 +1,6 @@
-import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText } from 'lucide-react'
+import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText, Twitter } from 'lucide-react'
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline'
 
 export interface WidgetTypeOption {
   type: WidgetType
@@ -63,6 +63,12 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
     name: 'Notes',
     description: 'Write and view Markdown-formatted notes',
     icon: <FileText className="w-7 h-7" />,
+  },
+  {
+    type: 'x-timeline',
+    name: 'X Timeline',
+    description: 'View your X/Twitter timeline with auto-refresh',
+    icon: <Twitter className="w-7 h-7" />,
   },
 ]
 

@@ -9,7 +9,7 @@ export interface Page {
   updated_at: string
 }
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline'
 
 export interface Widget {
   id: string
@@ -31,6 +31,7 @@ export type WidgetConfig =
   | PomodoroWidgetConfig
   | CalendarWidgetConfig
   | NotesWidgetConfig
+  | XTimelineWidgetConfig
 
 export interface BookmarkWidgetConfig {
   bookmarks: Bookmark[]
@@ -115,6 +116,11 @@ export interface CalendarWidgetConfig {
 
 export interface NotesWidgetConfig {
   content: string
+}
+
+export interface XTimelineWidgetConfig {
+  refreshMinutes: number
+  timelineType: 'foryou' | 'following'
 }
 
 export interface CalendarEvent {

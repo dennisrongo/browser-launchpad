@@ -465,6 +465,54 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
           </div>
         )
 
+      case 'x-timeline':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Timeline</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="timelineType"
+                    checked={config.timelineType !== 'foryou'}
+                    onChange={() => setConfig({ ...config, timelineType: 'following' })}
+                    className="w-4 h-4 text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-sm">Following</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="timelineType"
+                    checked={config.timelineType === 'foryou'}
+                    onChange={() => setConfig({ ...config, timelineType: 'foryou' })}
+                    className="w-4 h-4 text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-sm">For You</span>
+                </label>
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Choose between your Following feed or X's algorithmic For You feed.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Auto-refresh interval (minutes)</label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={config.refreshMinutes || 5}
+                onChange={(e) => setConfig({ ...config, refreshMinutes: Math.max(1, Math.min(60, parseInt(e.target.value) || 5)) })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-text-secondary mt-1">
+                How often to refresh the timeline (1-60 minutes). Default is 5 minutes.
+              </p>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="p-4 bg-surface border border-border rounded text-center">
