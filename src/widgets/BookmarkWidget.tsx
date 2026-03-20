@@ -1,17 +1,21 @@
 import { useState, useCallback } from 'react'
 import { Pencil, Trash2, X, Link, AlertTriangle, GripVertical, RefreshCw } from 'lucide-react'
-import { BookmarkWidgetConfig } from '../types'
+import type { BookmarkWidgetConfig, Bookmark } from '../types'
 import { getBookmarkIconDisplay } from '../utils/favicon'
+
+const BOOKMARK_MIME = 'application/x-bookmark'
 
 interface BookmarkWidgetProps {
   title: string
+  widgetId: string
   config: BookmarkWidgetConfig
   onConfigChange?: (newConfig: BookmarkWidgetConfig) => void
+  onBookmarkTransfer?: (sourceWidgetId: string, bookmark: Bookmark, targetIndex: number) => void
   showAddForm?: boolean
   onAddFormClose?: () => void
 }
 
-export function BookmarkWidget({ title: _title, config, onConfigChange, showAddForm: externalShowAddForm, onAddFormClose }: BookmarkWidgetProps) {
+export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange, onBookmarkTransfer, showAddForm: externalShowAddForm, onAddFormClose }: BookmarkWidgetProps) {
   const [internalShowAddForm, setInternalShowAddForm] = useState(false)
   const showAddForm = externalShowAddForm ?? internalShowAddForm
   
@@ -34,6 +38,7 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
   const [bookmarkToDelete, setBookmarkToDelete] = useState<string | null>(null)
   const [draggedBookmarkId, setDraggedBookmarkId] = useState<string | null>(null)
   const [dragOverBookmarkId, setDragOverBookmarkId] = useState<string | null>(null)
+  const [crossWidgetDropIndex, setCrossWidgetDropIndex] = useState<number | null>(null)
 
   const bookmarks = config.bookmarks || []
 
@@ -153,27 +158,93 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
     setEditTitle('')
   }
 
-  const handleDragStart = (id: string) => setDraggedBookmarkId(id)
-
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    if (draggedBookmarkId && draggedBookmarkId !== id) setDragOverBookmarkId(id)
+  const handleDragStart = (e: React.DragEvent, bookmark: Bookmark) => {
+    e.stopPropagation()
+    setDraggedBookmarkId(bookmark.id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData(BOOKMARK_MIME, JSON.stringify({ sourceWidgetId: widgetId, bookmark }))
   }
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
+  const isCrossWidgetDrag = (e: React.DragEvent): boolean => {
+    if (draggedBookmarkId) return false
+    return e.dataTransfer.types.includes(BOOKMARK_MIME)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
-    if (!draggedBookmarkId || draggedBookmarkId === targetId) {
+    e.stopPropagation()
+    if (isCrossWidgetDrag(e)) {
+      e.dataTransfer.dropEffect = 'move'
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      const midY = rect.top + rect.height / 2
+      const dropIndex = e.clientY < midY ? index : index + 1
+      setCrossWidgetDropIndex(dropIndex)
+      setDragOverBookmarkId(null)
+    } else if (draggedBookmarkId) {
+      const targetId = bookmarks[index]?.id
+      if (targetId && draggedBookmarkId !== targetId) setDragOverBookmarkId(targetId)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const raw = e.dataTransfer.getData(BOOKMARK_MIME)
+    if (raw) {
+      try {
+        const { sourceWidgetId, bookmark } = JSON.parse(raw) as { sourceWidgetId: string; bookmark: Bookmark }
+        if (sourceWidgetId !== widgetId) {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+          const midY = rect.top + rect.height / 2
+          const dropIndex = e.clientY < midY ? targetIndex : targetIndex + 1
+          onBookmarkTransfer?.(sourceWidgetId, bookmark, dropIndex)
+          setCrossWidgetDropIndex(null)
+          return
+        }
+      } catch { /* fall through to same-widget reorder */ }
+    }
+
+    const targetId = bookmarks[targetIndex]?.id
+    if (!draggedBookmarkId || !targetId || draggedBookmarkId === targetId) {
       setDraggedBookmarkId(null)
       setDragOverBookmarkId(null)
+      setCrossWidgetDropIndex(null)
       return
     }
     const oldIndex = bookmarks.findIndex(b => b.id === draggedBookmarkId)
-    const newIndex = bookmarks.findIndex(b => b.id === targetId)
+    const newIndex = targetIndex
     if (oldIndex === -1 || newIndex === -1) return
     const reordered = [...bookmarks]
     const [removed] = reordered.splice(oldIndex, 1)
     reordered.splice(newIndex, 0, removed)
     onConfigChange?.({ bookmarks: reordered })
+    setDraggedBookmarkId(null)
+    setDragOverBookmarkId(null)
+    setCrossWidgetDropIndex(null)
+  }
+
+  const handleListDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isCrossWidgetDrag(e)) {
+      e.dataTransfer.dropEffect = 'move'
+      setCrossWidgetDropIndex(bookmarks.length)
+    }
+  }
+
+  const handleListDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const raw = e.dataTransfer.getData(BOOKMARK_MIME)
+    if (!raw) return
+    try {
+      const { sourceWidgetId, bookmark } = JSON.parse(raw) as { sourceWidgetId: string; bookmark: Bookmark }
+      if (sourceWidgetId !== widgetId) {
+        onBookmarkTransfer?.(sourceWidgetId, bookmark, bookmarks.length)
+      }
+    } catch { /* ignore */ }
+    setCrossWidgetDropIndex(null)
     setDraggedBookmarkId(null)
     setDragOverBookmarkId(null)
   }
@@ -195,53 +266,73 @@ export function BookmarkWidget({ title: _title, config, onConfigChange, showAddF
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-1">
+      <div
+        className="flex-1 overflow-y-auto space-y-1"
+        onDragOver={handleListDragOver}
+        onDrop={handleListDrop}
+        onDragLeave={(e) => {
+          const container = e.currentTarget as HTMLElement
+          const related = e.relatedTarget as Node | null
+          if (!related || !container.contains(related)) {
+            setCrossWidgetDropIndex(null)
+          }
+        }}
+      >
         {bookmarks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center mb-2">
+            <div className={`w-10 h-10 rounded-lg bg-surface flex items-center justify-center mb-2 ${crossWidgetDropIndex !== null ? 'ring-2 ring-primary' : ''}`}>
               <Link className="w-5 h-5 text-text-muted" />
             </div>
-            <p className="text-text-muted text-xs">No bookmarks</p>
+            <p className="text-text-muted text-xs">{crossWidgetDropIndex !== null ? 'Drop here' : 'No bookmarks'}</p>
           </div>
         ) : (
-          bookmarks.map((bookmark) => (
-            <div
-              key={bookmark.id}
-              draggable
-              onDragStart={() => handleDragStart(bookmark.id)}
-              onDragOver={(e) => handleDragOver(e, bookmark.id)}
-              onDragLeave={() => setDragOverBookmarkId(null)}
-              onDrop={(e) => handleDrop(e, bookmark.id)}
-              onDragEnd={() => { setDraggedBookmarkId(null); setDragOverBookmarkId(null) }}
-              className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-100 ${
-                draggedBookmarkId === bookmark.id ? 'opacity-50 scale-95' :
-                dragOverBookmarkId === bookmark.id ? 'border border-primary bg-primary/5' :
-                'hover:bg-surface'
-              }`}
-            >
-              <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                <GripVertical className="w-3 h-3" />
-              </span>
-              {renderIcon(bookmark)}
-              <a
-                href={bookmark.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
-                title={bookmark.url}
-              >
-                {bookmark.title}
-              </a>
-              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-100" title="Edit">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-button transition-all duration-100" title="Delete">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+          <>
+            {bookmarks.map((bookmark, index) => (
+              <div key={bookmark.id}>
+                {crossWidgetDropIndex === index && (
+                  <div className="h-0.5 bg-primary rounded-full mx-2 my-1" />
+                )}
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, bookmark)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={() => { setDragOverBookmarkId(null) }}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={() => { setDraggedBookmarkId(null); setDragOverBookmarkId(null); setCrossWidgetDropIndex(null) }}
+                  className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-100 ${
+                    draggedBookmarkId === bookmark.id ? 'opacity-50 scale-95' :
+                    dragOverBookmarkId === bookmark.id ? 'border border-primary bg-primary/5' :
+                    'hover:bg-surface'
+                  }`}
+                >
+                  <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-3 h-3" />
+                  </span>
+                  {renderIcon(bookmark)}
+                  <a
+                    href={bookmark.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
+                    title={bookmark.url}
+                  >
+                    {bookmark.title}
+                  </a>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                    <button onClick={() => handleStartEdit(bookmark)} className="p-1.5 text-neutral hover:text-secondary hover:bg-surface rounded-button transition-all duration-100" title="Edit">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDeleteBookmark(bookmark.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-button transition-all duration-100" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+            {crossWidgetDropIndex === bookmarks.length && (
+              <div className="h-0.5 bg-primary rounded-full mx-2 my-1" />
+            )}
+          </>
         )}
       </div>
 

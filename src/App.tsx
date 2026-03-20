@@ -11,7 +11,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { MoveWidgetDialog } from './components/MoveWidgetDialog'
 import { Header } from './components/Header'
 import { MainContainer } from './components/MainContainer'
-import type { Page, Settings, Widget, WidgetType } from './types'
+import type { Page, Settings, Widget, WidgetType, Bookmark } from './types'
 
 const MAX_PAGES = 10
 
@@ -840,6 +840,44 @@ function App() {
     }
   }
 
+  const handleBookmarkTransfer = async (sourceWidgetId: string, bookmark: Bookmark, targetWidgetId: string, targetIndex: number) => {
+    const currentPage = pages[activePage]
+    if (!currentPage) return
+
+    const updatedWidgets = currentPage.widgets.map((w: Widget) => {
+      if (w.id === sourceWidgetId && w.type === 'bookmark') {
+        const sourceConfig = w.config as { bookmarks: Bookmark[] }
+        return { ...w, config: { ...sourceConfig, bookmarks: sourceConfig.bookmarks.filter(b => b.id !== bookmark.id) } }
+      }
+      if (w.id === targetWidgetId && w.type === 'bookmark') {
+        const targetConfig = w.config as { bookmarks: Bookmark[] }
+        const newBookmarks = [...targetConfig.bookmarks]
+        newBookmarks.splice(targetIndex, 0, bookmark)
+        return { ...w, config: { ...targetConfig, bookmarks: newBookmarks } }
+      }
+      return w
+    })
+
+    const updatedPages = [...pages]
+    updatedPages[activePage] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: new Date().toISOString(),
+    }
+
+    const previousPages = pages
+    setPages(updatedPages)
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      console.error('Failed to transfer bookmark, rolling back:', result.error)
+      setPages(previousPages)
+    } else {
+      console.log('✓ Bookmark transferred between widgets in Chrome storage')
+    }
+  }
+
   const handleMoveWidget = (widgetId: string) => {
     setWidgetToMove(widgetId)
     setShowMoveDialog(true)
@@ -1341,6 +1379,7 @@ function App() {
                                onMove={handleMoveWidget}
                                onDelete={handleDeleteWidget}
                                onConfigChange={handleWidgetConfigChange}
+                               onBookmarkTransfer={handleBookmarkTransfer}
                                editingWidgetId={editingWidgetId}
                                editingWidgetTitle={editingWidgetTitle}
                                onTitleChange={(_, newTitle) => setEditingWidgetTitle(newTitle)}

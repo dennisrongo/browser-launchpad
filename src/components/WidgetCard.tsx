@@ -1,7 +1,7 @@
 import { useState, memo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Clock, Bookmark, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter } from 'lucide-react'
-import { Widget } from '../types'
+import { Clock, Bookmark as BookmarkIcon, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter } from 'lucide-react'
+import type { Widget, Bookmark } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
 import { WeatherWidget } from '../widgets/WeatherWidget'
@@ -20,6 +20,7 @@ interface WidgetCardProps {
   onMove?: (widgetId: string) => void
   onDelete?: (widgetId: string) => void
   onConfigChange?: (widgetId: string, newConfig: any) => void
+  onBookmarkTransfer?: (sourceWidgetId: string, bookmark: Bookmark, targetWidgetId: string, targetIndex: number) => void
   editingWidgetId?: string | null
   editingWidgetTitle?: string
   onTitleChange?: (widgetId: string, newTitle: string) => void
@@ -40,6 +41,7 @@ function WidgetCardComponent({
   onMove,
   onDelete,
   onConfigChange,
+  onBookmarkTransfer,
   editingWidgetId,
   editingWidgetTitle = '',
   onTitleChange,
@@ -88,8 +90,10 @@ function WidgetCardComponent({
         return (
           <BookmarkWidget
             title={widget.title}
+            widgetId={widget.id}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+            onBookmarkTransfer={(sourceWidgetId, bookmark, targetIndex) => onBookmarkTransfer?.(sourceWidgetId, bookmark, widget.id, targetIndex)}
             showAddForm={showAddBookmark}
             onAddFormClose={() => setShowAddBookmark(false)}
           />
@@ -157,7 +161,7 @@ function WidgetCardComponent({
       case 'clock':
         return <Clock className="w-4 h-4" />
       case 'bookmark':
-        return <Bookmark className="w-4 h-4" />
+        return <BookmarkIcon className="w-4 h-4" />
       case 'weather':
         return <CloudSun className="w-4 h-4" />
       case 'ai-chat':
