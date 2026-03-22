@@ -9,7 +9,7 @@ export interface Page {
   updated_at: string
 }
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban'
 
 export interface Widget {
   id: string
@@ -19,6 +19,7 @@ export interface Widget {
   order: number
   title: string
   config: WidgetConfig
+  colSpan?: number
   created_at: string
 }
 
@@ -32,6 +33,7 @@ export type WidgetConfig =
   | CalendarWidgetConfig
   | NotesWidgetConfig
   | XTimelineWidgetConfig
+  | KanbanWidgetConfig
 
 export interface BookmarkWidgetConfig {
   bookmarks: Bookmark[]
@@ -123,6 +125,27 @@ export interface XTimelineWidgetConfig {
   timelineType: 'foryou' | 'following'
   tweetsPerPage: number
   scrollIntervalSeconds: number
+}
+
+export interface KanbanCard {
+  id: string
+  title: string
+  description?: string
+  columnId: string
+  order: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface KanbanColumn {
+  id: string
+  title: string
+  order: number
+}
+
+export interface KanbanWidgetConfig {
+  columns: KanbanColumn[]
+  cards: KanbanCard[]
 }
 
 export interface XTweet {

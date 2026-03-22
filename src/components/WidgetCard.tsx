@@ -1,6 +1,6 @@
 import { useState, memo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Clock, Bookmark as BookmarkIcon, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter } from 'lucide-react'
+import { Clock, Bookmark as BookmarkIcon, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter, LayoutDashboard } from 'lucide-react'
 import type { Widget, Bookmark } from '../types'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
@@ -11,6 +11,7 @@ import { PomodoroWidget } from '../widgets/PomodoroWidget'
 import { CalendarWidget } from '../widgets/CalendarWidget'
 import { NotesWidget } from '../widgets/NotesWidget'
 import { XTimelineWidget } from '../widgets/XTimelineWidget'
+import { KanbanWidget } from '../widgets/KanbanWidget'
 
 interface WidgetCardProps {
   widget: Widget
@@ -144,6 +145,14 @@ function WidgetCardComponent({
         )
       case 'x-timeline':
         return <XTimelineWidget title={widget.title} config={widget.config as any} />
+      case 'kanban':
+        return (
+          <KanbanWidget
+            title={widget.title}
+            config={widget.config as any}
+            onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
+          />
+        )
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full">
@@ -176,6 +185,8 @@ function WidgetCardComponent({
         return <FileText className="w-4 h-4" />
       case 'x-timeline':
         return <Twitter className="w-4 h-4" />
+      case 'kanban':
+        return <LayoutDashboard className="w-4 h-4" />
       default:
         return <Package className="w-4 h-4" />
     }

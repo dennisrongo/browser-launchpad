@@ -1,6 +1,6 @@
-import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText, Twitter } from 'lucide-react'
+import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText, Twitter, LayoutDashboard } from 'lucide-react'
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban'
 
 export interface WidgetTypeOption {
   type: WidgetType
@@ -69,6 +69,12 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
     name: 'X Timeline',
     description: 'View your X/Twitter timeline with auto-refresh',
     icon: <Twitter className="w-7 h-7" />,
+  },
+  {
+    type: 'kanban',
+    name: 'Kanban Board',
+    description: 'Manage tasks in a Kanban board',
+    icon: <LayoutDashboard className="w-7 h-7" />,
   },
 ]
 

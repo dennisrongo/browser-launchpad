@@ -61,6 +61,14 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
     tweetsPerPage: 3,
     scrollIntervalSeconds: 5,
   },
+  kanban: {
+    columns: [
+      { id: 'col-1', title: 'To Do', order: 0 },
+      { id: 'col-2', title: 'In Progress', order: 1 },
+      { id: 'col-3', title: 'Done', order: 2 },
+    ],
+    cards: [],
+  },
 }
 
 const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
@@ -73,6 +81,7 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   calendar: 'Calendar',
   notes: 'Notes',
   'x-timeline': 'X Timeline',
+  kanban: 'Kanban Board',
 }
 
 function hasBookmarkSyncPayloadChanged(change: chrome.storage.StorageChange): boolean {
@@ -108,6 +117,13 @@ function App() {
   const [widgetToMove, setWidgetToMove] = useState<string | null>(null)
   const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ column: number; index: number } | null>(null)
+  // Refs that mirror state so always-registered event handlers never go stale
+  const draggedWidgetIdRef = useRef<string | null>(null)
+  const dropTargetRef = useRef<{ column: number; index: number } | null>(null)
+  const pagesRef = useRef(pages)
+  const activePageRef = useRef(activePage)
+  const numColsRef = useRef(3)
+  const gridGapRef = useRef(24)
   const [showSettings, setShowSettings] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const googleDriveAutoSyncTimerRef = useRef<number | null>(null)
@@ -206,6 +222,12 @@ function App() {
 
     initializeApp()
   }, [])
+
+  // Keep refs in sync with latest state so always-on handlers never see stale values
+  pagesRef.current = pages
+  activePageRef.current = activePage
+  numColsRef.current = settings.grid_columns
+  gridGapRef.current = settings.grid_gap
 
   // Listen for storage changes from other contexts
   useEffect(() => {
@@ -954,168 +976,180 @@ function App() {
     return columns
   }, [])
 
-  // Document-level drag handler to catch dragover events in empty column space
+  // Always-on document-level drag handlers registered once on mount.
+  // Using refs avoids the useEffect timing gap where dragover events fire
+  // before the listener is registered (React 18 runs effects after paint).
   useEffect(() => {
-    if (!draggedWidgetId) return
-
     const handleDragOver = (e: DragEvent) => {
+      const draggedId = draggedWidgetIdRef.current
+      if (!draggedId) return
       e.preventDefault()
-      
-      const currentPage = pages[activePage]
+
+      const numCols = numColsRef.current
+      const gap = gridGapRef.current
+      const currentPage = pagesRef.current[activePageRef.current]
       if (!currentPage) return
 
       const columnsContainer = document.querySelector('.columns-container')
       if (!columnsContainer) return
 
-      const columns = columnsContainer.querySelectorAll('.column')
+      const columnEls = columnsContainer.querySelectorAll('.column')
       const mouseX = e.clientX
       const mouseY = e.clientY
 
+      // Find which column the cursor is over (extend hit area upward by 20px)
       let targetColumn = -1
-      columns.forEach((col, idx) => {
+      columnEls.forEach((col, idx) => {
         const rect = col.getBoundingClientRect()
         if (mouseX >= rect.left && mouseX <= rect.right && mouseY >= rect.top - 20) {
           targetColumn = idx
         }
       })
 
+      // Fallback: use X position to determine column when cursor is outside all columns
       if (targetColumn === -1) {
+        const containerRect = columnsContainer.getBoundingClientRect()
+        const relX = mouseX - containerRect.left
+        const colWidth = containerRect.width / numCols
+        targetColumn = Math.max(0, Math.min(numCols - 1, Math.floor(relX / colWidth)))
+      }
+
+      const columnWidgets = (currentPage.widgets as Widget[])
+        .filter(w => (w.column ?? 0) === targetColumn && w.id !== draggedId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+      // Determine insert index by comparing cursor Y to each widget's midpoint
+      const colEl = columnEls[targetColumn] as HTMLElement
+      let targetIndex = columnWidgets.length
+      if (colEl) {
+        for (let i = 0; i < columnWidgets.length; i++) {
+          const el = colEl.querySelector(`[data-widget-id="${columnWidgets[i].id}"]`) as HTMLElement
+          if (!el) continue
+          const rect = el.getBoundingClientRect()
+          if (mouseY < rect.top + rect.height / 2) {
+            targetIndex = i
+            break
+          }
+        }
+      } else {
+        // Column element not found — fall back to estimated position
+        const HEADER_HEIGHT = 48
+        const containerRect = (columnsContainer as HTMLElement).getBoundingClientRect()
+        const relativeY = mouseY - containerRect.top
+        let currentY = 0
+        for (let i = 0; i < columnWidgets.length; i++) {
+          const slotMidY = currentY + (HEADER_HEIGHT + gap) / 2
+          if (relativeY < slotMidY) { targetIndex = i; break }
+          currentY += HEADER_HEIGHT + gap
+        }
+      }
+
+      const prev = dropTargetRef.current
+      if (prev?.column === targetColumn && prev?.index === targetIndex) return
+      const next = { column: targetColumn, index: targetIndex }
+      dropTargetRef.current = next
+      setDropTarget(next)
+    }
+
+    const handleDrop = async (e: DragEvent) => {
+      const draggedId = draggedWidgetIdRef.current
+      if (!draggedId) return
+      e.preventDefault()
+
+      const target = dropTargetRef.current
+      if (!target) {
+        draggedWidgetIdRef.current = null
+        setDraggedWidgetId(null)
+        setDropTarget(null)
         return
       }
 
-      const columnWidgets = getWidgetsByColumn(currentPage.widgets, settings.grid_columns)[targetColumn]
-        .filter(w => w.id !== draggedWidgetId)
+      const pages = pagesRef.current
+      const actIdx = activePageRef.current
+      const currentPage = pages[actIdx]
+      if (!currentPage) return
 
-      const container = columns[targetColumn] as HTMLElement
-      if (!container) return
-      const containerRect = container.getBoundingClientRect()
-      const relativeY = mouseY - containerRect.top
-
-      const HEADER_HEIGHT = 48
-      const GAP = settings.grid_gap
-
-      let targetIndex = columnWidgets.length
-      let currentY = 0
-
-      for (let i = 0; i < columnWidgets.length; i++) {
-        const slotHeight = HEADER_HEIGHT + GAP
-        const slotMidY = currentY + slotHeight / 2
-
-        if (relativeY < slotMidY) {
-          targetIndex = i
-          break
-        }
-        currentY += slotHeight
+      const widgets = currentPage.widgets.map((w: Widget) => ({ ...w }))
+      const draggedIndex = widgets.findIndex((w: Widget) => w.id === draggedId)
+      if (draggedIndex === -1) {
+        draggedWidgetIdRef.current = null
+        setDraggedWidgetId(null)
+        setDropTarget(null)
+        dropTargetRef.current = null
+        return
       }
 
-      setDropTarget({ column: targetColumn, index: targetIndex })
+      const draggedWidget = widgets[draggedIndex]
+      const oldColumn = draggedWidget.column ?? 0
+      const targetColumn = target.column
+
+      const targetColumnWidgets = widgets
+        .filter((w: Widget) => (w.column ?? 0) === targetColumn && w.id !== draggedId)
+        .sort((a: Widget, b: Widget) => (a.order ?? 0) - (b.order ?? 0))
+
+      const insertIndex = Math.min(target.index, targetColumnWidgets.length)
+
+      // Assign column and insert at correct position
+      draggedWidget.column = targetColumn
+      targetColumnWidgets.splice(insertIndex, 0, draggedWidget)
+      targetColumnWidgets.forEach((w: Widget, i: number) => { w.order = i })
+
+      // Re-number old column if moving between columns
+      if (oldColumn !== targetColumn) {
+        widgets
+          .filter((w: Widget) => (w.column ?? 0) === oldColumn && w.id !== draggedId)
+          .sort((a: Widget, b: Widget) => (a.order ?? 0) - (b.order ?? 0))
+          .forEach((w: Widget, i: number) => { w.order = i })
+      }
+
+      const updatedPages = [...pages]
+      updatedPages[actIdx] = { ...currentPage, widgets, updated_at: new Date().toISOString() }
+      const previousPages = pages
+
+      draggedWidgetIdRef.current = null
+      dropTargetRef.current = null
+      setDraggedWidgetId(null)
+      setDropTarget(null)
+      setPages(updatedPages)
+
+      const result = await pagesStorage.set(updatedPages)
+      if (!result.success) {
+        console.error('Failed to reorder widgets, rolling back:', result.error)
+        setPages(previousPages)
+      } else {
+        console.log('✓ Widgets reordered in Chrome storage')
+      }
     }
 
     document.addEventListener('dragover', handleDragOver)
-    return () => document.removeEventListener('dragover', handleDragOver)
-  }, [draggedWidgetId, pages, activePage, settings.grid_columns, settings.grid_gap])
+    document.addEventListener('drop', handleDrop)
+    return () => {
+      document.removeEventListener('dragover', handleDragOver)
+      document.removeEventListener('drop', handleDrop)
+    }
+  }, []) // empty deps — all mutable values read via refs
 
   // Widget Drag and Drop Handlers
-  const handleWidgetDragPrepare = (widgetId: string) => {
-    setDraggedWidgetId(widgetId)
+  const handleWidgetDragPrepare = (_widgetId: string) => {
+    // intentional no-op: setting draggedWidgetId on mousedown collapses widgets
+    // before the browser captures the drag image. We set it in dragstart instead.
   }
 
   const handleWidgetDragStart = (widgetId: string) => {
+    draggedWidgetIdRef.current = widgetId  // set ref first — handler reads this immediately
     setDraggedWidgetId(widgetId)
+    dropTargetRef.current = null
     setDropTarget(null)
   }
 
-  const handleColumnDrop = async (e: React.DragEvent, targetColumn: number) => {
+  const handleColumnDrop = (e: React.DragEvent) => {
+    // Drop is fully handled by the document-level handler; just prevent default here.
     e.preventDefault()
-    if (!draggedWidgetId || !dropTarget) {
-      setDraggedWidgetId(null)
-      setDropTarget(null)
-      return
-    }
-
-    const currentPage = pages[activePage]
-    if (!currentPage) return
-
-    const widgets = [...currentPage.widgets]
-    const draggedIndex = widgets.findIndex((w: Widget) => w.id === draggedWidgetId)
-
-    if (draggedIndex === -1) {
-      setDraggedWidgetId(null)
-      setDropTarget(null)
-      return
-    }
-
-    const draggedWidget = widgets[draggedIndex]
-    const oldColumn = draggedWidget.column || 0
-
-    const targetColumnWidgets = widgets
-      .filter(w => (w.column || 0) === targetColumn && w.id !== draggedWidgetId)
-      .sort((a, b) => a.order - b.order)
-
-    const insertIndex = Math.min(dropTarget.index, targetColumnWidgets.length)
-
-    widgets.splice(draggedIndex, 1)
-
-    const updatedWidget = { ...draggedWidget, column: targetColumn }
-    widgets.push(updatedWidget)
-
-    if (oldColumn === targetColumn) {
-      const columnWidgets = widgets.filter(w => (w.column || 0) === targetColumn).sort((a, b) => a.order - b.order)
-      const draggedFromOrder = draggedWidget.order
-      const targetOrder = insertIndex
-
-      columnWidgets.forEach(w => {
-        if (w.id === draggedWidget.id) return
-        const currentOrder = w.order
-        if (draggedFromOrder < targetOrder) {
-          if (currentOrder > draggedFromOrder && currentOrder <= targetOrder) {
-            w.order = currentOrder - 1
-          }
-        } else {
-          if (currentOrder >= targetOrder && currentOrder < draggedFromOrder) {
-            w.order = currentOrder + 1
-          }
-        }
-      })
-      updatedWidget.order = targetOrder
-    } else {
-      const newColumnWidgets = widgets.filter(w => (w.column || 0) === targetColumn)
-      newColumnWidgets.forEach(w => {
-        if (w.order >= insertIndex) {
-          w.order += 1
-        }
-      })
-      updatedWidget.order = insertIndex
-
-      const oldColumnWidgets = widgets.filter(w => (w.column || 0) === oldColumn)
-      oldColumnWidgets.sort((a, b) => a.order - b.order).forEach((w, idx) => {
-        w.order = idx
-      })
-    }
-
-    const updatedPages = [...pages]
-    updatedPages[activePage] = {
-      ...currentPage,
-      widgets,
-      updated_at: new Date().toISOString(),
-    }
-
-    const previousPages = pages
-    setPages(updatedPages)
-    setDraggedWidgetId(null)
-    setDropTarget(null)
-
-    const result = await pagesStorage.set(updatedPages)
-
-    if (!result.success) {
-      console.error('Failed to reorder widgets, rolling back:', result.error)
-      setPages(previousPages)
-    } else {
-      console.log('✓ Widgets reordered in Chrome storage')
-    }
   }
 
   const handleWidgetDragEnd = () => {
+    draggedWidgetIdRef.current = null
+    dropTargetRef.current = null
     setDraggedWidgetId(null)
     setDropTarget(null)
   }
@@ -1346,7 +1380,7 @@ function App() {
                     key={columnIndex}
                     className="column"
                     onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => handleColumnDrop(e, columnIndex)}
+                    onDrop={(e) => handleColumnDrop(e)}
                   >
                     {columnWidgets.map((widget) => {
                        const isDraggedWidget = widget.id === draggedWidgetId
