@@ -261,11 +261,13 @@ function App() {
           shouldAutoSync = hasBookmarkSyncPayloadChanged(changes.pages)
         }
         if (changes.settings) {
-          const newSettings = changes.settings.newValue as Settings
-          console.log('Settings changed, updating theme')
-          setSettings(newSettings)
-          applyTheme(newSettings.theme)
-          shouldAutoSync = true
+          const newSettings = changes.settings.newValue as Settings | undefined
+          if (newSettings) {
+            console.log('Settings changed, updating theme')
+            setSettings(newSettings)
+            applyTheme(newSettings.theme)
+            shouldAutoSync = true
+          }
         }
 
         if (shouldAutoSync) {

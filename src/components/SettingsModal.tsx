@@ -312,11 +312,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       }
 
       if (changes.settings) {
-        const newSettings = changes.settings.newValue as Settings
-        setSettings(newSettings)
-        setGridColumns(newSettings.grid_columns)
-        setGridGap(newSettings.grid_gap)
-        setTheme(newSettings.theme)
+        const newSettings = changes.settings.newValue as Settings | undefined
+        if (newSettings) {
+          setSettings(newSettings)
+          setGridColumns(newSettings.grid_columns)
+          setGridGap(newSettings.grid_gap)
+          setTheme(newSettings.theme)
+        }
       }
 
       if (
@@ -700,7 +702,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
   const handleImportClick = () => { fileInputRef.current?.click() }
 
-  const VALID_WIDGET_TYPES = ['bookmark', 'weather', 'ai-chat', 'clock', 'todo', 'pomodoro', 'calendar', 'notes'] as const
+  const VALID_WIDGET_TYPES = ['bookmark', 'weather', 'ai-chat', 'clock', 'todo', 'pomodoro', 'calendar', 'notes', 'x-timeline', 'kanban'] as const
 
   const validateImportData = (importData: any): { valid: boolean; error?: string } => {
     if (!importData || typeof importData !== 'object') return { valid: false, error: 'Invalid file: not a valid JSON object' }
