@@ -199,8 +199,14 @@ function isGoogleDriveSyncPayload(value: unknown): value is GoogleDriveSyncPaylo
     return false
   }
 
-  // v2 payload: full pages array (+ optional separateStore)
+  // v2 payload: full pages array (+ optional separateStore).
+  // An empty pages array is rejected as corrupt — the app always
+  // guarantees at least one page, so an empty backup would otherwise
+  // wipe all local data on restore.
   if (Array.isArray(data.pages)) {
+    if (data.pages.length === 0) {
+      return false
+    }
     if (!data.pages.every(isPageLoose)) {
       return false
     }
@@ -821,11 +827,12 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
       let mergedPages: Page[]
       let didPagesChange = false
 
-      // Cloud is authoritative for deletions when its syncedAt is newer than
-      // the last time this device pulled. This propagates page/widget deletions
-      // made on other devices without clobbering local-only data on first sync.
+      // Cloud is authoritative for deletions only when this device has pulled
+      // before AND the cloud has advanced since. The first-ever pull is a
+      // non-authoritative union: local-only data is preserved, cloud data is
+      // added. This prevents connecting Drive from wiping local-only pages.
       const lastSeen = syncState.lastRestoredAt ?? syncState.lastSyncedAt
-      const cloudIsAuthoritative = !lastSeen || payload.syncedAt > lastSeen
+      const cloudIsAuthoritative = !!lastSeen && payload.syncedAt > lastSeen
 
       if (Array.isArray(payload.data.pages)) {
         const before = JSON.stringify(currentPages)
