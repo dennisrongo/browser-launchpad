@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
-import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
+import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, pullAndMergeFromGoogleDrive, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
@@ -222,6 +222,29 @@ function App() {
       console.log(`✓ App initialized in ${loadTime.toFixed(2)}ms`)
       setStorageVerified(true)
       setIsInitialized(true)
+
+      // Auto-pull from Drive: silently merge the latest cloud data into local.
+      // Runs after init so local pages are loaded first. Only fires if Drive is
+      // authorized; skipped if the cloud payload hasn't advanced since last sync.
+      try {
+        const didChange = await pullAndMergeFromGoogleDrive()
+        if (didChange) {
+          console.log('✓ Pulled newer data from Google Drive')
+          const [refreshedPages, refreshedSettings] = await Promise.all([
+            pagesStorage.getAll(),
+            settingsStorage.get(),
+          ])
+          if (refreshedPages.data) {
+            setPages(refreshedPages.data)
+          }
+          if (refreshedSettings.data) {
+            setSettings(refreshedSettings.data)
+            applyTheme(refreshedSettings.data.theme)
+          }
+        }
+      } catch (error) {
+        logger.error('Drive auto-pull failed at init', error)
+      }
     }
 
     initializeApp()

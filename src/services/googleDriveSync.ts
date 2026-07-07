@@ -786,6 +786,83 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
   }
 }
 
+export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
+  try {
+    const authorized = await isGoogleDriveAuthorized()
+    if (!authorized) {
+      return false
+    }
+
+    const syncFile = await findGoogleDriveSyncFile()
+    if (!syncFile) {
+      return false
+    }
+
+    const payload = await downloadGoogleDriveSyncPayload(syncFile.id)
+    const syncState = await getGoogleDriveSyncState()
+
+    if (
+      payload.syncedAt === syncState.lastSyncedAt &&
+      payload.syncedAt === syncState.lastRestoredAt
+    ) {
+      return false
+    }
+
+    isRestoringFromGoogleDrive = true
+    try {
+      const current = await getStorageValue<{ pages?: Page[] }>(['pages'])
+      const currentPages = Array.isArray(current.pages) ? current.pages : []
+
+      let mergedPages: Page[]
+      let didPagesChange = false
+
+      if (Array.isArray(payload.data.pages)) {
+        const before = JSON.stringify(currentPages)
+        mergedPages = mergePages(currentPages, payload.data.pages)
+        didPagesChange = JSON.stringify(mergedPages) !== before
+      } else if (Array.isArray(payload.data.bookmarkPages)) {
+        const before = JSON.stringify(currentPages)
+        mergedPages = mergeLegacyBookmarkPages(
+          currentPages,
+          payload.data.bookmarkPages
+        )
+        didPagesChange = JSON.stringify(mergedPages) !== before
+      } else {
+        mergedPages = currentPages
+      }
+
+      if (didPagesChange) {
+        await setStorageValue({
+          pages: mergedPages,
+          settings: payload.data.settings,
+        })
+      }
+
+      if (payload.data.separateStore) {
+        const safeEntries = Object.entries(payload.data.separateStore).filter(
+          ([key]) => isSafeSeparateStoreKey(key)
+        )
+        if (safeEntries.length > 0) {
+          await setStorageValue(Object.fromEntries(safeEntries))
+        }
+      }
+
+      await updateGoogleDriveSyncState({
+        lastError: null,
+        lastRestoredAt: payload.syncedAt,
+        syncFileId: syncFile.id,
+      })
+
+      return didPagesChange
+    } finally {
+      isRestoringFromGoogleDrive = false
+    }
+  } catch (error) {
+    logger.error('Google Drive auto-pull failed', error)
+    return false
+  }
+}
+
 export async function disconnectGoogleDrive(): Promise<void> {
   let token: string | null = null
 
