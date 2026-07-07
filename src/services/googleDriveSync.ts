@@ -506,40 +506,52 @@ function isNewer(a: Widget, b: Widget): boolean {
   return aTime >= bTime
 }
 
-function mergePages(existingPages: Page[], syncedPages: Page[]): Page[] {
+function mergePages(
+  existingPages: Page[],
+  syncedPages: Page[],
+  cloudIsAuthoritative: boolean
+): Page[] {
   const syncedPageMap = new Map(syncedPages.map((page) => [page.id, page]))
 
-  const mergedExistingPages = existingPages.map((page) => {
-    const syncedPage = syncedPageMap.get(page.id)
+  const mergedExistingPages = existingPages
+    .map((page) => {
+      const syncedPage = syncedPageMap.get(page.id)
 
-    if (!syncedPage) {
-      return page
-    }
+      // Local page not in cloud: keep only if cloud is not authoritative.
+      // When cloud is authoritative, a missing page means it was deleted
+      // on another device and the deletion should propagate.
+      if (!syncedPage) {
+        return cloudIsAuthoritative ? null : page
+      }
 
-    const localWidgetMap = new Map(page.widgets.map((w) => [w.id, w]))
-    const syncedWidgetMap = new Map(syncedPage.widgets.map((w) => [w.id, w]))
-    const widgetIds = new Set([...localWidgetMap.keys(), ...syncedWidgetMap.keys()])
+      const localWidgetMap = new Map(page.widgets.map((w) => [w.id, w]))
+      const syncedWidgetMap = new Map(syncedPage.widgets.map((w) => [w.id, w]))
+      const widgetIds = new Set([...localWidgetMap.keys(), ...syncedWidgetMap.keys()])
 
-    const mergedWidgets = Array.from(widgetIds)
-      .map((id) => {
-        const local = localWidgetMap.get(id)
-        const synced = syncedWidgetMap.get(id)
+      const mergedWidgets = Array.from(widgetIds)
+        .map((id) => {
+          const local = localWidgetMap.get(id)
+          const synced = syncedWidgetMap.get(id)
 
-        if (local && synced) {
-          return isNewer(synced, local) ? synced : local
-        }
-        return synced ?? local
-      })
-      .filter((widget): widget is Widget => widget !== undefined)
+          if (local && synced) {
+            return isNewer(synced, local) ? synced : local
+          }
+          // Widget exists on one side only.
+          if (synced) return synced
+          if (cloudIsAuthoritative) return null // deleted on another device
+          return local // keep local-only widget
+        })
+        .filter((widget): widget is Widget => widget !== null && widget !== undefined)
 
-    return {
-      ...page,
-      name: syncedPage.name,
-      order: syncedPage.order,
-      updated_at: new Date().toISOString(),
-      widgets: mergedWidgets,
-    }
-  })
+      return {
+        ...page,
+        name: syncedPage.name,
+        order: syncedPage.order,
+        updated_at: new Date().toISOString(),
+        widgets: mergedWidgets,
+      }
+    })
+    .filter((page): page is Page => page !== null)
 
   const existingPageIds = new Set(existingPages.map((page) => page.id))
   const newPages = syncedPages.filter((page) => !existingPageIds.has(page.id))
@@ -737,7 +749,7 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
     let mergedPages: Page[]
 
     if (Array.isArray(payload.data.pages)) {
-      mergedPages = mergePages(currentPages, payload.data.pages)
+      mergedPages = mergePages(currentPages, payload.data.pages, true)
     } else if (Array.isArray(payload.data.bookmarkPages)) {
       mergedPages = mergeLegacyBookmarkPages(
         currentPages,
@@ -809,9 +821,15 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
       let mergedPages: Page[]
       let didPagesChange = false
 
+      // Cloud is authoritative for deletions when its syncedAt is newer than
+      // the last time this device pulled. This propagates page/widget deletions
+      // made on other devices without clobbering local-only data on first sync.
+      const lastSeen = syncState.lastRestoredAt ?? syncState.lastSyncedAt
+      const cloudIsAuthoritative = !lastSeen || payload.syncedAt > lastSeen
+
       if (Array.isArray(payload.data.pages)) {
         const before = JSON.stringify(currentPages)
-        mergedPages = mergePages(currentPages, payload.data.pages)
+        mergedPages = mergePages(currentPages, payload.data.pages, cloudIsAuthoritative)
         didPagesChange = JSON.stringify(mergedPages) !== before
       } else if (Array.isArray(payload.data.bookmarkPages)) {
         const before = JSON.stringify(currentPages)
