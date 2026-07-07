@@ -442,9 +442,17 @@ function deriveSeparateStoreKeys(pages: Page[]): string[] {
   for (const page of pages) {
     for (const widget of page.widgets) {
       if (widget.type === 'notes') {
-        keys.push(`notes-notes-${widget.title}`)
+        // Keyed on widget.id (stable across renames). Falls back to the
+        // legacy title-based key so older backups still restore correctly.
+        keys.push(`notes-notes-${widget.id}`)
+        if (widget.title) {
+          keys.push(`notes-notes-${widget.title}`)
+        }
       } else if (widget.type === 'todo') {
-        keys.push(`todo-list-todo-widget-${widget.title}`)
+        keys.push(`todo-list-todo-widget-${widget.id}`)
+        if (widget.title) {
+          keys.push(`todo-list-todo-widget-${widget.title}`)
+        }
       } else if (widget.type === 'pomodoro') {
         keys.push(`pomodoro-history-${widget.id}`)
       }
@@ -708,12 +716,49 @@ export async function getValidGoogleDriveAccessToken(): Promise<string> {
 export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPayload> {
   try {
     const data = await getLocalSyncData()
-    const payload = buildSyncPayload(data)
+    const localPages = data.pages ?? []
+    const localSettings = data.settings
+    const localSeparateStore = data.separateStore
+
+    // Reconcile with the current cloud state before uploading. This avoids the
+    // read-modify-write race where two devices upload near-simultaneously and
+    // the second overwrites the first. By merging local changes into the latest
+    // cloud content, concurrent edits from other devices are preserved.
+    let mergedPages = localPages
+    let mergedSettings = localSettings
+    let mergedSeparateStore = localSeparateStore
+    let syncFileId: string | undefined
+
     const existingFile = await findGoogleDriveSyncFile()
-    const savedFile = await uploadGoogleDriveSyncFile(
-      payload,
-      existingFile?.id
-    )
+    if (existingFile) {
+      syncFileId = existingFile.id
+      try {
+        const cloud = await downloadGoogleDriveSyncPayload(existingFile.id)
+        if (Array.isArray(cloud.data.pages)) {
+          // Cloud-authoritative merge keeps cloud deletions but preserves
+          // local-only additions and last-write-wins content edits.
+          mergedPages = mergePages(cloud.data.pages, localPages, false)
+        }
+        if (cloud.data.separateStore) {
+          mergedSeparateStore = {
+            ...cloud.data.separateStore,
+            ...(localSeparateStore ?? {}),
+          }
+        }
+      } catch (error) {
+        // If we can't read the cloud (network blip, corrupt file), fall back
+        // to uploading local state as-is. Better a stale upload than no upload.
+        logger.warn('Could not read cloud state before sync; uploading local only', error)
+      }
+    }
+
+    const payload = buildSyncPayload({
+      pages: mergedPages,
+      settings: mergedSettings,
+      separateStore: mergedSeparateStore,
+    })
+
+    const savedFile = await uploadGoogleDriveSyncFile(payload, syncFileId)
 
     await updateGoogleDriveSyncState({
       lastError: null,

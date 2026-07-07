@@ -10,6 +10,7 @@ interface NotesWidgetConfig {
 
 interface NotesWidgetProps {
   title: string
+  widgetId: string
   config: NotesWidgetConfig
   onConfigChange?: (newConfig: NotesWidgetConfig) => void
 }
@@ -18,29 +19,40 @@ const DEFAULT_CONFIG: NotesWidgetConfig = {
   content: '',
 }
 
-export function NotesWidget({ title, config, onConfigChange }: NotesWidgetProps) {
+export function NotesWidget({ title, widgetId, config, onConfigChange }: NotesWidgetProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [content, setContent] = useState(config?.content || DEFAULT_CONFIG.content)
   const [isLoading, setIsLoading] = useState(true)
-  const storageKey = `notes-${title}`
 
   useEffect(() => {
     const loadContent = async () => {
-      const result = await notesStorage.get(storageKey)
+      // Keyed on widgetId (stable across renames). Falls back to the legacy
+      // title-based key and migrates it forward on first save.
+      const newKey = `notes-${widgetId}`
+      let result = await notesStorage.get(newKey)
+      if (!result.data) {
+        const legacyKey = `notes-${title}`
+        result = await notesStorage.get(legacyKey)
+        if (result.data) {
+          await notesStorage.set(newKey, result.data)
+          await notesStorage.clear(legacyKey)
+        }
+      }
       if (result.data) {
         setContent(result.data.content || '')
       }
       setIsLoading(false)
     }
     loadContent()
-  }, [storageKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetId])
 
   const handleSave = useCallback(async () => {
     const newConfig: NotesWidgetConfig = { content }
-    await notesStorage.set(storageKey, newConfig)
+    await notesStorage.set(`notes-${widgetId}`, newConfig)
     onConfigChange?.(newConfig)
     setIsEditing(false)
-  }, [content, storageKey, onConfigChange])
+  }, [content, widgetId, onConfigChange])
 
   const handleCancel = useCallback(() => {
     setContent(config?.content || DEFAULT_CONFIG.content)

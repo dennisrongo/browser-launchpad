@@ -23,6 +23,7 @@ import type { TodoWidgetConfig, TodoItem, TodoTag } from '../types'
 
 interface TodoWidgetProps {
   title: string
+  widgetId: string
   config: TodoWidgetConfig
   onConfigChange?: (newConfig: TodoWidgetConfig) => void
 }
@@ -360,7 +361,7 @@ function SortableItem({
   )
 }
 
-export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
+export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidgetProps) {
   const [localConfig, setLocalConfig] = useState<TodoWidgetConfig>(config || DEFAULT_CONFIG)
   const [newItemText, setNewItemText] = useState('')
   const [showTagManager, setShowTagManager] = useState(false)
@@ -377,20 +378,32 @@ export function TodoWidget({ title, config, onConfigChange }: TodoWidgetProps) {
 
   useEffect(() => {
     const loadConfig = async () => {
-      const result = await todoListStorage.get(`todo-widget-${title}`)
+      // Keyed on widgetId (stable across renames). Falls back to the legacy
+      // title-based key and migrates it forward on first save.
+      const newKey = `todo-widget-${widgetId}`
+      let result = await todoListStorage.get(newKey)
+      if (!result.data) {
+        const legacyKey = `todo-widget-${title}`
+        result = await todoListStorage.get(legacyKey)
+        if (result.data) {
+          await todoListStorage.set(newKey, result.data)
+          await todoListStorage.clear(legacyKey)
+        }
+      }
       if (result.data) {
         setLocalConfig(result.data)
       }
       setIsLoading(false)
     }
     loadConfig()
-  }, [title])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetId])
 
   const saveConfig = useCallback(async (newConfig: TodoWidgetConfig) => {
     setLocalConfig(newConfig)
-    await todoListStorage.set(`todo-widget-${title}`, newConfig)
+    await todoListStorage.set(`todo-widget-${widgetId}`, newConfig)
     onConfigChange?.(newConfig)
-  }, [title, onConfigChange])
+  }, [widgetId, onConfigChange])
 
   const handleAddItem = () => {
     if (!newItemText.trim()) return

@@ -114,6 +114,7 @@ function WidgetCardComponent({
         return (
           <TodoWidget
             title={widget.title}
+            widgetId={widget.id}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
           />
@@ -139,6 +140,7 @@ function WidgetCardComponent({
         return (
           <NotesWidget
             title={widget.title}
+            widgetId={widget.id}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
           />
