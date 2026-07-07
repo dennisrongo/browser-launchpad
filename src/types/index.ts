@@ -107,11 +107,6 @@ export interface CalendarWidgetConfig {
   firstDayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6
   showWeekNumbers: boolean
   googleConnected: boolean
-  googleTokens?: {
-    access_token: string
-    refresh_token?: string
-    expires_at: number
-  }
   selectedCalendars?: string[]
 }
 

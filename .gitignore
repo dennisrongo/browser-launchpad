@@ -1,6 +1,9 @@
 .playwright-cli/
 .playwright/
 
+# Local ZCode toolkit install (testing only)
+.zcode/
+
 node_modules/
 
 # macOS system files

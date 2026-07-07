@@ -461,10 +461,6 @@ export function extractBookmarkPages(pages: Page[]): Page[] {
   }))
 }
 
-export function getGoogleDriveManifestConfig(): GoogleDriveManifestConfig {
-  return getGoogleDriveManifestConfigInternal()
-}
-
 export async function getStoredGoogleDriveConfig(): Promise<GoogleDriveConfig> {
   try {
     const result = await getStorageValue<{
@@ -519,10 +515,6 @@ export async function updateGoogleDriveSyncState(
 
 export async function resetGoogleDriveSyncState(): Promise<void> {
   await removeStorageValue(GOOGLE_DRIVE_SYNC_STATE_KEY)
-}
-
-export async function isGoogleDriveConfigured(): Promise<boolean> {
-  return getGoogleDriveManifestConfigInternal().isConfigured
 }
 
 export async function isGoogleDriveAuthorized(): Promise<boolean> {

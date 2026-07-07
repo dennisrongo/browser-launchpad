@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "A customizable, widget-based dashboard for your new tab page",
   "author": "Dennis Rongo",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmIi7PsG0PYfThtQ0EW6+LQwTDVwQkP5ohBXPUgPtCA2ntSKDB0koT67x52532J3YTxdO9ZaNy/+JKpex9T4lP+qhs31GouI96H5poeFInYR7ytvdiAINMuhI6leGPqO4U2yWVtmhespPO8ejWz6S9vteWaPTDFOyYlVjSN7h27rfcS5Su0GR205YslBm4DFaNTAr2VHGw682JOsGUlmrgoGVJE7wBxaptlpDES1NAEN28hrzLgofBY99/DBTMLTB4d/yMV+gygtqoMquhtkEZM/w5t6CiWM+aObOjM+MJm9Vtihfac43YokgvzOolhLMJYSmBdDkvZ3GY6SflYk/MwIDAQAB",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -24,9 +25,11 @@
     "service_worker": "background.js"
   },
   "oauth2": {
-    "client_id": "59450688067-pumeg8a8aknnq4ek5qp098190m3qh6fd.apps.googleusercontent.com",
+    "client_id": "1060415387480-fe5eme78v2hrdk09129eii6i7f8u5vas.apps.googleusercontent.com",
     "scopes": [
-      "https://www.googleapis.com/auth/drive.appdata"
+      "https://www.googleapis.com/auth/drive.appdata",
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/calendar.events.readonly"
     ]
   },
   "permissions": [
