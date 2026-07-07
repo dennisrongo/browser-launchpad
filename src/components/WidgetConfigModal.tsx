@@ -11,9 +11,8 @@ interface WidgetConfigModalProps {
 }
 
 interface GlobalAIConfig {
-  activeProvider: 'openai' | 'straico'
+  activeProvider: 'openai'
   openai: { apiKey: string; model: string }
-  straico: { apiKey: string; model: string }
 }
 
 export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSettings }: WidgetConfigModalProps) {
@@ -68,23 +67,20 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
   }
 
   const getProviderDisplayName = (provider: string) => {
-    return provider === 'openai' ? 'OpenAI' : 'Straico'
+    return provider === 'openai' ? 'OpenAI' : provider
   }
 
-  const getModelDisplayName = (provider: string, model: string) => {
+  const getModelDisplayName = (_provider: string, model: string) => {
     if (!model) return 'Not selected'
-    if (provider === 'openai') {
-      const modelNames: Record<string, string> = {
-        'gpt-4o-mini': 'GPT-4o Mini',
-        'gpt-4o': 'GPT-4o',
-        'gpt-4o-2024-08-06': 'GPT-4o (2024-08-06)',
-        'gpt-4-turbo': 'GPT-4 Turbo',
-        'gpt-4': 'GPT-4',
-        'gpt-3.5-turbo': 'GPT-3.5 Turbo',
-      }
-      return modelNames[model] || model
+    const modelNames: Record<string, string> = {
+      'gpt-4o-mini': 'GPT-4o Mini',
+      'gpt-4o': 'GPT-4o',
+      'gpt-4o-2024-08-06': 'GPT-4o (2024-08-06)',
+      'gpt-4-turbo': 'GPT-4 Turbo',
+      'gpt-4': 'GPT-4',
+      'gpt-3.5-turbo': 'GPT-3.5 Turbo',
     }
-    return model
+    return modelNames[model] || model
   }
 
   const renderConfigFields = () => {

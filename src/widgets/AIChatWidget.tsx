@@ -3,7 +3,7 @@ import { AlertTriangle, Send, Sparkles } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { AIChatWidgetConfig, ChatMessage, Widget } from '../types'
-import { sendOpenAIChatStream, sendStraicoChatStream, validateApiKeyFormat, RateLimitInfo } from '../utils/ai'
+import { sendOpenAIChatStream, validateApiKeyFormat, RateLimitInfo } from '../utils/ai'
 import { decodeApiKey } from '../utils/security'
 
 interface AIChatWidgetProps {
@@ -21,9 +21,8 @@ interface TokenUsage {
 }
 
 interface GlobalAIConfig {
-  activeProvider: 'openai' | 'straico'
+  activeProvider: 'openai'
   openai: { apiKey: string; model: string }
-  straico: { apiKey: string; model: string }
 }
 
 function buildWidgetContext(widgets: Widget[]): string {
@@ -255,87 +254,45 @@ export function AIChatWidget({ config, onConfigChange, pageWidgets = [] }: AICha
     const messagesWithContext = [systemMessage, ...updatedMessages]
 
     try {
-      if (activeProvider === 'openai') {
-        await sendOpenAIChatStream(apiKey, model, messagesWithContext, {
-          onChunk: (content) => {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: msg.content + content }
-                  : msg
-              )
+      await sendOpenAIChatStream(apiKey, model, messagesWithContext, {
+        onChunk: (content) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: msg.content + content }
+                : msg
             )
-          },
-          onComplete: (response) => {
-            if (response.usage || response.cost !== undefined) {
-              setTokenUsage({
-                promptTokens: response.usage?.prompt_tokens,
-                completionTokens: response.usage?.completion_tokens,
-                totalTokens: response.usage?.total_tokens,
-                cost: response.cost,
-              })
-            }
+          )
+        },
+        onComplete: (response) => {
+          if (response.usage || response.cost !== undefined) {
+            setTokenUsage({
+              promptTokens: response.usage?.prompt_tokens,
+              completionTokens: response.usage?.completion_tokens,
+              totalTokens: response.usage?.total_tokens,
+              cost: response.cost,
+            })
+          }
 
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: response.content }
-                  : msg
-              )
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: response.content }
+                : msg
             )
+          )
 
-            if (onConfigChange) {
-              onConfigChange({
-                messages: [
-                  ...updatedMessages,
-                  { ...assistantMessage, content: response.content }
-                ]
-              })
-            }
-          },
-          onError: (error) => { throw error },
-        })
-      } else {
-        await sendStraicoChatStream(apiKey, model, messagesWithContext, {
-          onChunk: (content) => {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: msg.content + content }
-                  : msg
-              )
-            )
-          },
-          onComplete: (response) => {
-            if (response.usage || response.cost !== undefined) {
-              setTokenUsage({
-                promptTokens: response.usage?.prompt_tokens,
-                completionTokens: response.usage?.completion_tokens,
-                totalTokens: response.usage?.total_tokens,
-                cost: response.cost,
-              })
-            }
-
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: response.content }
-                  : msg
-              )
-            )
-
-            if (onConfigChange) {
-              onConfigChange({
-                messages: [
-                  ...updatedMessages,
-                  { ...assistantMessage, content: response.content }
-                ]
-              })
-            }
-          },
-          onError: (error) => { throw error },
-        })
-      }
+          if (onConfigChange) {
+            onConfigChange({
+              messages: [
+                ...updatedMessages,
+                { ...assistantMessage, content: response.content }
+              ]
+            })
+          }
+        },
+        onError: (error) => { throw error },
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get response'
 

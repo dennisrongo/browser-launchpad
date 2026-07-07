@@ -18,7 +18,7 @@ Add and customize widgets to build your perfect dashboard:
 |--------|-------------|
 | **Bookmarks** | Save and organize your favorite links with custom icons |
 | **Weather** | Display current weather conditions for any city worldwide |
-| **AI Chat** | Chat with AI assistants using OpenAI or Straico providers |
+| **AI Chat** | Chat with AI assistants using OpenAI |
 | **Clock** | Show time for any timezone with multiple font styles (modern, classic, digital, elegant) |
 | **Todo List** | Manage tasks with tags, priorities (low/medium/high), due dates, and filtering options |
 | **Pomodoro** | Focus timer with customizable focus, short break, and long break durations |
@@ -80,7 +80,7 @@ Sync your settings and bookmarks to Google Drive for backup, or use the import/e
 ![Data & Sync Settings](public/screenshots/3.png)
 
 ### API Integrations
-Configure your AI providers (OpenAI, Straico) and Weather API keys to enable the AI Chat and Weather widgets.
+Configure your OpenAI API key and Weather API key to enable the AI Chat and Weather widgets.
 
 ![API Integrations](public/screenshots/4.png)
 
@@ -177,7 +177,6 @@ To use the AI Chat and Weather widgets, you'll need to configure API keys:
 | Service | Website | Notes |
 |---------|---------|-------|
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) | Supports GPT-4 and GPT-3.5 models |
-| **Straico** | [straico.com](https://straico.com) | Alternative AI provider |
 | **OpenWeatherMap** | [openweathermap.org](https://openweathermap.org) | Free tier available |
 
 ### Google Drive Sync

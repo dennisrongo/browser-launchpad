@@ -23,7 +23,6 @@ import type {
   GoogleDriveManifestConfig,
   GoogleDriveSyncState,
 } from '../services/googleDriveSync'
-import type { StraicoModel } from '../utils/ai'
 
 import {
   disconnectGoogleDrive,
@@ -38,7 +37,6 @@ import {
   syncLocalDataToGoogleDrive,
 } from '../services/googleDriveSync'
 import { settingsStorage } from '../services/storage'
-import { fetchStraicoModels } from '../utils/ai'
 import { decodeApiKey, encodeApiKey, logApiKeyInfo } from '../utils/security'
 
 type ThemeOption = {
@@ -180,15 +178,10 @@ interface SettingsModalProps {
 }
 
 interface AIProviderConfig {
-  activeProvider: 'openai' | 'straico'
+  activeProvider: 'openai'
   openai: {
     apiKey: string
     model: string
-  }
-  straico: {
-    apiKey: string
-    model: string
-    availableModels: StraicoModel[]
   }
 }
 
@@ -219,11 +212,6 @@ const DEFAULT_AI_CONFIG: AIProviderConfig = {
   openai: {
     apiKey: '',
     model: 'gpt-4o-mini',
-  },
-  straico: {
-    apiKey: '',
-    model: '',
-    availableModels: [],
   },
 }
 
@@ -273,9 +261,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [googleDriveSyncConfig, setGoogleDriveSyncConfig] = useState<GoogleDriveConfig>(DEFAULT_GOOGLE_DRIVE_CONFIG)
   const [googleDriveManifestConfig, setGoogleDriveManifestConfig] = useState<GoogleDriveManifestConfig>(DEFAULT_GOOGLE_DRIVE_MANIFEST_CONFIG)
   const [googleDriveSyncStatus, setGoogleDriveSyncStatus] = useState<GoogleDriveSyncState>(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
-  const [showApiKeys, setShowApiKeys] = useState({ openai: false, straico: false, weather: false, googleCalendar: false })
-  const [isFetchingModels, setIsFetchingModels] = useState(false)
-  const [modelFetchError, setModelFetchError] = useState<string | null>(null)
+  const [showApiKeys, setShowApiKeys] = useState({ openai: false, weather: false, googleCalendar: false })
   const [importStatus, setImportStatus] = useState<StatusMessage>({ type: null, message: '' })
   const [googleDriveStatusMessage, setGoogleDriveStatusMessage] = useState<StatusMessage>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -356,17 +342,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       if (result.ai_config) {
         const storedConfig = result.ai_config as AIProviderConfig
         const decodedConfig: AIProviderConfig = {
-          activeProvider: storedConfig.activeProvider || 'openai',
+          activeProvider: 'openai',
           openai: { apiKey: decodeApiKey(storedConfig.openai.apiKey), model: storedConfig.openai.model },
-          straico: { 
-            apiKey: decodeApiKey(storedConfig.straico.apiKey), 
-            model: storedConfig.straico.model,
-            availableModels: storedConfig.straico.availableModels || []
-          }
         }
         setAIConfig(decodedConfig)
         logApiKeyInfo(decodedConfig.openai.apiKey, 'OpenAI API key loaded')
-        logApiKeyInfo(decodedConfig.straico.apiKey, 'Straico API key loaded')
       }
     } catch (error) {
       console.error('Failed to load AI config:', error)
@@ -438,13 +418,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setValidationError(null)
       try {
         const encodedConfig: AIProviderConfig = {
-          activeProvider: aiConfig.activeProvider,
+          activeProvider: 'openai',
           openai: { apiKey: encodeApiKey(aiConfig.openai.apiKey), model: aiConfig.openai.model },
-          straico: { 
-            apiKey: encodeApiKey(aiConfig.straico.apiKey), 
-            model: aiConfig.straico.model,
-            availableModels: aiConfig.straico.availableModels
-          }
         }
         await chrome.storage.local.set({ ai_config: encodedConfig })
         console.log('✓ AI config saved to Chrome storage (encoded)')
@@ -501,10 +476,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setGoogleDriveStatusMessage({ type: null, message: '' })
       onSettingsChange(defaultSettings)
       try {
-        const emptyConfig: AIProviderConfig = { 
+        const emptyConfig: AIProviderConfig = {
           activeProvider: 'openai',
-          openai: { apiKey: '', model: DEFAULT_AI_CONFIG.openai.model }, 
-          straico: { apiKey: '', model: DEFAULT_AI_CONFIG.straico.model, availableModels: [] } 
+          openai: { apiKey: '', model: DEFAULT_AI_CONFIG.openai.model },
         }
         await chrome.storage.local.set({ ai_config: emptyConfig })
         console.log('✓ AI config reset to defaults')
@@ -540,28 +514,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     if (value < 0 || value > 64) setValidationError('Grid gap must be between 0 and 64 pixels')
     else setValidationError(null)
     setGridGap(value)
-  }
-
-  const handleFetchStraicoModels = async () => {
-    if (!aiConfig.straico.apiKey) {
-      setModelFetchError('Please enter your Straico API key first')
-      return
-    }
-
-    setIsFetchingModels(true)
-    setModelFetchError(null)
-
-    try {
-      const models = await fetchStraicoModels(aiConfig.straico.apiKey)
-      setAIConfig(prev => ({
-        ...prev,
-        straico: { ...prev.straico, availableModels: models }
-      }))
-    } catch (error) {
-      setModelFetchError(error instanceof Error ? error.message : 'Failed to fetch models')
-    } finally {
-      setIsFetchingModels(false)
-    }
   }
 
   const formatSyncDate = (value: string | null) => {
@@ -661,7 +613,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       if (!includeApiKeysInExport) {
         if (exportData.ai_config) {
           const aiConfig = exportData.ai_config as AIProviderConfig
-          exportData = { ...exportData, ai_config: { ...aiConfig, openai: { ...aiConfig.openai, apiKey: '' }, straico: { ...aiConfig.straico, apiKey: '' } } }
+          exportData = { ...exportData, ai_config: { ...aiConfig, openai: { ...aiConfig.openai, apiKey: '' } } }
         }
         if (exportData.weather_config) {
           exportData = { ...exportData, weather_config: { ...exportData.weather_config, apiKey: '' } }
@@ -1010,165 +962,61 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         {activeTab === 'integrations' && (
           <>
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">AI Providers</h3>
+              <h3 className="text-lg font-semibold mb-3">AI Provider</h3>
               <p className="text-sm text-text-secondary mb-4">
-                Select the AI provider for chat widgets. Only one provider can be active at a time.
+                Configure your OpenAI API key for chat widgets.
                 API keys are stored locally in your browser.
               </p>
 
-              {/* Active Provider Dropdown */}
-              <div className="mb-4">
-                <label htmlFor="active-provider" className="block text-sm font-medium mb-1.5">Active Provider</label>
-                <select
-                  id="active-provider"
-                  value={aiConfig.activeProvider}
-                  onChange={(e) => setAIConfig(prev => ({ ...prev, activeProvider: e.target.value as 'openai' | 'straico' }))}
-                  className="input-base"
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="straico">Straico</option>
-                </select>
-              </div>
-
-              {/* OpenAI Configuration */}
-              {aiConfig.activeProvider === 'openai' && (
-                <div className="p-4 glass-card rounded-card">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600"></div>
-                    <h4 className="font-semibold">OpenAI</h4>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="openai-key" className="block text-sm font-medium mb-1.5">API Key</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type={showApiKeys.openai ? 'text' : 'password'} 
-                        id="openai-key" 
-                        value={aiConfig.openai.apiKey} 
-                        onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, apiKey: e.target.value } }))} 
-                        placeholder="sk-..." 
-                        className="input-base flex-1" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowApiKeys(prev => ({ ...prev, openai: !prev.openai }))} 
-                        className="btn-secondary px-3" 
-                        title={showApiKeys.openai ? 'Hide API key' : 'Show API key'}
-                      >
-                        {showApiKeys.openai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-text-muted mt-1.5">
-                      Get your key at{' '}
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        platform.openai.com
-                      </a>
-                    </p>
-                  </div>
-                  <div>
-                    <label htmlFor="openai-model" className="block text-sm font-medium mb-1.5">Model</label>
-                    <select 
-                      id="openai-model" 
-                      value={aiConfig.openai.model} 
-                      onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, model: e.target.value } }))} 
-                      className="input-base"
-                    >
-                      <option value="gpt-4o-mini">GPT-4o Mini (Fast & Economical)</option>
-                      <option value="gpt-4o">GPT-4o (Balanced)</option>
-                      <option value="gpt-4o-2024-08-06">GPT-4o (2024-08-06)</option>
-                      <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                      <option value="gpt-4">GPT-4</option>
-                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    </select>
-                  </div>
+              <div className="p-4 glass-card rounded-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600"></div>
+                  <h4 className="font-semibold">OpenAI</h4>
                 </div>
-              )}
-
-              {/* Straico Configuration */}
-              {aiConfig.activeProvider === 'straico' && (
-                <div className="p-4 glass-card rounded-card">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-violet-600"></div>
-                    <h4 className="font-semibold">Straico</h4>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="straico-key" className="block text-sm font-medium mb-1.5">API Key</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type={showApiKeys.straico ? 'text' : 'password'} 
-                        id="straico-key" 
-                        value={aiConfig.straico.apiKey} 
-                        onChange={(e) => {
-                          setAIConfig(prev => ({ ...prev, straico: { ...prev.straico, apiKey: e.target.value } }))
-                          setModelFetchError(null)
-                        }} 
-                        placeholder="Enter your Straico API key" 
-                        className="input-base flex-1" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowApiKeys(prev => ({ ...prev, straico: !prev.straico }))} 
-                        className="btn-secondary px-3" 
-                        title={showApiKeys.straico ? 'Hide API key' : 'Show API key'}
-                      >
-                        {showApiKeys.straico ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-text-muted mt-1.5">
-                      Get your key at{' '}
-                      <a href="https://straico.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        straico.com
-                      </a>
-                    </p>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="straico-model" className="block text-sm font-medium mb-1.5">Model</label>
-                    <select 
-                      id="straico-model" 
-                      value={aiConfig.straico.model} 
-                      onChange={(e) => setAIConfig(prev => ({ ...prev, straico: { ...prev.straico, model: e.target.value } }))} 
-                      disabled={aiConfig.straico.availableModels.length === 0}
-                      className="input-base disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select a model</option>
-                      {aiConfig.straico.availableModels.map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-text-muted mt-1.5">
-                      {!aiConfig.straico.apiKey
-                        ? 'Enter your API key above to fetch available models'
-                        : aiConfig.straico.availableModels.length === 0
-                        ? 'Click "Fetch Models" to load available models'
-                        : `${aiConfig.straico.availableModels.length} models available`}
-                    </p>
-                  </div>
-                  {modelFetchError && (
-                    <div className="mb-3 p-2 rounded-button text-sm bg-red-500/10 text-red-600 border border-red-500/20 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />
-                      {modelFetchError}
-                    </div>
-                  )}
-                  {aiConfig.straico.apiKey && (
+                <div className="mb-3">
+                  <label htmlFor="openai-key" className="block text-sm font-medium mb-1.5">API Key</label>
+                  <div className="flex gap-2">
+                    <input
+                      type={showApiKeys.openai ? 'text' : 'password'}
+                      id="openai-key"
+                      value={aiConfig.openai.apiKey}
+                      onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, apiKey: e.target.value } }))}
+                      placeholder="sk-..."
+                      className="input-base flex-1"
+                    />
                     <button
                       type="button"
-                      onClick={handleFetchStraicoModels}
-                      disabled={isFetchingModels}
-                      className="btn-secondary flex items-center gap-2"
+                      onClick={() => setShowApiKeys(prev => ({ ...prev, openai: !prev.openai }))}
+                      className="btn-secondary px-3"
+                      title={showApiKeys.openai ? 'Hide API key' : 'Show API key'}
                     >
-                      {isFetchingModels ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Fetching...
-                        </>
-                      ) : (
-                        'Fetch Models'
-                      )}
+                      {showApiKeys.openai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  )}
+                  </div>
+                  <p className="text-xs text-text-muted mt-1.5">
+                    Get your key at{' '}
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      platform.openai.com
+                    </a>
+                  </p>
                 </div>
-              )}
+                <div>
+                  <label htmlFor="openai-model" className="block text-sm font-medium mb-1.5">Model</label>
+                  <select
+                    id="openai-model"
+                    value={aiConfig.openai.model}
+                    onChange={(e) => setAIConfig(prev => ({ ...prev, openai: { ...prev.openai, model: e.target.value } }))}
+                    className="input-base"
+                  >
+                    <option value="gpt-4o-mini">GPT-4o Mini (Fast & Economical)</option>
+                    <option value="gpt-4o">GPT-4o (Balanced)</option>
+                    <option value="gpt-4o-2024-08-06">GPT-4o (2024-08-06)</option>
+                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="mb-6">

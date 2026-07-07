@@ -31,7 +31,7 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
   {
     type: 'ai-chat',
     name: 'AI Chat',
-    description: 'Chat with AI using OpenAI or Straico',
+    description: 'Chat with AI using OpenAI',
     icon: <MessageSquare className="w-7 h-7" />,
   },
   {
