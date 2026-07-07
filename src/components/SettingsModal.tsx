@@ -18,20 +18,15 @@ import {
 import type { Settings } from '../types'
 import type { ThemeName } from '../utils/theme'
 import type {
-  GoogleDriveConfig,
   GoogleDriveSyncState,
 } from '../services/googleDriveSync'
 
 import {
   disconnectGoogleDrive,
   getGoogleDriveSyncState,
-  getStoredGoogleDriveConfig,
   initiateGoogleDriveAuth,
   isGoogleDriveAuthorized,
   resetGoogleDriveSyncState,
-  restoreLocalDataFromGoogleDrive,
-  setGoogleDriveConfig,
-  syncLocalDataToGoogleDrive,
 } from '../services/googleDriveSync'
 import { settingsStorage } from '../services/storage'
 import { decodeApiKey, encodeApiKey, logApiKeyInfo } from '../utils/security'
@@ -212,10 +207,6 @@ const DEFAULT_WEATHER_CONFIG: WeatherConfig = {
   apiKey: '',
 }
 
-const DEFAULT_GOOGLE_DRIVE_CONFIG: GoogleDriveConfig = {
-  autoSyncEnabled: false,
-}
-
 const DEFAULT_GOOGLE_DRIVE_SYNC_STATE: GoogleDriveSyncState = {
   lastSyncedAt: null,
   lastRestoredAt: null,
@@ -240,22 +231,18 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [theme, setTheme] = useState<ThemeName>('modern-light')
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>(DEFAULT_WEATHER_CONFIG)
-  const [googleDriveSyncConfig, setGoogleDriveSyncConfig] = useState<GoogleDriveConfig>(DEFAULT_GOOGLE_DRIVE_CONFIG)
   const [googleDriveSyncStatus, setGoogleDriveSyncStatus] = useState<GoogleDriveSyncState>(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
   const [showApiKeys, setShowApiKeys] = useState({ openai: false, weather: false })
   const [importStatus, setImportStatus] = useState<StatusMessage>({ type: null, message: '' })
   const [googleDriveStatusMessage, setGoogleDriveStatusMessage] = useState<StatusMessage>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showImportConfirm, setShowImportConfirm] = useState(false)
-  const [showDriveRestoreConfirm, setShowDriveRestoreConfirm] = useState(false)
   const [pendingImportData, setPendingImportData] = useState<any>(null)
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('replace')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [includeApiKeysInExport, setIncludeApiKeysInExport] = useState(false)
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false)
   const [isConnectingGoogleDrive, setIsConnectingGoogleDrive] = useState(false)
-  const [isSyncingGoogleDrive, setIsSyncingGoogleDrive] = useState(false)
-  const [isRestoringGoogleDrive, setIsRestoringGoogleDrive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -348,13 +335,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
   const loadGoogleDriveState = async () => {
     try {
-      const [storedConfig, syncState, authorized] = await Promise.all([
-        getStoredGoogleDriveConfig(),
+      const [syncState, authorized] = await Promise.all([
         getGoogleDriveSyncState(),
         isGoogleDriveAuthorized(),
       ])
 
-      setGoogleDriveSyncConfig(storedConfig)
       setGoogleDriveSyncStatus(syncState)
       setIsGoogleDriveConnected(authorized)
     } catch (error) {
@@ -394,10 +379,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ weather_config: encodedWeatherConfig })
         console.log('✓ Weather config saved to Chrome storage (encoded)')
       } catch (error) { console.error('Failed to save weather config:', error) }
-      try {
-        await setGoogleDriveConfig(googleDriveSyncConfig)
-        console.log('✓ Google Drive config saved to Chrome storage')
-      } catch (error) { console.error('Failed to save Google Drive config:', error) }
       onClose()
     } else {
       console.error('Failed to save settings:', result.error)
@@ -411,7 +392,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     void loadAIConfig()
     void loadWeatherConfig()
     void loadGoogleDriveState()
-    setShowDriveRestoreConfirm(false)
     setGoogleDriveStatusMessage({ type: null, message: '' })
     setValidationError(null)
     onClose()
@@ -428,7 +408,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setTheme(defaultSettings.theme)
       setAIConfig(DEFAULT_AI_CONFIG)
       setWeatherConfig(DEFAULT_WEATHER_CONFIG)
-      setGoogleDriveSyncConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
       setGoogleDriveSyncStatus(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
       setIsGoogleDriveConnected(false)
       setGoogleDriveStatusMessage({ type: null, message: '' })
@@ -447,10 +426,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       } catch (error) { console.error('Failed to reset weather config:', error) }
       try {
         await disconnectGoogleDrive()
-        await setGoogleDriveConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
         await resetGoogleDriveSyncState()
-        console.log('✓ Google Drive config reset to defaults')
-      } catch (error) { console.error('Failed to reset Google Drive config:', error) }
+        console.log('✓ Google Drive reset to defaults')
+      } catch (error) { console.error('Failed to reset Google Drive', error) }
       setShowResetConfirm(false)
       setValidationError(null)
     } else {
@@ -514,50 +492,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         type: 'error',
         message: error instanceof Error ? error.message : 'Failed to disconnect Google Drive.',
       })
-    }
-  }
-
-  const handleSyncGoogleDrive = async () => {
-    setIsSyncingGoogleDrive(true)
-    setGoogleDriveStatusMessage({ type: null, message: '' })
-
-    try {
-      await syncLocalDataToGoogleDrive()
-      await loadGoogleDriveState()
-      setGoogleDriveStatusMessage({
-        type: 'success',
-        message: 'Bookmark widgets and settings synced to Google Drive.',
-      })
-    } catch (error) {
-      setGoogleDriveStatusMessage({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to sync to Google Drive.',
-      })
-    } finally {
-      setIsSyncingGoogleDrive(false)
-    }
-  }
-
-  const handleRestoreGoogleDrive = async () => {
-    setIsRestoringGoogleDrive(true)
-    setGoogleDriveStatusMessage({ type: null, message: '' })
-
-    try {
-      await restoreLocalDataFromGoogleDrive()
-      await loadGoogleDriveState()
-      setGoogleDriveStatusMessage({
-        type: 'success',
-        message: 'Bookmark widgets and settings were restored from Google Drive. Reloading...',
-      })
-      setShowDriveRestoreConfirm(false)
-      setTimeout(() => window.location.reload(), 1500)
-    } catch (error) {
-      setGoogleDriveStatusMessage({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to restore from Google Drive.',
-      })
-    } finally {
-      setIsRestoringGoogleDrive(false)
     }
   }
 
@@ -1001,7 +935,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 <div>
                   <h3 className="text-lg font-semibold mb-1">Google Drive Sync</h3>
                   <p className="text-sm text-text-secondary">
-                    Syncs your global settings and bookmark widgets to Google Drive&apos;s private app data folder. Other widget data stays local.
+                    Connect once and your pages, widgets, and settings stay in sync across devices automatically.
                   </p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full border ${
@@ -1042,82 +976,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                 )}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 mb-4">
+              {isGoogleDriveConnected && (
                 <div className="p-3 rounded-button bg-surface/50">
                   <p className="text-xs text-text-muted mb-1">Last synced</p>
                   <p className="text-sm font-medium">{formatSyncDate(googleDriveSyncStatus.lastSyncedAt)}</p>
                 </div>
-                <div className="p-3 rounded-button bg-surface/50">
-                  <p className="text-xs text-text-muted mb-1">Last restored</p>
-                  <p className="text-sm font-medium">{formatSyncDate(googleDriveSyncStatus.lastRestoredAt)}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 mb-4">
-                <button
-                  onClick={handleSyncGoogleDrive}
-                  disabled={!isGoogleDriveConnected || isSyncingGoogleDrive || isRestoringGoogleDrive}
-                  className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSyncingGoogleDrive ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      <span>Sync to Google Drive</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowDriveRestoreConfirm(true)}
-                  disabled={!isGoogleDriveConnected || isSyncingGoogleDrive || isRestoringGoogleDrive}
-                  className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isRestoringGoogleDrive ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Restoring...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>Restore from Drive</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="mb-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={googleDriveSyncConfig.autoSyncEnabled}
-                    onChange={(e) =>
-                      setGoogleDriveSyncConfig((prev) => ({
-                        ...prev,
-                        autoSyncEnabled: e.target.checked,
-                      }))
-                    }
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-text-secondary">Auto-sync after bookmark or settings changes</span>
-                </label>
-                <p className="text-xs text-text-muted mt-1.5">
-                  Auto-sync runs while the dashboard is open and only uploads your saved settings plus bookmark widget data.
-                </p>
-              </div>
-
-              {googleDriveSyncStatus.lastError && !googleDriveStatusMessage.type && (
-                <div className="mb-3 p-3 rounded-button text-sm bg-red-500/10 text-red-600 border border-red-500/20">
-                  {googleDriveSyncStatus.lastError}
-                </div>
               )}
 
               {googleDriveStatusMessage.type && (
-                <div className={`p-3 rounded-button text-sm border ${
+                <div className={`mt-3 p-3 rounded-button text-sm border ${
                   googleDriveStatusMessage.type === 'success'
                     ? 'bg-green-500/10 text-green-600 border-green-500/20'
                     : 'bg-red-500/10 text-red-600 border-red-500/20'
@@ -1197,49 +1064,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowResetConfirm(false)} className="btn-secondary">Cancel</button>
               <button onClick={handleResetToDefaults} className="px-4 py-2 bg-red-500 text-white font-medium rounded-button hover:bg-red-600 transition-colors">Reset to Defaults</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Google Drive Restore Confirmation Modal */}
-      {showDriveRestoreConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
-          <div className="glass-modal rounded-lg p-6 max-w-md w-full mx-4 animate-slide-up">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Download className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold">Restore from Google Drive?</h3>
-            </div>
-            <p className="text-text-secondary mb-4">
-              This replaces the local bookmark widgets on your pages with the Google Drive version and reapplies the saved global settings.
-            </p>
-            <p className="text-sm text-text-muted mb-6">
-              Other widget data such as notes, todo items, calendar tokens, and API keys will stay local.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDriveRestoreConfirm(false)}
-                className="btn-secondary"
-                disabled={isRestoringGoogleDrive}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRestoreGoogleDrive}
-                className="btn-primary flex items-center gap-2"
-                disabled={isRestoringGoogleDrive}
-              >
-                {isRestoringGoogleDrive ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  'Restore Now'
-                )}
-              </button>
             </div>
           </div>
         </div>

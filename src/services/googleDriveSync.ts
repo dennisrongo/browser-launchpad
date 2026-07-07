@@ -620,16 +620,9 @@ export function preparePagesForSync(pages: Page[]): Page[] {
 }
 
 export async function getStoredGoogleDriveConfig(): Promise<GoogleDriveConfig> {
-  try {
-    const result = await getStorageValue<{
-      [GOOGLE_DRIVE_CONFIG_KEY]?: StoredGoogleDriveConfig
-    }>([GOOGLE_DRIVE_CONFIG_KEY])
-
-    return normalizeGoogleDriveConfig(result[GOOGLE_DRIVE_CONFIG_KEY])
-  } catch (error) {
-    logger.error('Failed to load Google Drive config', error)
-    return DEFAULT_GOOGLE_DRIVE_CONFIG
-  }
+  // Sync is always on now — the manual toggle was removed from the UI.
+  // Storage key is retained for backward compat but the value is forced true.
+  return { autoSyncEnabled: true }
 }
 
 export async function setGoogleDriveConfig(
