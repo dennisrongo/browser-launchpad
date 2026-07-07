@@ -931,21 +931,19 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         {activeTab === 'data' && (
           <>
             <div className="glass-card rounded-card p-4 mb-6">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">Google Drive Sync</h3>
-                  <p className="text-sm text-text-secondary">
-                    Connect once and your pages, widgets, and settings stay in sync across devices automatically.
-                  </p>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full border ${
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h3 className="text-lg font-semibold">Google Drive Sync</h3>
+                <span className={`text-xs px-2 py-1 rounded-full border whitespace-nowrap ${
                   isGoogleDriveConnected
                     ? 'border-green-500/30 bg-green-500/10 text-green-600'
                     : 'border-border bg-surface/60 text-text-muted'
                 }`}>
-                  {isGoogleDriveConnected ? 'Connected' : 'Not connected'}
+                  {isGoogleDriveConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
+              <p className="text-sm text-text-secondary mb-4">
+                Connect once and your pages, widgets, and settings stay in sync across devices automatically.
+              </p>
 
               <div className="flex flex-wrap gap-3 mb-4">
                 {isGoogleDriveConnected ? (
