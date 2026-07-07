@@ -1,4 +1,4 @@
-import type { Page, Settings } from '../types'
+import type { Page, Settings, Widget } from '../types'
 
 import { logger } from '../utils/logger'
 
@@ -6,7 +6,7 @@ const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
 const GOOGLE_DRIVE_CONFIG_KEY = 'google_drive_config'
 const GOOGLE_DRIVE_SYNC_STATE_KEY = 'google_drive_sync_state'
 const GOOGLE_DRIVE_SYNC_FILE_NAME = 'browser-launchpad-sync.json'
-const GOOGLE_DRIVE_SYNC_VERSION = '1.0.0'
+const GOOGLE_DRIVE_SYNC_VERSION = '2.0.0'
 const GOOGLE_DRIVE_MANIFEST_CLIENT_ID_PLACEHOLDER =
   'REPLACE_WITH_GOOGLE_EXTENSION_CLIENT_ID.apps.googleusercontent.com'
 
@@ -67,8 +67,11 @@ export interface GoogleDriveSyncPayload {
   version: string
   syncedAt: string
   data: {
-    bookmarkPages: Page[]
+    pages?: Page[]
     settings: Settings
+    separateStore?: Record<string, unknown>
+    // Legacy v1 payloads stored only bookmark widgets under bookmarkPages.
+    bookmarkPages?: Page[]
   }
 }
 
@@ -153,6 +156,19 @@ function isPage(value: unknown): value is Page {
   )
 }
 
+function isPageLoose(value: unknown): value is Page {
+  if (!isRecord(value) || !Array.isArray(value.widgets)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.order === 'number' &&
+    typeof value.created_at === 'string'
+  )
+}
+
 function isSettings(value: unknown): value is Settings {
   if (!isRecord(value)) {
     return false
@@ -175,13 +191,31 @@ function isGoogleDriveSyncPayload(value: unknown): value is GoogleDriveSyncPaylo
 
   const data = value.data
 
-  return (
-    typeof value.version === 'string' &&
-    typeof value.syncedAt === 'string' &&
-    Array.isArray(data.bookmarkPages) &&
-    data.bookmarkPages.every(isPage) &&
-    isSettings(data.settings)
-  )
+  if (
+    typeof value.version !== 'string' ||
+    typeof value.syncedAt !== 'string' ||
+    !isSettings(data.settings)
+  ) {
+    return false
+  }
+
+  // v2 payload: full pages array (+ optional separateStore)
+  if (Array.isArray(data.pages)) {
+    if (!data.pages.every(isPageLoose)) {
+      return false
+    }
+    if (data.separateStore !== undefined && !isRecord(data.separateStore)) {
+      return false
+    }
+    return true
+  }
+
+  // v1 legacy payload: bookmark-only pages
+  if (Array.isArray(data.bookmarkPages)) {
+    return data.bookmarkPages.every(isPage)
+  }
+
+  return false
 }
 
 async function parseGoogleError(response: Response): Promise<string> {
@@ -372,13 +406,64 @@ async function downloadGoogleDriveSyncPayload(
     throw new Error('The Google Drive sync file is not valid for Browser Launchpad.')
   }
 
-  return {
-    ...data,
-    data: {
-      ...data.data,
-      bookmarkPages: extractBookmarkPages(data.data.bookmarkPages),
-    },
+  // v2 payloads store full (scrubbed) pages; v1 legacy payloads store bookmarkPages only.
+  if (Array.isArray(data.data.pages)) {
+    return {
+      ...data,
+      data: {
+        ...data.data,
+        pages: preparePagesForSync(data.data.pages),
+      },
+    }
   }
+
+  return data
+}
+
+const SEPARATE_STORE_KEY_PATTERNS = [
+  /^notes-notes-/,
+  /^todo-list-todo-widget-/,
+  /^pomodoro-history-/,
+]
+
+function isSafeSeparateStoreKey(key: string): boolean {
+  return SEPARATE_STORE_KEY_PATTERNS.some((pattern) => pattern.test(key))
+}
+
+function deriveSeparateStoreKeys(pages: Page[]): string[] {
+  const keys: string[] = []
+
+  for (const page of pages) {
+    for (const widget of page.widgets) {
+      if (widget.type === 'notes') {
+        keys.push(`notes-notes-${widget.title}`)
+      } else if (widget.type === 'todo') {
+        keys.push(`todo-list-todo-widget-${widget.title}`)
+      } else if (widget.type === 'pomodoro') {
+        keys.push(`pomodoro-history-${widget.id}`)
+      }
+    }
+  }
+
+  return keys
+}
+
+async function readSeparateStore(pages: Page[]): Promise<Record<string, unknown>> {
+  const keys = deriveSeparateStoreKeys(pages)
+  if (keys.length === 0) {
+    return {}
+  }
+
+  const result = await getStorageValue<Record<string, unknown>>(keys)
+  const store: Record<string, unknown> = {}
+
+  for (const key of keys) {
+    if (result[key] !== undefined) {
+      store[key] = result[key]
+    }
+  }
+
+  return store
 }
 
 async function getLocalSyncData(): Promise<GoogleDriveSyncPayload['data']> {
@@ -392,10 +477,13 @@ async function getLocalSyncData(): Promise<GoogleDriveSyncPayload['data']> {
   }
 
   const pages = Array.isArray(result.pages) ? result.pages : []
+  const preparedPages = preparePagesForSync(pages)
+  const separateStore = await readSeparateStore(pages)
 
   return {
-    bookmarkPages: extractBookmarkPages(pages),
+    pages: preparedPages,
     settings: result.settings,
+    separateStore,
   }
 }
 
@@ -407,7 +495,61 @@ function buildSyncPayload(data: GoogleDriveSyncPayload['data']): GoogleDriveSync
   }
 }
 
-function mergeBookmarkPages(
+function isNewer(a: Widget, b: Widget): boolean {
+  const aTime = a.updated_at ? Date.parse(a.updated_at) : NaN
+  const bTime = b.updated_at ? Date.parse(b.updated_at) : NaN
+
+  if (Number.isNaN(aTime) && Number.isNaN(bTime)) return true
+  if (Number.isNaN(aTime)) return false
+  if (Number.isNaN(bTime)) return true
+
+  return aTime >= bTime
+}
+
+function mergePages(existingPages: Page[], syncedPages: Page[]): Page[] {
+  const syncedPageMap = new Map(syncedPages.map((page) => [page.id, page]))
+
+  const mergedExistingPages = existingPages.map((page) => {
+    const syncedPage = syncedPageMap.get(page.id)
+
+    if (!syncedPage) {
+      return page
+    }
+
+    const localWidgetMap = new Map(page.widgets.map((w) => [w.id, w]))
+    const syncedWidgetMap = new Map(syncedPage.widgets.map((w) => [w.id, w]))
+    const widgetIds = new Set([...localWidgetMap.keys(), ...syncedWidgetMap.keys()])
+
+    const mergedWidgets = Array.from(widgetIds)
+      .map((id) => {
+        const local = localWidgetMap.get(id)
+        const synced = syncedWidgetMap.get(id)
+
+        if (local && synced) {
+          return isNewer(synced, local) ? synced : local
+        }
+        return synced ?? local
+      })
+      .filter((widget): widget is Widget => widget !== undefined)
+
+    return {
+      ...page,
+      name: syncedPage.name,
+      order: syncedPage.order,
+      updated_at: new Date().toISOString(),
+      widgets: mergedWidgets,
+    }
+  })
+
+  const existingPageIds = new Set(existingPages.map((page) => page.id))
+  const newPages = syncedPages.filter((page) => !existingPageIds.has(page.id))
+
+  return [...mergedExistingPages, ...newPages].sort(
+    (left, right) => left.order - right.order
+  )
+}
+
+function mergeLegacyBookmarkPages(
   existingPages: Page[],
   syncedBookmarkPages: Page[]
 ): Page[] {
@@ -449,15 +591,31 @@ function mergeBookmarkPages(
   )
 }
 
-export function extractBookmarkPages(pages: Page[]): Page[] {
+function scrubWidgetConfig(widget: Widget): Widget {
+  if (widget.type === 'weather') {
+    const config = widget.config as unknown as Record<string, unknown>
+    if ('apiKey' in config && config.apiKey) {
+      return { ...widget, config: { ...widget.config, apiKey: '' } } as Widget
+    }
+  }
+
+  if (widget.type === 'ai-chat') {
+    const config = widget.config as unknown as Record<string, unknown>
+    if ('openaiApiKey' in config && config.openaiApiKey) {
+      return { ...widget, config: { ...widget.config, openaiApiKey: '' } } as Widget
+    }
+  }
+
+  return widget
+}
+
+export function preparePagesForSync(pages: Page[]): Page[] {
   return pages.map((page) => ({
     ...page,
-    widgets: page.widgets
-      .filter((widget) => widget.type === 'bookmark')
-      .map((widget) => ({
-        ...widget,
-        page_id: page.id,
-      })),
+    widgets: page.widgets.map((widget) => ({
+      ...scrubWidgetConfig(widget),
+      page_id: page.id,
+    })),
   }))
 }
 
@@ -562,7 +720,14 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
   }
 }
 
+let isRestoringFromGoogleDrive = false
+
+export function getIsRestoringFromGoogleDrive(): boolean {
+  return isRestoringFromGoogleDrive
+}
+
 export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSyncPayload> {
+  isRestoringFromGoogleDrive = true
   try {
     const syncFile = await findGoogleDriveSyncFile()
 
@@ -575,15 +740,33 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
       pages?: Page[]
     }>(['pages'])
     const currentPages = Array.isArray(current.pages) ? current.pages : []
-    const mergedPages = mergeBookmarkPages(
-      currentPages,
-      payload.data.bookmarkPages
-    )
+
+    let mergedPages: Page[]
+
+    if (Array.isArray(payload.data.pages)) {
+      mergedPages = mergePages(currentPages, payload.data.pages)
+    } else if (Array.isArray(payload.data.bookmarkPages)) {
+      mergedPages = mergeLegacyBookmarkPages(
+        currentPages,
+        payload.data.bookmarkPages
+      )
+    } else {
+      mergedPages = currentPages
+    }
 
     await setStorageValue({
       pages: mergedPages,
       settings: payload.data.settings,
     })
+
+    if (payload.data.separateStore) {
+      const safeEntries = Object.entries(payload.data.separateStore).filter(
+        ([key]) => isSafeSeparateStoreKey(key)
+      )
+      if (safeEntries.length > 0) {
+        await setStorageValue(Object.fromEntries(safeEntries))
+      }
+    }
 
     await updateGoogleDriveSyncState({
       lastError: null,
@@ -598,6 +781,8 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
     await updateGoogleDriveSyncState({ lastError: message })
     logger.error('Google Drive restore failed', error)
     throw error
+  } finally {
+    isRestoringFromGoogleDrive = false
   }
 }
 
