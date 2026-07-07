@@ -547,9 +547,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       await loadGoogleDriveState()
       setGoogleDriveStatusMessage({
         type: 'success',
-        message: 'Bookmark widgets and settings were restored from Google Drive.',
+        message: 'Bookmark widgets and settings were restored from Google Drive. Reloading...',
       })
       setShowDriveRestoreConfirm(false)
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       setGoogleDriveStatusMessage({
         type: 'error',
