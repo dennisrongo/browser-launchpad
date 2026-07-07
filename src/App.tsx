@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
-import { extractBookmarkPages, getStoredGoogleDriveConfig, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
+import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
@@ -84,14 +84,17 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   kanban: 'Kanban Board',
 }
 
-function hasBookmarkSyncPayloadChanged(change: chrome.storage.StorageChange): boolean {
+function hasPagesPayloadChanged(change: chrome.storage.StorageChange): boolean {
   const previousPages = Array.isArray(change.oldValue) ? (change.oldValue as Page[]) : []
   const nextPages = Array.isArray(change.newValue) ? (change.newValue as Page[]) : []
 
-  return (
-    JSON.stringify(extractBookmarkPages(previousPages)) !==
-    JSON.stringify(extractBookmarkPages(nextPages))
-  )
+  return JSON.stringify(previousPages) !== JSON.stringify(nextPages)
+}
+
+const SEPARATE_STORE_SYNC_KEY_PATTERN = /^notes-notes-|^todo-list-todo-widget-|^pomodoro-history-/
+
+function isSeparateStoreSyncKey(key: string): boolean {
+  return SEPARATE_STORE_SYNC_KEY_PATTERN.test(key)
 }
 
 function App() {
@@ -165,6 +168,7 @@ function App() {
             ...widget,
             column: widget.column ?? 0,
             order: widget.order ?? index,
+            updated_at: widget.updated_at ?? page.updated_at ?? widget.created_at ?? new Date().toISOString(),
           })),
         }))
         
@@ -253,12 +257,16 @@ function App() {
 
     const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
       if (areaName === 'local') {
+        if (getIsRestoringFromGoogleDrive()) {
+          return
+        }
+
         let shouldAutoSync = false
 
         if (changes.pages) {
           console.log('Storage changed, reloading pages')
           setPages((changes.pages.newValue ?? []) as any[])
-          shouldAutoSync = hasBookmarkSyncPayloadChanged(changes.pages)
+          shouldAutoSync = hasPagesPayloadChanged(changes.pages)
         }
         if (changes.settings) {
           const newSettings = changes.settings.newValue as Settings | undefined
@@ -266,6 +274,11 @@ function App() {
             console.log('Settings changed, updating theme')
             setSettings(newSettings)
             applyTheme(newSettings.theme)
+            shouldAutoSync = true
+          }
+        }
+        for (const key of Object.keys(changes)) {
+          if (isSeparateStoreSyncKey(key)) {
             shouldAutoSync = true
           }
         }
@@ -567,6 +580,7 @@ function App() {
       title: DEFAULT_WIDGET_TITLES[type],
       config: DEFAULT_WIDGET_CONFIGS[type],
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
 
     const updatedPages = [...pages]
@@ -665,7 +679,7 @@ function App() {
 
     const updatedWidgets = currentPage.widgets.map((w: Widget) =>
       w.id === widgetId
-        ? { ...w, title: newTitle, config: newConfig }
+        ? { ...w, title: newTitle, config: newConfig, updated_at: new Date().toISOString() }
         : w
     )
 
@@ -710,7 +724,7 @@ function App() {
 
     const updatedWidgets = currentPage.widgets.map((w: Widget) =>
       w.id === widgetId
-        ? { ...w, title: editingWidgetTitle.trim() }
+        ? { ...w, title: editingWidgetTitle.trim(), updated_at: new Date().toISOString() }
         : w
     )
 
@@ -758,7 +772,7 @@ function App() {
 
     const updatedWidgets = currentPage.widgets.map((w: Widget) =>
       w.id === widgetId
-        ? { ...w, config: { ...w.config, ...newConfig } }
+        ? { ...w, config: { ...w.config, ...newConfig }, updated_at: new Date().toISOString() }
         : w
     )
 
@@ -792,13 +806,13 @@ function App() {
     const updatedWidgets = currentPage.widgets.map((w: Widget) => {
       if (w.id === sourceWidgetId && w.type === 'bookmark') {
         const sourceConfig = w.config as { bookmarks: Bookmark[] }
-        return { ...w, config: { ...sourceConfig, bookmarks: sourceConfig.bookmarks.filter(b => b.id !== bookmark.id) } }
+        return { ...w, config: { ...sourceConfig, bookmarks: sourceConfig.bookmarks.filter(b => b.id !== bookmark.id) }, updated_at: new Date().toISOString() }
       }
       if (w.id === targetWidgetId && w.type === 'bookmark') {
         const targetConfig = w.config as { bookmarks: Bookmark[] }
         const newBookmarks = [...targetConfig.bookmarks]
         newBookmarks.splice(targetIndex, 0, bookmark)
-        return { ...w, config: { ...targetConfig, bookmarks: newBookmarks } }
+        return { ...w, config: { ...targetConfig, bookmarks: newBookmarks }, updated_at: new Date().toISOString() }
       }
       return w
     })
@@ -851,6 +865,7 @@ function App() {
       page_id: targetPageId,
       column: 0,
       order: maxOrder + 1,
+      updated_at: new Date().toISOString(),
     }
 
     const updatedPages = [...pages]
@@ -1014,6 +1029,7 @@ function App() {
 
       // Assign column and insert at correct position
       draggedWidget.column = targetColumn
+      draggedWidget.updated_at = new Date().toISOString()
       targetColumnWidgets.splice(insertIndex, 0, draggedWidget)
       targetColumnWidgets.forEach((w: Widget, i: number) => { w.order = i })
 

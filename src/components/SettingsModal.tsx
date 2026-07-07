@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
-  Calendar,
   Cloud,
   Database,
   Download,
@@ -20,13 +19,11 @@ import type { Settings } from '../types'
 import type { ThemeName } from '../utils/theme'
 import type {
   GoogleDriveConfig,
-  GoogleDriveManifestConfig,
   GoogleDriveSyncState,
 } from '../services/googleDriveSync'
 
 import {
   disconnectGoogleDrive,
-  getGoogleDriveManifestConfig,
   getGoogleDriveSyncState,
   getStoredGoogleDriveConfig,
   initiateGoogleDriveAuth,
@@ -189,10 +186,6 @@ interface WeatherConfig {
   apiKey: string
 }
 
-interface GoogleCalendarConfig {
-  clientId: string
-}
-
 interface StatusMessage {
   type: 'success' | 'error' | null
   message: string
@@ -219,18 +212,8 @@ const DEFAULT_WEATHER_CONFIG: WeatherConfig = {
   apiKey: '',
 }
 
-const DEFAULT_GOOGLE_CALENDAR_CONFIG: GoogleCalendarConfig = {
-  clientId: '',
-}
-
 const DEFAULT_GOOGLE_DRIVE_CONFIG: GoogleDriveConfig = {
   autoSyncEnabled: false,
-}
-
-const DEFAULT_GOOGLE_DRIVE_MANIFEST_CONFIG: GoogleDriveManifestConfig = {
-  clientId: '',
-  isConfigured: false,
-  scopes: [],
 }
 
 const DEFAULT_GOOGLE_DRIVE_SYNC_STATE: GoogleDriveSyncState = {
@@ -257,11 +240,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [theme, setTheme] = useState<ThemeName>('modern-light')
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
   const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>(DEFAULT_WEATHER_CONFIG)
-  const [googleCalendarConfig, setGoogleCalendarConfig] = useState<GoogleCalendarConfig>(DEFAULT_GOOGLE_CALENDAR_CONFIG)
   const [googleDriveSyncConfig, setGoogleDriveSyncConfig] = useState<GoogleDriveConfig>(DEFAULT_GOOGLE_DRIVE_CONFIG)
-  const [googleDriveManifestConfig, setGoogleDriveManifestConfig] = useState<GoogleDriveManifestConfig>(DEFAULT_GOOGLE_DRIVE_MANIFEST_CONFIG)
   const [googleDriveSyncStatus, setGoogleDriveSyncStatus] = useState<GoogleDriveSyncState>(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
-  const [showApiKeys, setShowApiKeys] = useState({ openai: false, weather: false, googleCalendar: false })
+  const [showApiKeys, setShowApiKeys] = useState({ openai: false, weather: false })
   const [importStatus, setImportStatus] = useState<StatusMessage>({ type: null, message: '' })
   const [googleDriveStatusMessage, setGoogleDriveStatusMessage] = useState<StatusMessage>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -276,14 +257,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [isSyncingGoogleDrive, setIsSyncingGoogleDrive] = useState(false)
   const [isRestoringGoogleDrive, setIsRestoringGoogleDrive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const extensionId = chrome.runtime.id
 
   useEffect(() => {
     if (isOpen) {
       loadSettings()
       loadAIConfig()
       loadWeatherConfig()
-      loadGoogleCalendarConfig()
       loadGoogleDriveState()
     }
   }, [isOpen])
@@ -367,29 +346,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     }
   }
 
-  const loadGoogleCalendarConfig = async () => {
-    try {
-      const result = await chrome.storage.local.get(['google_calendar_config'])
-      if (result.google_calendar_config) {
-        const storedConfig = result.google_calendar_config as GoogleCalendarConfig
-        setGoogleCalendarConfig({ clientId: decodeApiKey(storedConfig.clientId) })
-      }
-    } catch (error) {
-      console.error('Failed to load Google Calendar config:', error)
-    }
-  }
-
   const loadGoogleDriveState = async () => {
     try {
-      const [storedConfig, manifestConfig, syncState, authorized] = await Promise.all([
+      const [storedConfig, syncState, authorized] = await Promise.all([
         getStoredGoogleDriveConfig(),
-        Promise.resolve(getGoogleDriveManifestConfig()),
         getGoogleDriveSyncState(),
         isGoogleDriveAuthorized(),
       ])
 
       setGoogleDriveSyncConfig(storedConfig)
-      setGoogleDriveManifestConfig(manifestConfig)
       setGoogleDriveSyncStatus(syncState)
       setIsGoogleDriveConnected(authorized)
     } catch (error) {
@@ -430,11 +395,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         console.log('✓ Weather config saved to Chrome storage (encoded)')
       } catch (error) { console.error('Failed to save weather config:', error) }
       try {
-        const encodedGoogleCalendarConfig: GoogleCalendarConfig = { clientId: encodeApiKey(googleCalendarConfig.clientId) }
-        await chrome.storage.local.set({ google_calendar_config: encodedGoogleCalendarConfig })
-        console.log('✓ Google Calendar config saved to Chrome storage (encoded)')
-      } catch (error) { console.error('Failed to save Google Calendar config:', error) }
-      try {
         await setGoogleDriveConfig(googleDriveSyncConfig)
         console.log('✓ Google Drive config saved to Chrome storage')
       } catch (error) { console.error('Failed to save Google Drive config:', error) }
@@ -450,7 +410,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setTheme(settings.theme)
     void loadAIConfig()
     void loadWeatherConfig()
-    void loadGoogleCalendarConfig()
     void loadGoogleDriveState()
     setShowDriveRestoreConfirm(false)
     setGoogleDriveStatusMessage({ type: null, message: '' })
@@ -469,7 +428,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setTheme(defaultSettings.theme)
       setAIConfig(DEFAULT_AI_CONFIG)
       setWeatherConfig(DEFAULT_WEATHER_CONFIG)
-      setGoogleCalendarConfig(DEFAULT_GOOGLE_CALENDAR_CONFIG)
       setGoogleDriveSyncConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
       setGoogleDriveSyncStatus(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
       setIsGoogleDriveConnected(false)
@@ -487,10 +445,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ weather_config: DEFAULT_WEATHER_CONFIG })
         console.log('✓ Weather config reset to defaults')
       } catch (error) { console.error('Failed to reset weather config:', error) }
-      try {
-        await chrome.storage.local.set({ google_calendar_config: DEFAULT_GOOGLE_CALENDAR_CONFIG })
-        console.log('✓ Google Calendar config reset to defaults')
-      } catch (error) { console.error('Failed to reset Google Calendar config:', error) }
       try {
         await disconnectGoogleDrive()
         await setGoogleDriveConfig(DEFAULT_GOOGLE_DRIVE_CONFIG)
@@ -533,7 +487,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       await loadGoogleDriveState()
       setGoogleDriveStatusMessage({
         type: 'success',
-        message: 'Google Drive connected. You can sync from the Data tab now.',
+        message: 'Google Drive connected.',
       })
     } catch (error) {
       setGoogleDriveStatusMessage({
@@ -618,11 +572,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         if (exportData.weather_config) {
           exportData = { ...exportData, weather_config: { ...exportData.weather_config, apiKey: '' } }
         }
-        if (exportData.google_calendar_config) {
-          exportData = { ...exportData, google_calendar_config: { ...exportData.google_calendar_config, clientId: '' } }
-        }
-        delete exportData.google_calendar_tokens
-        delete exportData.google_calendars
         delete exportData.google_drive_tokens
         delete exportData.google_drive_sync_state
         console.log('⚠️ API keys and OAuth tokens excluded from export')
@@ -1040,162 +989,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               </div>
             </div>
 
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Google Calendar</h3>
-              <p className="text-sm text-text-secondary mb-4">Configure Google Calendar integration for calendar widgets.</p>
-              <div className="p-4 glass-card rounded-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="w-6 h-6 text-primary" />
-                  <h4 className="font-semibold">OAuth 2.0 Client ID</h4>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="google-client-id" className="block text-sm font-medium mb-1.5">Client ID</label>
-                  <div className="flex gap-2">
-                    <input
-                      type={showApiKeys.googleCalendar ? 'text' : 'password'}
-                      id="google-client-id"
-                      value={googleCalendarConfig.clientId}
-                      onChange={(e) => setGoogleCalendarConfig(prev => ({ ...prev, clientId: e.target.value }))}
-                      placeholder="your-app.apps.googleusercontent.com"
-                      className="input-base flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKeys(prev => ({ ...prev, googleCalendar: !prev.googleCalendar }))}
-                      className="btn-secondary px-3"
-                      title={showApiKeys.googleCalendar ? 'Hide Client ID' : 'Show Client ID'}
-                    >
-                      {showApiKeys.googleCalendar ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-text-muted mt-1.5">
-                    Create credentials at{' '}
-                    <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      Google Cloud Console
-                    </a>
-                  </p>
-                </div>
-                <div className="p-3 bg-surface/50 rounded-lg text-xs text-text-secondary">
-                  <strong className="text-text">Setup Instructions:</strong>
-                  <ol className="list-decimal list-inside mt-2 space-y-1">
-                    <li>Go to Google Cloud Console</li>
-                    <li>Create a new project or select existing</li>
-                    <li>Enable Google Calendar API</li>
-                    <li>Create OAuth 2.0 Client ID (Chrome Extension type)</li>
-                    <li>Add your extension ID to authorized IDs</li>
-                    <li>Paste the Client ID above</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Google Drive Sync</h3>
-              <p className="text-sm text-text-secondary mb-4">
-                Authenticate with Google Drive from Settings so Browser Launchpad can back up your bookmark widgets and global settings.
-              </p>
-              <div className="p-4 glass-card rounded-card">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Database className="w-6 h-6 text-primary" />
-                    <div>
-                      <h4 className="font-semibold">Manifest OAuth Configuration</h4>
-                      <p className="text-xs text-text-muted">
-                        {googleDriveManifestConfig.isConfigured
-                          ? 'Manifest client ID detected'
-                          : 'Manifest client ID still needs to be configured'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${
-                    googleDriveManifestConfig.isConfigured
-                      ? 'border-green-500/30 bg-green-500/10 text-green-600'
-                      : 'border-amber-500/30 bg-amber-500/10 text-amber-600'
-                  }`}>
-                    {googleDriveManifestConfig.isConfigured ? 'Configured' : 'Manifest update required'}
-                  </span>
-                </div>
-
-                <div className="mb-3">
-                  <label className="block text-sm font-medium mb-1.5">Client ID from manifest</label>
-                  <div className="input-base text-xs font-mono break-all">
-                    {googleDriveManifestConfig.clientId || 'Not configured yet'}
-                  </div>
-                  <p className="text-xs text-text-muted mt-1.5">
-                    Chrome&apos;s <strong className="text-text">getAuthToken</strong> flow reads the Google OAuth client ID from <strong className="text-text">manifest.json</strong>, not from a Settings field.
-                  </p>
-                </div>
-
-                {!googleDriveManifestConfig.isConfigured && (
-                  <div className="mb-4 p-3 rounded-button text-sm bg-amber-500/10 text-amber-700 border border-amber-500/20">
-                    Google Drive sign-in is unavailable until you replace the placeholder client ID in <strong className="text-text">public/manifest.json</strong>, run <strong className="text-text">npm run build</strong>, and reload the extension in <strong className="text-text">chrome://extensions</strong>.
-                  </div>
-                )}
-
-                <div className="mb-3">
-                  <label className="block text-sm font-medium mb-1.5">Extension ID</label>
-                  <div className="input-base text-xs font-mono break-all">{extensionId}</div>
-                  <p className="text-xs text-text-muted mt-1.5">
-                    Use this exact value as the <strong className="text-text">Item ID</strong> when you create the Chrome Extension OAuth client in Google Cloud.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3 mb-4">
-                  <button
-                    type="button"
-                    onClick={handleConnectGoogleDrive}
-                    disabled={isConnectingGoogleDrive || !googleDriveManifestConfig.isConfigured}
-                    className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isConnectingGoogleDrive ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      'Connect Google Drive'
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDisconnectGoogleDrive}
-                    disabled={!isGoogleDriveConnected || isConnectingGoogleDrive}
-                    className="btn-secondary"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-
-                {googleDriveStatusMessage.type && (
-                  <div className={`mb-4 p-3 rounded-button text-sm border ${
-                    googleDriveStatusMessage.type === 'success'
-                      ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                      : 'bg-red-500/10 text-red-600 border-red-500/20'
-                  }`}>
-                    {googleDriveStatusMessage.message}
-                  </div>
-                )}
-
-                <div className="p-3 bg-surface/50 rounded-lg text-xs text-text-secondary">
-                  <strong className="text-text">Current setup steps:</strong>
-                  <ol className="list-decimal list-inside mt-2 space-y-1">
-                    <li>Create or choose a project in Google Cloud Console.</li>
-                    <li>Enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Drive API</a>.</li>
-                    <li>If Google Auth Platform is not set up yet, open <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Auth Platform</a> and complete Branding, Audience, and Data Access first.</li>
-                    <li>Open <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Auth Platform → Clients</a>.</li>
-                    <li>Create a new OAuth client with <strong className="text-text">Application type → Chrome Extension</strong>.</li>
-                    <li>Paste the extension ID shown above into <strong className="text-text">Item ID</strong>.</li>
-                    <li>Copy the generated Client ID into <strong className="text-text">public/manifest.json</strong> under <strong className="text-text">oauth2.client_id</strong>.</li>
-                    <li>Run <strong className="text-text">npm run build</strong> so <strong className="text-text">dist/manifest.json</strong> is regenerated.</li>
-                    <li>Reload the unpacked extension in <strong className="text-text">chrome://extensions</strong>.</li>
-                    <li>Return here and click <strong className="text-text">Connect Google Drive</strong>.</li>
-                  </ol>
-                  <p className="mt-3">
-                    If you are using an unpacked extension and the ID ever changes, update the same Item ID in Google Cloud before reconnecting. Chrome recommends keeping the extension ID stable when you rely on OAuth.
-                  </p>
-                </div>
-              </div>
-            </div>
           </>
         )}
 
@@ -1215,8 +1008,37 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                     ? 'border-green-500/30 bg-green-500/10 text-green-600'
                     : 'border-border bg-surface/60 text-text-muted'
                 }`}>
-                  {isGoogleDriveConnected ? 'Connected' : 'Connect in Integrations'}
+                  {isGoogleDriveConnected ? 'Connected' : 'Not connected'}
                 </span>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mb-4">
+                {isGoogleDriveConnected ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogleDrive}
+                    disabled={isConnectingGoogleDrive}
+                    className="btn-secondary"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConnectGoogleDrive}
+                    disabled={isConnectingGoogleDrive}
+                    className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isConnectingGoogleDrive ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      'Connect Google Drive'
+                    )}
+                  </button>
+                )}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 mb-4">

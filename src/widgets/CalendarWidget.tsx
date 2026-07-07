@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, RefreshCw, Link2, Settings } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, RefreshCw, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { CalendarWidgetConfig, CalendarEvent, GoogleCalendar } from '../types'
 import {
@@ -16,16 +16,11 @@ import {
   formatEventTime,
 } from '../utils/calendar'
 import {
-  initiateGoogleAuth,
-  getStoredGoogleTokens,
-  getStoredGoogleCalendars,
-  storeGoogleTokens,
-  storeGoogleCalendars,
+  initiateGoogleCalendarAuth,
+  getCalendarAccessToken,
   fetchGoogleCalendars,
   fetchGoogleEvents,
   disconnectGoogleCalendar,
-  getValidAccessToken,
-  isGoogleCalendarConfigured,
 } from '../services/googleCalendar'
 
 interface CalendarWidgetProps {
@@ -41,15 +36,10 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
-  const [isConfigured, setIsConfigured] = useState<boolean>(false)
 
   const firstDayOfWeek = config.firstDayOfWeek ?? 0
   const showWeekNumbers = config.showWeekNumbers ?? false
   const viewMode = config.viewMode ?? 'month'
-
-  useEffect(() => {
-    isGoogleCalendarConfigured().then(setIsConfigured)
-  }, [])
 
   const loadGoogleData = useCallback(async () => {
     if (!config.googleConnected) {
@@ -62,32 +52,19 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     setError(null)
 
     try {
-      const tokens = await getStoredGoogleTokens()
-      if (!tokens) {
-        setError('Not connected to Google Calendar')
-        setLoading(false)
-        return
-      }
+      const accessToken = await getCalendarAccessToken()
 
-      const accessToken = await getValidAccessToken(tokens)
-      
-      const storedCalendars = await getStoredGoogleCalendars()
-      if (storedCalendars && storedCalendars.length > 0) {
-        setCalendars(storedCalendars)
-      } else {
-        const fetchedCalendars = await fetchGoogleCalendars(accessToken)
-        setCalendars(fetchedCalendars)
-        await storeGoogleCalendars(fetchedCalendars)
-      }
+      const fetchedCalendars = await fetchGoogleCalendars(accessToken)
+      setCalendars(fetchedCalendars)
 
       const calendarIds = config.selectedCalendars?.length
         ? config.selectedCalendars
-        : storedCalendars?.filter(c => c.primary).map(c => c.id) || []
+        : fetchedCalendars.filter(c => c.primary).map(c => c.id)
 
       if (calendarIds.length > 0) {
         const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
         const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0)
-        
+
         const fetchedEvents = await fetchGoogleEvents(accessToken, calendarIds, startDate, endDate)
         setEvents(fetchedEvents)
       }
@@ -108,17 +85,12 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     setError(null)
 
     try {
-      const tokens = await initiateGoogleAuth()
-      await storeGoogleTokens(tokens)
-
-      const accessToken = await getValidAccessToken(tokens)
+      const accessToken = await initiateGoogleCalendarAuth()
       const fetchedCalendars = await fetchGoogleCalendars(accessToken)
-      await storeGoogleCalendars(fetchedCalendars)
 
       onConfigChange?.({
         ...config,
         googleConnected: true,
-        googleTokens: tokens,
         selectedCalendars: fetchedCalendars.filter(c => c.primary).map(c => c.id),
       })
 
@@ -137,7 +109,6 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       onConfigChange?.({
         ...config,
         googleConnected: false,
-        googleTokens: undefined,
         selectedCalendars: [],
       })
       setEvents([])
@@ -183,43 +154,26 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
           <CalendarIcon className="w-6 h-6 text-secondary" />
         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
-        {!isConfigured ? (
-          <>
-            <p className="text-neutral text-xs mb-3 text-center px-4">
-              Configure Google Calendar in Settings first
-            </p>
-            <button
-              disabled
-              className="btn-secondary text-xs flex items-center gap-1.5 opacity-50 cursor-not-allowed"
-            >
-              <Settings className="w-3 h-3" />
-              Go to Settings → Integrations
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-neutral text-xs mb-3 text-center px-4">
-              Connect to Google Calendar to view your events
-            </p>
-            <button
-              onClick={handleConnectGoogle}
-              disabled={connecting}
-              className="btn-primary text-xs flex items-center gap-1.5"
-            >
-              {connecting ? (
-                <>
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Link2 className="w-3 h-3" />
-                  Connect Google Calendar
-                </>
-              )}
-            </button>
-          </>
-        )}
+        <p className="text-neutral text-xs mb-3 text-center px-4">
+          Connect to Google Calendar to view your events
+        </p>
+        <button
+          onClick={handleConnectGoogle}
+          disabled={connecting}
+          className="btn-primary text-xs flex items-center gap-1.5"
+        >
+          {connecting ? (
+            <>
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <Link2 className="w-3 h-3" />
+              Connect Google Calendar
+            </>
+          )}
+        </button>
         {error && (
           <p className="text-red-500 text-xs mt-2 text-center px-4">{error}</p>
         )}
