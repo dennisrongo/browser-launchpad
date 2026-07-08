@@ -157,10 +157,32 @@ function App() {
       }
 
       // Load pages and settings in parallel for faster initial load
-      const [pagesResult, settingsResult] = await Promise.all([
+      let [pagesResult, settingsResult] = await Promise.all([
         pagesStorage.getAll(),
         settingsStorage.get(),
       ])
+
+      // This device has no local pages yet - e.g. a fresh install/profile.
+      // Give Google Drive a chance to supply the real data BEFORE inventing a
+      // placeholder "My Page": if we created the placeholder first, the later
+      // merge would treat it as "a local addition the cloud hasn't seen" and
+      // keep it forever alongside the real synced pages instead of it just
+      // being replaced by whatever Drive already has.
+      let didPullAtStartup = false
+      if (!pagesResult.data || pagesResult.data.length === 0) {
+        didPullAtStartup = true
+        try {
+          const pulled = await pullAndMergeFromGoogleDrive()
+          if (pulled) {
+            ;[pagesResult, settingsResult] = await Promise.all([
+              pagesStorage.getAll(),
+              settingsStorage.get(),
+            ])
+          }
+        } catch (error) {
+          logger.error('Drive auto-pull failed at init', error)
+        }
+      }
 
       // Handle pages
       if (pagesResult.data && pagesResult.data.length > 0) {
@@ -230,24 +252,27 @@ function App() {
       // Auto-pull from Drive: silently merge the latest cloud data into local.
       // Runs after init so local pages are loaded first. Only fires if Drive is
       // authorized; skipped if the cloud payload hasn't advanced since last sync.
-      try {
-        const didChange = await pullAndMergeFromGoogleDrive()
-        if (didChange) {
-          console.log('✓ Pulled newer data from Google Drive')
-          const [refreshedPages, refreshedSettings] = await Promise.all([
-            pagesStorage.getAll(),
-            settingsStorage.get(),
-          ])
-          if (refreshedPages.data) {
-            setPages(refreshedPages.data)
+      // Skipped entirely if we already pulled above (empty-local-storage path).
+      if (!didPullAtStartup) {
+        try {
+          const didChange = await pullAndMergeFromGoogleDrive()
+          if (didChange) {
+            console.log('✓ Pulled newer data from Google Drive')
+            const [refreshedPages, refreshedSettings] = await Promise.all([
+              pagesStorage.getAll(),
+              settingsStorage.get(),
+            ])
+            if (refreshedPages.data) {
+              setPages(refreshedPages.data)
+            }
+            if (refreshedSettings.data) {
+              setSettings(refreshedSettings.data)
+              applyTheme(refreshedSettings.data.theme)
+            }
           }
-          if (refreshedSettings.data) {
-            setSettings(refreshedSettings.data)
-            applyTheme(refreshedSettings.data.theme)
-          }
+        } catch (error) {
+          logger.error('Drive auto-pull failed at init', error)
         }
-      } catch (error) {
-        logger.error('Drive auto-pull failed at init', error)
       }
     }
 
