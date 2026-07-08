@@ -47,6 +47,7 @@ function renderTweetText(text: string) {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
+          draggable={false}
           className="text-primary hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
@@ -62,6 +63,7 @@ function renderTweetText(text: string) {
           href={`https://x.com/${username}`}
           target="_blank"
           rel="noopener noreferrer"
+          draggable={false}
           className="text-primary hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
@@ -83,12 +85,14 @@ function NestedTweet({ tweet }: { tweet: XTweet }) {
           href={`https://x.com/${tweet.authorHandle}`}
           target="_blank"
           rel="noopener noreferrer"
+          draggable={false}
           className="flex-shrink-0"
         >
           {tweet.authorProfileImage ? (
             <img
               src={tweet.authorProfileImage.replace('_normal', '_mini')}
               alt=""
+              draggable={false}
               className="w-4 h-4 rounded-full"
             />
           ) : (
@@ -101,6 +105,7 @@ function NestedTweet({ tweet }: { tweet: XTweet }) {
           href={`https://x.com/${tweet.authorHandle}`}
           target="_blank"
           rel="noopener noreferrer"
+          draggable={false}
           className="text-xs font-medium text-text-secondary truncate hover:underline"
         >
           {tweet.authorName}
@@ -109,6 +114,7 @@ function NestedTweet({ tweet }: { tweet: XTweet }) {
           href={`https://x.com/${tweet.authorHandle}`}
           target="_blank"
           rel="noopener noreferrer"
+          draggable={false}
           className="text-[10px] text-text-muted truncate hover:underline"
         >
           @{tweet.authorHandle}
@@ -359,12 +365,14 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                   href={`https://x.com/${tweet.authorHandle}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  draggable={false}
                   className="flex-shrink-0 mt-0.5"
                 >
                   {tweet.authorProfileImage ? (
                     <img
                       src={tweet.authorProfileImage.replace('_normal', '_bigger')}
                       alt=""
+                      draggable={false}
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
@@ -379,6 +387,7 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                       href={`https://x.com/${tweet.authorHandle}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      draggable={false}
                       className="text-sm font-semibold text-text truncate hover:underline"
                     >
                       {tweet.authorName}
@@ -387,6 +396,7 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                       href={`https://x.com/${tweet.authorHandle}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      draggable={false}
                       className="text-xs text-text-muted truncate hover:underline"
                     >
                       @{tweet.authorHandle}
@@ -398,6 +408,7 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
                       href={tweet.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      draggable={false}
                       className="p-1 text-text-muted hover:text-primary rounded-button transition-all duration-150 opacity-0 group-hover:opacity-100 flex-shrink-0"
                       title="Open tweet"
                     >
