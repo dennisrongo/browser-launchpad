@@ -533,6 +533,45 @@ function isNewer(a: Widget, b: Widget): boolean {
   return aTime >= bTime
 }
 
+// Groups widgets by column and reassigns a dense, deterministic 0..n-1
+// `order` within each column. Widgets the layout authority knows about keep
+// their relative order from the authority; widgets it doesn't know about are
+// appended after, sorted by id so the result is identical no matter which
+// device (or which side's Map/Set iteration order) computes it.
+function finalizeWidgetOrder(
+  widgets: Widget[],
+  layoutPositionById: Map<string, { column: number; order: number }>
+): Widget[] {
+  const byColumn = new Map<number, Widget[]>()
+  for (const widget of widgets) {
+    const column = widget.column ?? 0
+    const bucket = byColumn.get(column)
+    if (bucket) {
+      bucket.push(widget)
+    } else {
+      byColumn.set(column, [widget])
+    }
+  }
+
+  const columns = Array.from(byColumn.keys()).sort((a, b) => a - b)
+  const result: Widget[] = []
+  for (const column of columns) {
+    const columnWidgets = byColumn.get(column)!
+    result.push(
+      ...columnWidgets
+        .sort((a, b) => {
+          const aKnown = layoutPositionById.has(a.id)
+          const bKnown = layoutPositionById.has(b.id)
+          if (aKnown !== bKnown) return aKnown ? -1 : 1
+          if (aKnown && bKnown) return a.order - b.order
+          return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+        })
+        .map((widget, index) => ({ ...widget, order: index }))
+    )
+  }
+  return result
+}
+
 function mergePages(
   existingPages: Page[],
   syncedPages: Page[],
@@ -620,12 +659,20 @@ function mergePages(
         })
         .filter((widget): widget is Widget => widget !== null && widget !== undefined)
 
+      // Widgets the layout authority didn't know about (e.g. added on the
+      // other side after the authority's last layout change) still carry
+      // their own stale column/order at this point. Re-normalize per column
+      // so positions never collide and — critically — so every device
+      // computes the exact same dense 0..n-1 ordering from the same merged
+      // widget set, instead of depending on Map/Set iteration order.
+      const finalWidgets = finalizeWidgetOrder(mergedWidgets, layoutPositionById)
+
       const newerPage = isNewerPage(syncedPage, page) ? syncedPage : page
 
       return {
         ...newerPage,
         updated_at: new Date().toISOString(),
-        widgets: mergedWidgets,
+        widgets: finalWidgets,
       }
     })
     .filter((page): page is Page => page !== null)
