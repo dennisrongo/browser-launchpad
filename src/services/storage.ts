@@ -248,26 +248,26 @@ export const chatHistoryStorage = {
 }
 
 export const todoListStorage = {
-  get: (widgetId: string): Promise<StorageResult<any>> => getFromStorage(`todo-list-${widgetId}`),
-  set: (widgetId: string, config: any): Promise<{ success: boolean; error: string | null }> =>
+  get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> => getFromStorage<T>(`todo-list-${widgetId}`),
+  set: (widgetId: string, config: unknown): Promise<{ success: boolean; error: string | null }> =>
     setToStorage({ [`todo-list-${widgetId}`]: config }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
     removeFromStorage(`todo-list-${widgetId}`),
 }
 
 export const pomodoroHistoryStorage = {
-  get: (widgetId: string): Promise<StorageResult<any[]>> => 
-    getFromStorage(`pomodoro-history-${widgetId}`),
-  set: (widgetId: string, history: any[]): Promise<{ success: boolean; error: string | null }> =>
+  get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> =>
+    getFromStorage<T>(`pomodoro-history-${widgetId}`),
+  set: (widgetId: string, history: unknown): Promise<{ success: boolean; error: string | null }> =>
     setToStorage({ [`pomodoro-history-${widgetId}`]: history }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
     removeFromStorage(`pomodoro-history-${widgetId}`),
 }
 
 export const notesStorage = {
-  get: (widgetId: string): Promise<StorageResult<any>> => 
-    getFromStorage(`notes-${widgetId}`),
-  set: (widgetId: string, config: any): Promise<{ success: boolean; error: string | null }> =>
+  get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> =>
+    getFromStorage<T>(`notes-${widgetId}`),
+  set: (widgetId: string, config: unknown): Promise<{ success: boolean; error: string | null }> =>
     setToStorage({ [`notes-${widgetId}`]: config }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
     removeFromStorage(`notes-${widgetId}`),

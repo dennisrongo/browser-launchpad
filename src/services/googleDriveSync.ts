@@ -1,6 +1,16 @@
-import type { Page, Settings, Widget } from '../types'
+import type { Page, Settings, TombstoneStore, VersionedBlob, Widget } from '../types'
 
 import { logger } from '../utils/logger'
+import {
+  getTombstones,
+  isTombstonedNewerThan,
+  mergeTombstoneStores,
+  setTombstones,
+} from './tombstones'
+import {
+  mergeVersionedBlob,
+  toVersionedBlob,
+} from '../utils/versionedBlob'
 
 const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
 const GOOGLE_DRIVE_CONFIG_KEY = 'google_drive_config'
@@ -70,6 +80,7 @@ export interface GoogleDriveSyncPayload {
     pages?: Page[]
     settings: Settings
     separateStore?: Record<string, unknown>
+    tombstones?: TombstoneStore
     // Legacy v1 payloads stored only bookmark widgets under bookmarkPages.
     bookmarkPages?: Page[]
   }
@@ -493,11 +504,13 @@ async function getLocalSyncData(): Promise<GoogleDriveSyncPayload['data']> {
   const pages = Array.isArray(result.pages) ? result.pages : []
   const preparedPages = preparePagesForSync(pages)
   const separateStore = await readSeparateStore(pages)
+  const tombstones = await getTombstones()
 
   return {
     pages: preparedPages,
     settings: result.settings,
     separateStore,
+    tombstones,
   }
 }
 
@@ -523,19 +536,28 @@ function isNewer(a: Widget, b: Widget): boolean {
 function mergePages(
   existingPages: Page[],
   syncedPages: Page[],
-  cloudIsAuthoritative: boolean
+  tombstones: TombstoneStore
 ): Page[] {
   const syncedPageMap = new Map(syncedPages.map((page) => [page.id, page]))
 
+  // Merge local pages: drop any that are tombstoned newer than their own
+  // updated_at (deleted on this or another device more recently than edited).
+  // For pages present on both sides, merge widgets with the same tombstone
+  // rule applied per widget.
   const mergedExistingPages = existingPages
     .map((page) => {
+      if (isTombstonedNewerThan(tombstones, page.id, page.updated_at)) {
+        return null
+      }
+
       const syncedPage = syncedPageMap.get(page.id)
 
-      // Local page not in cloud: keep only if cloud is not authoritative.
-      // When cloud is authoritative, a missing page means it was deleted
-      // on another device and the deletion should propagate.
       if (!syncedPage) {
-        return cloudIsAuthoritative ? null : page
+        // Page exists locally only. Keep it: it's a local addition the cloud
+        // hasn't seen, OR it survived the tombstone check above (so it was
+        // re-created after any deletion). Deletions only propagate via
+        // tombstones, not via absence.
+        return page
       }
 
       const localWidgetMap = new Map(page.widgets.map((w) => [w.id, w]))
@@ -544,35 +566,61 @@ function mergePages(
 
       const mergedWidgets = Array.from(widgetIds)
         .map((id) => {
+          if (isTombstonedNewerThan(tombstones, id, undefined)) {
+            // Widget is tombstoned with no competing timestamp on either side:
+            // it was deleted and not re-created. Drop it.
+            return null
+          }
           const local = localWidgetMap.get(id)
           const synced = syncedWidgetMap.get(id)
 
           if (local && synced) {
-            return isNewer(synced, local) ? synced : local
+            // Re-check tombstone against the survivor's updated_at so a
+            // re-created widget (newer than its tombstone) survives.
+            const survivor = isNewer(synced, local) ? synced : local
+            if (isTombstonedNewerThan(tombstones, id, survivor.updated_at)) {
+              return null
+            }
+            return survivor
           }
-          // Widget exists on one side only.
-          if (synced) return synced
-          if (cloudIsAuthoritative) return null // deleted on another device
-          return local // keep local-only widget
+          // Widget exists on one side only: keep it (deletions are tombstone-
+          // driven, not absence-driven).
+          return synced ?? local ?? null
         })
         .filter((widget): widget is Widget => widget !== null && widget !== undefined)
 
+      const newerPage = isNewerPage(syncedPage, page) ? syncedPage : page
+
       return {
-        ...page,
-        name: syncedPage.name,
-        order: syncedPage.order,
+        ...newerPage,
         updated_at: new Date().toISOString(),
         widgets: mergedWidgets,
       }
     })
     .filter((page): page is Page => page !== null)
 
+  // Add cloud-only pages, respecting tombstones.
   const existingPageIds = new Set(existingPages.map((page) => page.id))
-  const newPages = syncedPages.filter((page) => !existingPageIds.has(page.id))
+  const newPages = syncedPages.filter(
+    (page) =>
+      !existingPageIds.has(page.id) &&
+      !isTombstonedNewerThan(tombstones, page.id, page.updated_at)
+  )
 
   return [...mergedExistingPages, ...newPages].sort(
     (left, right) => left.order - right.order
   )
+}
+
+function isNewerPage(a: Page, b: Page): boolean {
+  const aTime = a.updated_at ? Date.parse(a.updated_at) : NaN
+  const bTime = b.updated_at ? Date.parse(b.updated_at) : NaN
+
+  if (Number.isNaN(aTime) && Number.isNaN(bTime)) return true
+  if (Number.isNaN(aTime)) return false
+  if (Number.isNaN(bTime)) return true
+
+  return aTime >= bTime
 }
 
 function mergeLegacyBookmarkPages(
@@ -643,6 +691,36 @@ export function preparePagesForSync(pages: Page[]): Page[] {
       page_id: page.id,
     })),
   }))
+}
+
+// Per-key last-write-wins merge for separate-store values. Each side's value
+// may be a legacy raw blob or a VersionedBlob; legacy values are wrapped with
+// a fallback timestamp before comparison. Newer updatedAt wins per key.
+function mergeSeparateStore(
+  local: Record<string, unknown>,
+  cloud: Record<string, unknown>
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...local }
+  const fallback = new Date(0).toISOString()
+
+  for (const key of Object.keys(cloud)) {
+    const localValue = merged[key]
+    const cloudValue = cloud[key]
+
+    const localBlob = localValue !== undefined
+      ? toVersionedBlob(localValue, fallback)
+      : undefined
+    const cloudBlob = toVersionedBlob(cloudValue, fallback)
+
+    if (!localBlob) {
+      merged[key] = cloudBlob
+      continue
+    }
+
+    merged[key] = mergeVersionedBlob(localBlob, cloudBlob)
+  }
+
+  return merged
 }
 
 export async function getStoredGoogleDriveConfig(): Promise<GoogleDriveConfig> {
@@ -718,10 +796,15 @@ export async function getValidGoogleDriveAccessToken(): Promise<string> {
 // because there's nothing new to push. Any genuine local edit changes the hash.
 let lastSyncedContentHash: string | null = null
 
-function computeLocalDataHash(pages: Page[], settings: Settings, separateStore?: Record<string, unknown>): string {
+function computeLocalDataHash(
+  pages: Page[],
+  settings: Settings,
+  separateStore: Record<string, unknown>,
+  tombstones: TombstoneStore
+): string {
   // JSON.stringify on the data snapshot. Fields like syncedAt/timestamps live
   // in the payload wrapper, not here, so this is stable for identical content.
-  return JSON.stringify({ pages, settings, separateStore: separateStore ?? {} })
+  return JSON.stringify({ pages, settings, separateStore, tombstones })
 }
 
 export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPayload | null> {
@@ -729,42 +812,69 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
     const data = await getLocalSyncData()
     const localPages = data.pages ?? []
     const localSettings = data.settings
-    const localSeparateStore = data.separateStore
+    const localSeparateStore = data.separateStore ?? {}
+    const localTombstones = data.tombstones ?? {}
 
     // Short-circuit: if local content is unchanged since the last successful
     // sync (upload OR pull), there's nothing to push. This is what breaks the
     // auto-pull -> auto-upload feedback loop: a pull records its hash, and the
     // subsequent storage-change-triggered upload sees the same hash and bails.
-    const currentHash = computeLocalDataHash(localPages, localSettings, localSeparateStore)
+    const currentHash = computeLocalDataHash(localPages, localSettings, localSeparateStore, localTombstones)
     if (lastSyncedContentHash === currentHash) {
       return null
     }
 
-    // Upload local state as-is. We deliberately do NOT merge with cloud state
-    // here: a union merge on every upload would resurrect pages/widgets the
-    // user deleted locally (because the cloud still has them), and would add
-    // duplicate pages when scripts or imports inject new content. Convergence
-    // across devices happens via the pull path (pullAndMergeFromGoogleDrive),
-    // which merges cloud into local with proper authority semantics. The
-    // narrow concurrent-upload race (two devices writing within ~seconds) is
-    // accepted as last-writer-wins on the whole file - a better trade than
-    // silent data resurrection.
+    // Pull-before-upload: reconcile with the current cloud state so this
+    // device's upload doesn't clobber changes another device made since our
+    // last pull. This is the critical fix for the edit-clobber data-loss path.
+    // The merge respects tombstones so deletions still propagate; it does NOT
+    // resurrect tombstoned items that the cloud still has.
     const existingFile = await findGoogleDriveSyncFile()
+    let mergedPages = localPages
+    let mergedSeparateStore = localSeparateStore
+    let mergedTombstones = localTombstones
+    let mergedSettings = localSettings
+
+    if (existingFile) {
+      try {
+        const cloud = await downloadGoogleDriveSyncPayload(existingFile.id)
+        const cloudTombstones = cloud.data.tombstones ?? {}
+        mergedTombstones = mergeTombstoneStores(localTombstones, cloudTombstones)
+        if (Array.isArray(cloud.data.pages)) {
+          mergedPages = mergePages(localPages, cloud.data.pages, mergedTombstones)
+        }
+        if (cloud.data.separateStore) {
+          mergedSeparateStore = mergeSeparateStore(localSeparateStore, cloud.data.separateStore)
+        }
+      } catch (error) {
+        // Cloud read failed (network blip, corrupt file): fall back to
+        // uploading local state. Better a stale upload than none.
+        logger.warn('Could not read cloud state before sync; uploading local only', error)
+      }
+    }
 
     const payload = buildSyncPayload({
-      pages: localPages,
-      settings: localSettings,
-      separateStore: localSeparateStore,
+      pages: mergedPages,
+      settings: mergedSettings,
+      separateStore: mergedSeparateStore,
+      tombstones: mergedTombstones,
     })
 
     const savedFile = await uploadGoogleDriveSyncFile(payload, existingFile?.id)
 
-    // Record the hash of what we just pushed so we don't re-upload it.
-    lastSyncedContentHash = currentHash
+    // Record the hash of what we just pushed so we don't re-upload it. Apply
+    // preparePagesForSync so the hash matches what the pull path would record
+    // (same transformation, no API keys in the hash).
+    lastSyncedContentHash = computeLocalDataHash(preparePagesForSync(mergedPages), mergedSettings, mergedSeparateStore, mergedTombstones)
+
+    // Persist the merged tombstones back to local storage so the next sync
+    // builds on the reconciled state.
+    await setTombstones(mergedTombstones)
 
     await updateGoogleDriveSyncState({
       lastError: null,
       lastSyncedAt: payload.syncedAt,
+      lastRestoredAt: payload.syncedAt,
       syncFileId: savedFile.id,
     })
 
@@ -798,11 +908,13 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
       pages?: Page[]
     }>(['pages'])
     const currentPages = Array.isArray(current.pages) ? current.pages : []
+    const localTombstones = await getTombstones()
+    const mergedTombstones = mergeTombstoneStores(localTombstones, payload.data.tombstones ?? {})
 
     let mergedPages: Page[]
 
     if (Array.isArray(payload.data.pages)) {
-      mergedPages = mergePages(currentPages, payload.data.pages, true)
+      mergedPages = mergePages(currentPages, payload.data.pages, mergedTombstones)
     } else if (Array.isArray(payload.data.bookmarkPages)) {
       mergedPages = mergeLegacyBookmarkPages(
         currentPages,
@@ -817,8 +929,12 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
       settings: payload.data.settings,
     })
 
+    await setTombstones(mergedTombstones)
+
     if (payload.data.separateStore) {
-      const safeEntries = Object.entries(payload.data.separateStore).filter(
+      const localSeparateStore = await readSeparateStore(currentPages)
+      const mergedSeparateStore = mergeSeparateStore(localSeparateStore, payload.data.separateStore)
+      const safeEntries = Object.entries(mergedSeparateStore).filter(
         ([key]) => isSafeSeparateStoreKey(key)
       )
       if (safeEntries.length > 0) {
@@ -826,9 +942,16 @@ export async function restoreLocalDataFromGoogleDrive(): Promise<GoogleDriveSync
       }
     }
 
+    lastSyncedContentHash = computeLocalDataHash(
+      mergedPages,
+      payload.data.settings,
+      payload.data.separateStore ?? {},
+      mergedTombstones
+    )
+
     await updateGoogleDriveSyncState({
       lastError: null,
-      lastRestoredAt: new Date().toISOString(),
+      lastRestoredAt: payload.syncedAt,
       syncFileId: syncFile.id,
     })
 
@@ -863,6 +986,18 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
       payload.syncedAt === syncState.lastSyncedAt &&
       payload.syncedAt === syncState.lastRestoredAt
     ) {
+      // No-op: cloud hasn't advanced. Still record the hash so the first
+      // post-reload auto-sync short-circuits instead of uploading redundantly.
+      const current = await getStorageValue<{ pages?: Page[] }>(['pages'])
+      const currentPages = Array.isArray(current.pages) ? current.pages : []
+      const localSeparateStore = await readSeparateStore(currentPages)
+      const localTombstones = await getTombstones()
+      lastSyncedContentHash = computeLocalDataHash(
+        preparePagesForSync(currentPages),
+        (await getStorageValue<{ settings?: Settings }>(['settings'])).settings as Settings,
+        localSeparateStore,
+        localTombstones
+      )
       return false
     }
 
@@ -870,20 +1005,15 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
     try {
       const current = await getStorageValue<{ pages?: Page[] }>(['pages'])
       const currentPages = Array.isArray(current.pages) ? current.pages : []
+      const localTombstones = await getTombstones()
+      const mergedTombstones = mergeTombstoneStores(localTombstones, payload.data.tombstones ?? {})
 
       let mergedPages: Page[]
       let didPagesChange = false
 
-      // Cloud is authoritative for deletions only when this device has pulled
-      // before AND the cloud has advanced since. The first-ever pull is a
-      // non-authoritative union: local-only data is preserved, cloud data is
-      // added. This prevents connecting Drive from wiping local-only pages.
-      const lastSeen = syncState.lastRestoredAt ?? syncState.lastSyncedAt
-      const cloudIsAuthoritative = !!lastSeen && payload.syncedAt > lastSeen
-
       if (Array.isArray(payload.data.pages)) {
         const before = JSON.stringify(currentPages)
-        mergedPages = mergePages(currentPages, payload.data.pages, cloudIsAuthoritative)
+        mergedPages = mergePages(currentPages, payload.data.pages, mergedTombstones)
         didPagesChange = JSON.stringify(mergedPages) !== before
       } else if (Array.isArray(payload.data.bookmarkPages)) {
         const before = JSON.stringify(currentPages)
@@ -903,8 +1033,12 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
         })
       }
 
+      await setTombstones(mergedTombstones)
+
       if (payload.data.separateStore) {
-        const safeEntries = Object.entries(payload.data.separateStore).filter(
+        const localSeparateStore = await readSeparateStore(currentPages)
+        const mergedSeparateStore = mergeSeparateStore(localSeparateStore, payload.data.separateStore)
+        const safeEntries = Object.entries(mergedSeparateStore).filter(
           ([key]) => isSafeSeparateStoreKey(key)
         )
         if (safeEntries.length > 0) {
@@ -912,14 +1046,16 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
         }
       }
 
-      // Record the hash of the freshly-pulled local state so the auto-sync
-      // listener (which fires from these storage writes) sees no change and
-      // doesn't immediately re-upload. This is what breaks the pull->sync loop.
+      // Record the hash of the freshly-pulled local state. Apply
+      // preparePagesForSync so the hash matches what the upload path would
+      // compute (same transformation, no API keys in the hash) - this fixes
+      // the hash divergence that caused redundant post-pull uploads.
       const postPullPages = didPagesChange ? mergedPages : currentPages
       lastSyncedContentHash = computeLocalDataHash(
-        postPullPages,
+        preparePagesForSync(postPullPages),
         payload.data.settings,
-        payload.data.separateStore
+        payload.data.separateStore ?? {},
+        mergedTombstones
       )
 
       await updateGoogleDriveSyncState({

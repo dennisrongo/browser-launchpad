@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, Pause, RotateCcw, SkipForward, Volume2, VolumeX, Clock, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns'
-import { PomodoroWidgetConfig, PomodoroSession, PomodoroDayHistory } from '../types'
+import { PomodoroWidgetConfig, PomodoroSession, PomodoroDayHistory, VersionedBlob } from '../types'
 import { pomodoroHistoryStorage } from '../services/storage'
+import { makeVersionedBlob, toVersionedBlob } from '../utils/versionedBlob'
 
 interface PomodoroWidgetProps {
   title: string
@@ -108,12 +109,13 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
 
   const loadHistory = useCallback(async () => {
     try {
-      const result = await pomodoroHistoryStorage.get(widgetId)
+      const result = await pomodoroHistoryStorage.get<VersionedBlob<PomodoroDayHistory[]>>(widgetId)
       if (result.data) {
-        const cleaned = cleanupOldHistory(result.data)
+        const blob = toVersionedBlob<PomodoroDayHistory[]>(result.data, new Date().toISOString())
+        const cleaned = cleanupOldHistory(blob.data || [])
         setHistory(cleaned)
-        if (JSON.stringify(cleaned) !== JSON.stringify(result.data)) {
-          await pomodoroHistoryStorage.set(widgetId, cleaned)
+        if (JSON.stringify(cleaned) !== JSON.stringify(blob.data)) {
+          await pomodoroHistoryStorage.set(widgetId, makeVersionedBlob(cleaned, blob.updatedAt))
         }
       }
     } catch (e) {
@@ -150,20 +152,21 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
     const dateKey = formatDateKey(new Date(startTime))
     
     try {
-      const result = await pomodoroHistoryStorage.get(widgetId)
-      let currentHistory: PomodoroDayHistory[] = result.data || []
+      const result = await pomodoroHistoryStorage.get<VersionedBlob<PomodoroDayHistory[]>>(widgetId)
+      const blob = toVersionedBlob<PomodoroDayHistory[]>(result.data, new Date().toISOString())
+      let currentHistory: PomodoroDayHistory[] = blob.data || []
       currentHistory = cleanupOldHistory(currentHistory)
-      
+
       const dayIndex = currentHistory.findIndex(d => d.date === dateKey)
       if (dayIndex >= 0) {
         currentHistory[dayIndex].sessions.push(session)
       } else {
         currentHistory.push({ date: dateKey, sessions: [session] })
       }
-      
+
       currentHistory.sort((a, b) => b.date.localeCompare(a.date))
-      
-      await pomodoroHistoryStorage.set(widgetId, currentHistory)
+
+      await pomodoroHistoryStorage.set(widgetId, makeVersionedBlob(currentHistory))
       setHistory(currentHistory)
     } catch (e) {
       console.error('Failed to record session:', e)

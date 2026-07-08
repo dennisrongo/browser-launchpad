@@ -202,3 +202,19 @@ export interface PomodoroDayHistory {
   date: string
   sessions: PomodoroSession[]
 }
+
+// --- Sync conflict resolution types ---
+
+export interface Tombstone {
+  kind: 'page' | 'widget'
+  id: string
+  deletedAt: string
+}
+
+export type TombstoneStore = Record<string, Tombstone>
+
+export interface VersionedBlob<T = unknown> {
+  v: 1
+  updatedAt: string
+  data: T
+}

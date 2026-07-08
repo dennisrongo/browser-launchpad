@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
 import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, pullAndMergeFromGoogleDrive, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
+import { addTombstone, pruneTombstones } from './services/tombstones'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
@@ -143,6 +144,9 @@ function App() {
     // Optimized initialization with parallel loading for fast initial load
     const initializeApp = async () => {
       const startTime = performance.now()
+
+      // Prune stale sync tombstones so the store doesn't grow unbounded.
+      void pruneTombstones().catch((e) => logger.error('Tombstone prune failed', e))
 
       // Verify Chrome Storage API connection first (Feature 1)
       const connectionCheck = await verifyStorageConnection()
@@ -461,6 +465,10 @@ function App() {
     const deletedPageIndex = pages.findIndex((p) => p.id === pageToDelete)
     const updatedPages = pages.filter((page) => page.id !== pageToDelete)
 
+    // Record a tombstone so the deletion propagates across devices instead of
+    // being resurrected by the next sync merge.
+    void addTombstone('page', pageToDelete).catch((e) => logger.error('Failed to record page tombstone', e))
+
     // Optimistic UI update - remove page immediately
     const previousPages = pages
     const previousActivePage = activePage
@@ -643,6 +651,10 @@ function App() {
     if (!currentPage) return
 
     const updatedWidgets = currentPage.widgets.filter((w: Widget) => w.id !== widgetToDelete)
+
+    // Record a tombstone so the widget deletion propagates across devices
+    // instead of being resurrected by the next sync merge.
+    void addTombstone('widget', widgetToDelete).catch((e) => logger.error('Failed to record widget tombstone', e))
 
     const updatedPages = [...pages]
     updatedPages[activePage] = {
