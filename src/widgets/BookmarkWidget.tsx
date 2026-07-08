@@ -256,6 +256,7 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
         <img
           src={display.content}
           alt=""
+          draggable={false}
           className="w-4 h-4 flex-shrink-0 object-contain rounded"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
@@ -313,6 +314,7 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
                     href={bookmark.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    draggable={false}
                     className="flex-1 text-sm font-medium text-text hover:text-secondary transition-colors truncate"
                     title={bookmark.url}
                   >

@@ -967,6 +967,15 @@ function App() {
     setWidgetToMove(null)
   }
 
+  // A widget's stored `column` can exceed the current grid_columns setting
+  // (e.g. the grid was shrunk after the widget was placed). Rendering clamps
+  // it into the last visible column, so every other column-aware calculation
+  // (drag-over target, drop insertion) must clamp the same way or it'll only
+  // see part of what's actually displayed in that column.
+  const getEffectiveColumn = useCallback((column: number | undefined, numColumns: number): number => {
+    return Math.min(column ?? 0, numColumns - 1)
+  }, [])
+
   // Helper: Get widgets organized by column
   const getWidgetsByColumn = useCallback((widgets: Widget[], numColumns: number): Widget[][] => {
     const columns: Widget[][] = Array.from({ length: numColumns }, () => [])
@@ -975,11 +984,11 @@ function App() {
       return a.order - b.order
     })
     sortedWidgets.forEach(widget => {
-      const col = Math.min(widget.column || 0, numColumns - 1)
+      const col = getEffectiveColumn(widget.column, numColumns)
       columns[col].push(widget)
     })
     return columns
-  }, [])
+  }, [getEffectiveColumn])
 
   // Always-on document-level drag handlers registered once on mount.
   // Using refs avoids the useEffect timing gap where dragover events fire
@@ -1020,7 +1029,7 @@ function App() {
       }
 
       const columnWidgets = (currentPage.widgets as Widget[])
-        .filter(w => (w.column ?? 0) === targetColumn && w.id !== draggedId)
+        .filter(w => getEffectiveColumn(w.column, numCols) === targetColumn && w.id !== draggedId)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
       // Determine insert index by comparing cursor Y to each widget's midpoint
@@ -1085,11 +1094,12 @@ function App() {
       }
 
       const draggedWidget = widgets[draggedIndex]
-      const oldColumn = draggedWidget.column ?? 0
+      const numCols = numColsRef.current
+      const oldColumn = getEffectiveColumn(draggedWidget.column, numCols)
       const targetColumn = target.column
 
       const targetColumnWidgets = widgets
-        .filter((w: Widget) => (w.column ?? 0) === targetColumn && w.id !== draggedId)
+        .filter((w: Widget) => getEffectiveColumn(w.column, numCols) === targetColumn && w.id !== draggedId)
         .sort((a: Widget, b: Widget) => (a.order ?? 0) - (b.order ?? 0))
 
       const insertIndex = Math.min(target.index, targetColumnWidgets.length)
@@ -1103,7 +1113,7 @@ function App() {
       // Re-number old column if moving between columns
       if (oldColumn !== targetColumn) {
         widgets
-          .filter((w: Widget) => (w.column ?? 0) === oldColumn && w.id !== draggedId)
+          .filter((w: Widget) => getEffectiveColumn(w.column, numCols) === oldColumn && w.id !== draggedId)
           .sort((a: Widget, b: Widget) => (a.order ?? 0) - (b.order ?? 0))
           .forEach((w: Widget, i: number) => { w.order = i })
       }
@@ -1144,9 +1154,17 @@ function App() {
 
   const handleWidgetDragStart = (widgetId: string) => {
     draggedWidgetIdRef.current = widgetId  // set ref first — handler reads this immediately
-    setDraggedWidgetId(widgetId)
     dropTargetRef.current = null
-    setDropTarget(null)
+    // Defer the widget-collapsing state update to the next tick. Chrome is
+    // still building its native drag image synchronously inside the
+    // dragstart handler; collapsing every card's content (including the one
+    // being dragged) in that same tick mutates the drag source mid-capture,
+    // which makes Chrome silently abort the drag (dragend fires immediately,
+    // before any dragover/drop ever happens).
+    setTimeout(() => {
+      setDraggedWidgetId(widgetId)
+      setDropTarget(null)
+    }, 0)
   }
 
   const handleColumnDrop = (e: React.DragEvent) => {
