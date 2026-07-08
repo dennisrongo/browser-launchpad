@@ -564,6 +564,24 @@ function mergePages(
       const syncedWidgetMap = new Map(syncedPage.widgets.map((w) => [w.id, w]))
       const widgetIds = new Set([...localWidgetMap.keys(), ...syncedWidgetMap.keys()])
 
+      // Layout is page-scoped coordinated state (column/order across many
+      // widgets). Merge it atomically: whichever side last changed the layout
+      // (by layout_updated_at, falling back to updated_at) wins the positions
+      // for the whole page. Without this, per-widget layout merging mixes one
+      // side's dragged positions with the other side's old bystander positions
+      // and produces a garbled layout.
+      const localLayoutTime = Date.parse(page.layout_updated_at ?? page.updated_at ?? '')
+      const syncedLayoutTime = Date.parse(syncedPage.layout_updated_at ?? syncedPage.updated_at ?? '')
+      const localLayoutWins = Number.isNaN(syncedLayoutTime)
+        ? true
+        : Number.isNaN(localLayoutTime)
+          ? false
+          : localLayoutTime >= syncedLayoutTime
+      const layoutSource = localLayoutWins ? page : syncedPage
+      const layoutPositionById = new Map(
+        layoutSource.widgets.map((w) => [w.id, { column: w.column, order: w.order }])
+      )
+
       const mergedWidgets = Array.from(widgetIds)
         .map((id) => {
           if (isTombstonedNewerThan(tombstones, id, undefined)) {
@@ -575,17 +593,30 @@ function mergePages(
           const synced = syncedWidgetMap.get(id)
 
           if (local && synced) {
-            // Re-check tombstone against the survivor's updated_at so a
-            // re-created widget (newer than its tombstone) survives.
+            // Content winner is per-widget (last-write-wins by updated_at).
             const survivor = isNewer(synced, local) ? synced : local
             if (isTombstonedNewerThan(tombstones, id, survivor.updated_at)) {
               return null
             }
+            // Override position with the layout authority's value if it knows
+            // about this widget (it should, since both sides have it).
+            const layoutPos = layoutPositionById.get(id)
+            if (layoutPos) {
+              return { ...survivor, column: layoutPos.column, order: layoutPos.order }
+            }
             return survivor
           }
           // Widget exists on one side only: keep it (deletions are tombstone-
-          // driven, not absence-driven).
-          return synced ?? local ?? null
+          // driven, not absence-driven). Apply layout position if the layout
+          // authority has seen it (e.g. a new widget added then re-positioned
+          // on the layout-authority side).
+          const onlySide = synced ?? local ?? null
+          if (!onlySide) return null
+          const layoutPos = layoutPositionById.get(id)
+          if (layoutPos) {
+            return { ...onlySide, column: layoutPos.column, order: layoutPos.order }
+          }
+          return onlySide
         })
         .filter((widget): widget is Widget => widget !== null && widget !== undefined)
 

@@ -614,11 +614,13 @@ function App() {
       updated_at: new Date().toISOString(),
     }
 
+    const layoutTimestamp = new Date().toISOString()
     const updatedPages = [...pages]
     updatedPages[activePage] = {
       ...currentPage,
       widgets: [...currentPage.widgets, newWidget],
-      updated_at: new Date().toISOString(),
+      updated_at: layoutTimestamp,
+      layout_updated_at: layoutTimestamp,
     }
 
     const previousPages = pages
@@ -656,11 +658,13 @@ function App() {
     // instead of being resurrected by the next sync merge.
     void addTombstone('widget', widgetToDelete).catch((e) => logger.error('Failed to record widget tombstone', e))
 
+    const layoutTimestamp = new Date().toISOString()
     const updatedPages = [...pages]
     updatedPages[activePage] = {
       ...currentPage,
       widgets: updatedWidgets,
-      updated_at: new Date().toISOString(),
+      updated_at: layoutTimestamp,
+      layout_updated_at: layoutTimestamp,
     }
 
     // Optimistic UI update - remove widget immediately
@@ -904,15 +908,18 @@ function App() {
     }
 
     const updatedPages = [...pages]
+    const layoutTimestamp = new Date().toISOString()
     updatedPages[activePage] = {
       ...currentPage,
       widgets: currentPage.widgets.filter((w: Widget) => w.id !== widgetToMove),
-      updated_at: new Date().toISOString(),
+      updated_at: layoutTimestamp,
+      layout_updated_at: layoutTimestamp,
     }
     updatedPages[targetPageIndex] = {
       ...targetPage,
       widgets: [...targetPage.widgets, movedWidget],
-      updated_at: new Date().toISOString(),
+      updated_at: layoutTimestamp,
+      layout_updated_at: layoutTimestamp,
     }
 
     const previousPages = pages
@@ -1076,8 +1083,9 @@ function App() {
           .forEach((w: Widget, i: number) => { w.order = i })
       }
 
+      const layoutTimestamp = new Date().toISOString()
       const updatedPages = [...pages]
-      updatedPages[actIdx] = { ...currentPage, widgets, updated_at: new Date().toISOString() }
+      updatedPages[actIdx] = { ...currentPage, widgets, updated_at: layoutTimestamp, layout_updated_at: layoutTimestamp }
       const previousPages = pages
 
       draggedWidgetIdRef.current = null

@@ -7,6 +7,11 @@ export interface Page {
   widgets: Widget[]
   created_at: string
   updated_at: string
+  // Timestamp of the last structural/layout change (widget add/remove/move/
+  // reorder) on this page. Used by sync to decide which side's widget
+  // column/order wins when merging - layout is page-scoped coordinated state,
+  // so it can't be merged per-widget without producing garbled positions.
+  layout_updated_at?: string
 }
 
 export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban'
