@@ -713,12 +713,32 @@ export async function getValidGoogleDriveAccessToken(): Promise<string> {
   return getAuthToken(false)
 }
 
-export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPayload> {
+// Hash of the local data snapshot at the moment we last synced (upload or
+// pull). Auto-sync skips uploading when the current local hash matches this,
+// because there's nothing new to push. Any genuine local edit changes the hash.
+let lastSyncedContentHash: string | null = null
+
+function computeLocalDataHash(pages: Page[], settings: Settings, separateStore?: Record<string, unknown>): string {
+  // JSON.stringify on the data snapshot. Fields like syncedAt/timestamps live
+  // in the payload wrapper, not here, so this is stable for identical content.
+  return JSON.stringify({ pages, settings, separateStore: separateStore ?? {} })
+}
+
+export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPayload | null> {
   try {
     const data = await getLocalSyncData()
     const localPages = data.pages ?? []
     const localSettings = data.settings
     const localSeparateStore = data.separateStore
+
+    // Short-circuit: if local content is unchanged since the last successful
+    // sync (upload OR pull), there's nothing to push. This is what breaks the
+    // auto-pull -> auto-upload feedback loop: a pull records its hash, and the
+    // subsequent storage-change-triggered upload sees the same hash and bails.
+    const currentHash = computeLocalDataHash(localPages, localSettings, localSeparateStore)
+    if (lastSyncedContentHash === currentHash) {
+      return null
+    }
 
     // Reconcile with the current cloud state before uploading. This avoids the
     // read-modify-write race where two devices upload near-simultaneously and
@@ -735,8 +755,6 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
       try {
         const cloud = await downloadGoogleDriveSyncPayload(existingFile.id)
         if (Array.isArray(cloud.data.pages)) {
-          // Cloud-authoritative merge keeps cloud deletions but preserves
-          // local-only additions and last-write-wins content edits.
           mergedPages = mergePages(cloud.data.pages, localPages, false)
         }
         if (cloud.data.separateStore) {
@@ -759,6 +777,9 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
     })
 
     const savedFile = await uploadGoogleDriveSyncFile(payload, syncFileId)
+
+    // Record the hash of what we just pushed so we don't re-upload it.
+    lastSyncedContentHash = computeLocalDataHash(mergedPages, mergedSettings, mergedSeparateStore)
 
     await updateGoogleDriveSyncState({
       lastError: null,
@@ -909,6 +930,16 @@ export async function pullAndMergeFromGoogleDrive(): Promise<boolean> {
           await setStorageValue(Object.fromEntries(safeEntries))
         }
       }
+
+      // Record the hash of the freshly-pulled local state so the auto-sync
+      // listener (which fires from these storage writes) sees no change and
+      // doesn't immediately re-upload. This is what breaks the pull->sync loop.
+      const postPullPages = didPagesChange ? mergedPages : currentPages
+      lastSyncedContentHash = computeLocalDataHash(
+        postPullPages,
+        payload.data.settings,
+        payload.data.separateStore
+      )
 
       await updateGoogleDriveSyncState({
         lastError: null,
