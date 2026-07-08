@@ -740,46 +740,27 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
       return null
     }
 
-    // Reconcile with the current cloud state before uploading. This avoids the
-    // read-modify-write race where two devices upload near-simultaneously and
-    // the second overwrites the first. By merging local changes into the latest
-    // cloud content, concurrent edits from other devices are preserved.
-    let mergedPages = localPages
-    let mergedSettings = localSettings
-    let mergedSeparateStore = localSeparateStore
-    let syncFileId: string | undefined
-
+    // Upload local state as-is. We deliberately do NOT merge with cloud state
+    // here: a union merge on every upload would resurrect pages/widgets the
+    // user deleted locally (because the cloud still has them), and would add
+    // duplicate pages when scripts or imports inject new content. Convergence
+    // across devices happens via the pull path (pullAndMergeFromGoogleDrive),
+    // which merges cloud into local with proper authority semantics. The
+    // narrow concurrent-upload race (two devices writing within ~seconds) is
+    // accepted as last-writer-wins on the whole file - a better trade than
+    // silent data resurrection.
     const existingFile = await findGoogleDriveSyncFile()
-    if (existingFile) {
-      syncFileId = existingFile.id
-      try {
-        const cloud = await downloadGoogleDriveSyncPayload(existingFile.id)
-        if (Array.isArray(cloud.data.pages)) {
-          mergedPages = mergePages(cloud.data.pages, localPages, false)
-        }
-        if (cloud.data.separateStore) {
-          mergedSeparateStore = {
-            ...cloud.data.separateStore,
-            ...(localSeparateStore ?? {}),
-          }
-        }
-      } catch (error) {
-        // If we can't read the cloud (network blip, corrupt file), fall back
-        // to uploading local state as-is. Better a stale upload than no upload.
-        logger.warn('Could not read cloud state before sync; uploading local only', error)
-      }
-    }
 
     const payload = buildSyncPayload({
-      pages: mergedPages,
-      settings: mergedSettings,
-      separateStore: mergedSeparateStore,
+      pages: localPages,
+      settings: localSettings,
+      separateStore: localSeparateStore,
     })
 
-    const savedFile = await uploadGoogleDriveSyncFile(payload, syncFileId)
+    const savedFile = await uploadGoogleDriveSyncFile(payload, existingFile?.id)
 
     // Record the hash of what we just pushed so we don't re-upload it.
-    lastSyncedContentHash = computeLocalDataHash(mergedPages, mergedSettings, mergedSeparateStore)
+    lastSyncedContentHash = currentHash
 
     await updateGoogleDriveSyncState({
       lastError: null,
