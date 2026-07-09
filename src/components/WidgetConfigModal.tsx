@@ -89,6 +89,21 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
         return (
           <div className="space-y-4">
             <div>
+              <label className="block text-sm font-medium text-text mb-2">Clock Style</label>
+              <select
+                value={config.variant || 'text'}
+                onChange={(e) => setConfig({ ...config, variant: e.target.value })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="text">Text (Digital readout)</option>
+                <option value="modern">Modern (Hero time + date)</option>
+                <option value="face">Clock Face (Analog)</option>
+              </select>
+              <p className="text-xs text-text-secondary mt-1">
+                Choose the overall look of the clock.
+              </p>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-text mb-1">Timezone</label>
               <select
                 value={config.timezone || 'local'}
@@ -143,32 +158,36 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
                 <span className="text-sm">Show seconds</span>
               </label>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">Font Style</label>
-              <select
-                value={config.fontStyle || 'modern'}
-                onChange={(e) => setConfig({ ...config, fontStyle: e.target.value })}
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="modern">Modern (Sans-serif, Bold)</option>
-                <option value="classic">Classic (Serif)</option>
-                <option value="digital">Digital (Monospace)</option>
-                <option value="elegant">Elegant (Light)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">Font Size</label>
-              <select
-                value={config.fontSize || 'large'}
-                onChange={(e) => setConfig({ ...config, fontSize: e.target.value })}
-                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large (Default)</option>
-                <option value="xlarge">Extra Large</option>
-              </select>
-            </div>
+            {(config.variant || 'text') !== 'face' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Font Style</label>
+                  <select
+                    value={config.fontStyle || 'modern'}
+                    onChange={(e) => setConfig({ ...config, fontStyle: e.target.value })}
+                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="modern">Modern (Sans-serif, Bold)</option>
+                    <option value="classic">Classic (Serif)</option>
+                    <option value="digital">Digital (Monospace)</option>
+                    <option value="elegant">Elegant (Light)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Font Size</label>
+                  <select
+                    value={config.fontSize || 'large'}
+                    onChange={(e) => setConfig({ ...config, fontSize: e.target.value })}
+                    className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large (Default)</option>
+                    <option value="xlarge">Extra Large</option>
+                  </select>
+                </div>
+              </>
+            )}
           </div>
         )
 

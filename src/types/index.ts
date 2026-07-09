@@ -66,6 +66,7 @@ export interface AIChatWidgetConfig {
 }
 
 export interface ClockWidgetConfig {
+  variant?: 'text' | 'modern' | 'face'
   timezone: string
   format12Hour: boolean
   showSeconds: boolean

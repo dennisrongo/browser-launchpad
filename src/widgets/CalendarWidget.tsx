@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, RefreshCw, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { CalendarWidgetConfig, CalendarEvent, GoogleCalendar } from '../types'
 import {
   getMonthGrid,
   getWeekGrid,
+  getEventsForDay,
   formatMonthYear,
   formatWeekRange,
   navigateMonth,
@@ -22,6 +23,7 @@ import {
   fetchGoogleEvents,
   disconnectGoogleCalendar,
 } from '../services/googleCalendar'
+import { DayEventsModal } from '../components/DayEventsModal'
 
 interface CalendarWidgetProps {
   title: string
@@ -33,28 +35,54 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
-  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const fetchIdRef = useRef(0)
+  const lastFetchedCenterRef = useRef<Date | null>(null)
 
   const firstDayOfWeek = config.firstDayOfWeek ?? 0
   const showWeekNumbers = config.showWeekNumbers ?? false
   const viewMode = config.viewMode ?? 'month'
 
-  const loadGoogleData = useCallback(async () => {
+  const loadGoogleData = useCallback(async (force = false) => {
     if (!config.googleConnected) {
       setEvents([])
       setCalendars([])
+      setInitialLoading(false)
       return
     }
 
-    setLoading(true)
+    const thisFetchId = ++fetchIdRef.current
+
+    // Skip the network call if the current month is already within the
+    // previously fetched window. The fetch range spans month-1 to month+2,
+    // so navigating to an adjacent month is already in state.
+    if (!initialLoading && !force) {
+      const lastFetched = lastFetchedCenterRef.current
+      if (lastFetched) {
+        const monthDiff =
+          (currentDate.getFullYear() - lastFetched.getFullYear()) * 12 +
+          (currentDate.getMonth() - lastFetched.getMonth())
+        if (Math.abs(monthDiff) <= 1) {
+          setError(null)
+          return
+        }
+      }
+    }
+
+    // Only the very first load gates the grid behind the spinner. Subsequent
+    // fetches (navigation, refresh) happen in the background so the calendar
+    // stays mounted and feels instant.
     setError(null)
 
     try {
       const accessToken = await getCalendarAccessToken()
 
       const fetchedCalendars = await fetchGoogleCalendars(accessToken)
+
+      if (thisFetchId !== fetchIdRef.current) return
       setCalendars(fetchedCalendars)
 
       const calendarIds = config.selectedCalendars?.length
@@ -66,15 +94,21 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
         const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0)
 
         const fetchedEvents = await fetchGoogleEvents(accessToken, calendarIds, startDate, endDate)
+
+        if (thisFetchId !== fetchIdRef.current) return
         setEvents(fetchedEvents)
+        lastFetchedCenterRef.current = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
       }
     } catch (err) {
+      if (thisFetchId !== fetchIdRef.current) return
       console.error('Error loading Google Calendar data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load calendar data')
     } finally {
-      setLoading(false)
+      if (thisFetchId === fetchIdRef.current) {
+        setInitialLoading(false)
+      }
     }
-  }, [config.googleConnected, config.selectedCalendars, currentDate])
+  }, [config.googleConnected, config.selectedCalendars, currentDate, initialLoading])
 
   useEffect(() => {
     loadGoogleData()
@@ -114,6 +148,8 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       setEvents([])
       setCalendars([])
       setError(null)
+      setInitialLoading(true)
+      lastFetchedCenterRef.current = null
     } catch (err) {
       console.error('Error disconnecting:', err)
       setError('Failed to disconnect')
@@ -133,7 +169,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   }
 
   const handleRefresh = () => {
-    loadGoogleData()
+    loadGoogleData(true)
   }
 
   const monthGrid = viewMode === 'month' ? getMonthGrid(currentDate, firstDayOfWeek, events) : null
@@ -181,7 +217,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     )
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
@@ -282,23 +318,25 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                   const maxVisibleEvents = 2
 
                   return (
-                    <div
+                    <button
                       key={dayIndex}
+                      type="button"
+                      onClick={() => setSelectedDate(day.date)}
                       className={`
-                        relative flex flex-col items-center justify-start p-0.5 rounded text-[11px]
+                        relative flex flex-col items-center justify-start p-0.5 rounded text-[11px] w-full
                         ${day.isToday ? 'bg-primary/20 ring-1 ring-primary' : ''}
                         ${!day.isCurrentMonth ? 'text-text-muted opacity-50' : 'text-text'}
                         hover:bg-surface transition-colors cursor-pointer min-h-[28px]
                       `}
-                      title={dayEvents.length > 0 ? `${dayEvents.length} event(s)` : ''}
+                      title={dayEvents.length > 0 ? `${dayEvents.length} event(s)` : 'View events'}
                     >
                       <span className={`font-medium ${day.isToday ? 'text-primary' : ''}`}>
                         {format(day.date, 'd')}
                       </span>
                       {dayEvents.length > 0 && (
-                        <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
+                        <span className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                           {dayEvents.slice(0, maxVisibleEvents).map((event, i) => (
-                            <div
+                            <span
                               key={i}
                               className="w-1.5 h-1.5 rounded-full"
                               style={{ backgroundColor: getEventColor(event.colorId) }}
@@ -309,9 +347,9 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                               +{dayEvents.length - maxVisibleEvents}
                             </span>
                           )}
-                        </div>
+                        </span>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -324,12 +362,16 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekGrid.map((day) => (
-              <div
+              <button
                 key={day.date.toISOString()}
+                type="button"
+                onClick={() => setSelectedDate(day.date)}
                 className={`
-                  flex flex-col items-center p-1 rounded text-center
+                  flex flex-col items-center p-1 rounded text-center w-full cursor-pointer
                   ${day.isToday ? 'bg-primary/20 ring-1 ring-primary' : ''}
+                  hover:bg-surface/50 transition-colors
                 `}
+                title="View events"
               >
                 <span className="text-[10px] text-text-muted">
                   {format(day.date, 'EEE')}
@@ -337,7 +379,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                 <span className={`text-sm font-medium ${day.isToday ? 'text-primary' : ''}`}>
                   {format(day.date, 'd')}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -350,7 +392,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                   {day.events.slice(0, 3).map((event) => (
                     <div
                       key={event.id}
-                      className="flex items-center gap-1.5 p-1 rounded text-xs bg-surface/50 hover:bg-surface transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 p-1 rounded text-xs bg-surface/50 hover:bg-surface transition-colors"
                       style={{ borderLeft: `2px solid ${getEventColor(event.colorId)}` }}
                     >
                       <span className="text-text truncate flex-1">{event.title}</span>
@@ -369,6 +411,14 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
             })}
           </div>
         </div>
+      )}
+
+      {selectedDate && (
+        <DayEventsModal
+          date={selectedDate}
+          events={getEventsForDay(events, selectedDate)}
+          onClose={() => setSelectedDate(null)}
+        />
       )}
     </div>
   )

@@ -19,6 +19,7 @@ const MAX_PAGES = 10
 // Default configurations for each widget type
 const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
   clock: {
+    variant: 'text',
     timezone: '',
     format12Hour: true,
     showSeconds: false,
