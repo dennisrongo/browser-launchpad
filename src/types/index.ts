@@ -14,7 +14,7 @@ export interface Page {
   layout_updated_at?: string
 }
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban' | 'google-tasks'
 
 export interface Widget {
   id: string
@@ -40,6 +40,7 @@ export type WidgetConfig =
   | NotesWidgetConfig
   | XTimelineWidgetConfig
   | KanbanWidgetConfig
+  | GoogleTasksWidgetConfig
 
 export interface BookmarkWidgetConfig {
   bookmarks: Bookmark[]
@@ -117,6 +118,12 @@ export interface CalendarWidgetConfig {
   selectedCalendars?: string[]
 }
 
+export interface GoogleTasksWidgetConfig {
+  googleConnected: boolean
+  selectedTaskListId?: string
+  showCompleted: boolean
+}
+
 export interface NotesWidgetConfig {
   content: string
 }
@@ -176,6 +183,23 @@ export interface GoogleCalendar {
   summary: string
   primary?: boolean
   backgroundColor?: string
+}
+
+export interface GoogleTask {
+  id: string
+  title: string
+  status: 'needsAction' | 'completed'
+  completed?: string | null
+  updated?: string
+  due?: string | null
+  notes?: string
+  position?: string
+}
+
+export interface GoogleTaskList {
+  id: string
+  title: string
+  selfLink?: string
 }
 
 export interface Settings {

@@ -468,6 +468,34 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
           </div>
         )
 
+      case 'google-tasks':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.showCompleted ?? true}
+                  onChange={(e) => setConfig({ ...config, showCompleted: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                />
+                <span className="text-sm">Show completed tasks</span>
+              </label>
+            </div>
+            <div className="pt-2 border-t border-border">
+              <label className="block text-sm font-medium text-text mb-2">Google Tasks</label>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${config.googleConnected ? 'text-green-600' : 'text-text-secondary'}`}>
+                  Status: {config.googleConnected ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary mt-2">
+                Connect to Google Tasks directly from the widget. Click on the widget to set up the integration and manage your task lists.
+              </p>
+            </div>
+          </div>
+        )
+
       case 'notes':
         return (
           <div className="space-y-4">

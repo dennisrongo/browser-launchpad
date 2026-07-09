@@ -1,6 +1,6 @@
-import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText, Twitter, LayoutDashboard } from 'lucide-react'
+import { Bookmark, CloudSun, MessageSquare, Clock, X, CheckSquare, Timer, Calendar, FileText, Twitter, LayoutDashboard, ListTodo } from 'lucide-react'
 
-export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban'
+export type WidgetType = 'bookmark' | 'weather' | 'ai-chat' | 'clock' | 'todo' | 'pomodoro' | 'calendar' | 'notes' | 'x-timeline' | 'kanban' | 'google-tasks'
 
 export interface WidgetTypeOption {
   type: WidgetType
@@ -75,6 +75,12 @@ const WIDGET_TYPES: WidgetTypeOption[] = [
     name: 'Kanban Board',
     description: 'Manage tasks in a Kanban board',
     icon: <LayoutDashboard className="w-7 h-7" />,
+  },
+  {
+    type: 'google-tasks',
+    name: 'Google Tasks',
+    description: 'Sync tasks with your Google account',
+    icon: <ListTodo className="w-7 h-7" />,
   },
 ]
 

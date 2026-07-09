@@ -71,6 +71,10 @@ const DEFAULT_WIDGET_CONFIGS: Record<WidgetType, any> = {
     ],
     cards: [],
   },
+  'google-tasks': {
+    googleConnected: false,
+    showCompleted: true,
+  },
 }
 
 const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
@@ -84,6 +88,7 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   notes: 'Notes',
   'x-timeline': 'X Timeline',
   kanban: 'Kanban Board',
+  'google-tasks': 'Tasks',
 }
 
 function hasPagesPayloadChanged(change: chrome.storage.StorageChange): boolean {
