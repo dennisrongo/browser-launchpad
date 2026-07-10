@@ -398,17 +398,21 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
                 key={task.id}
                 className="group flex items-start gap-2 px-1.5 py-1 rounded-input hover:bg-secondary/5 transition-colors"
               >
-                <button
-                  onClick={() => handleToggleComplete(task)}
-                  disabled={isBusy}
-                  className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                    isCompleted
-                      ? 'bg-primary border-primary text-white'
-                      : 'border-border hover:border-primary'
-                  }`}
-                >
-                  {isCompleted && <Check className="w-3 h-3" />}
-                </button>
+                {/* Wrapper matches one text line-height so the checkbox centers
+                    on the first line even when the title wraps to multiple lines. */}
+                <div className="flex h-5 shrink-0 items-center">
+                  <button
+                    onClick={() => handleToggleComplete(task)}
+                    disabled={isBusy}
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                      isCompleted
+                        ? 'bg-primary border-primary text-white'
+                        : 'border-border hover:border-primary'
+                    }`}
+                  >
+                    {isCompleted && <Check className="w-3 h-3" />}
+                  </button>
+                </div>
 
                 {isEditing ? (
                   <div className="flex-1 flex gap-1">
@@ -439,13 +443,13 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
                 ) : (
                   <>
                     <span
-                      className={`flex-1 text-xs leading-relaxed break-words ${
+                      className={`flex-1 min-w-0 text-xs leading-5 break-words ${
                         isCompleted ? 'line-through text-text-muted' : 'text-text'
                       }`}
                     >
                       {task.title}
                     </span>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex h-5 shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStartEdit(task)}
                         disabled={isBusy}

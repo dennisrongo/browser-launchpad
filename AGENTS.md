@@ -204,3 +204,6 @@ src/
 2. Load extension from `dist/` folder in `chrome://extensions`.
 3. Use the **reload button** on extension card to update (don't remove/re-add).
 4. Run `npm run type` and `npm run lint` before committing.
+5. **Always run `npm run build` after completing a task.** This keeps the
+   `dist/` output up to date so the extension is ready to test/reload without
+   an extra manual step. Do this even if the change seems small.
