@@ -1,3 +1,4 @@
+import { logger } from './logger'
 /**
  * Fetch favicon for a URL using public favicon services
  * Attempts multiple services with fallbacks
@@ -27,7 +28,7 @@ export function getFaviconUrl(url: string): string {
     // Try the first favicon service (Google's is most reliable)
     return FAVICON_SERVICES[0](domain)
   } catch (error) {
-    console.warn('Invalid URL for favicon:', url)
+    logger.warn('Invalid URL for favicon:', url)
     return FALLBACK_ICON
   }
 }

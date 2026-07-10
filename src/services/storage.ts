@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 /**
  * Chrome Storage Service
  *
@@ -23,7 +24,7 @@ export function getFromStorage<T>(keys: string | string[] | Record<string, unkno
     try {
       chrome.storage.local.get(keys, (result) => {
         if (chrome.runtime.lastError) {
-          console.error('Chrome storage get error:', chrome.runtime.lastError.message)
+          logger.error('Chrome storage get error:', chrome.runtime.lastError.message)
           resolve({ data: null, error: chrome.runtime.lastError.message ?? null })
           return
         }
@@ -42,7 +43,7 @@ export function getFromStorage<T>(keys: string | string[] | Record<string, unkno
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Chrome storage get exception:', errorMessage)
+      logger.error('Chrome storage get exception:', errorMessage)
       resolve({ data: null, error: errorMessage })
     }
   })
@@ -58,7 +59,7 @@ export function setToStorage(items: Record<string, unknown>): Promise<{ success:
     try {
       chrome.storage.local.set(items, () => {
         if (chrome.runtime.lastError) {
-          console.error('Chrome storage set error:', chrome.runtime.lastError.message)
+          logger.error('Chrome storage set error:', chrome.runtime.lastError.message)
           resolve({ success: false, error: chrome.runtime.lastError.message ?? null })
           return
         }
@@ -66,18 +67,18 @@ export function setToStorage(items: Record<string, unknown>): Promise<{ success:
         // Verify write by reading back
         chrome.storage.local.get(Object.keys(items), (result) => {
           if (chrome.runtime.lastError) {
-            console.error('Chrome storage verification error:', chrome.runtime.lastError.message)
+            logger.error('Chrome storage verification error:', chrome.runtime.lastError.message)
             resolve({ success: false, error: chrome.runtime.lastError.message ?? null })
             return
           }
 
-          console.log('Storage write verified:', result)
+          logger.info('Storage write verified:', result)
           resolve({ success: true, error: null })
         })
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Chrome storage set exception:', errorMessage)
+      logger.error('Chrome storage set exception:', errorMessage)
       resolve({ success: false, error: errorMessage })
     }
   })
@@ -93,17 +94,17 @@ export function removeFromStorage(keys: string | string[]): Promise<{ success: b
     try {
       chrome.storage.local.remove(keys, () => {
         if (chrome.runtime.lastError) {
-          console.error('Chrome storage remove error:', chrome.runtime.lastError.message)
+          logger.error('Chrome storage remove error:', chrome.runtime.lastError.message)
           resolve({ success: false, error: chrome.runtime.lastError.message ?? null })
           return
         }
 
-        console.log('Storage removed:', keys)
+        logger.info('Storage removed:', keys)
         resolve({ success: true, error: null })
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Chrome storage remove exception:', errorMessage)
+      logger.error('Chrome storage remove exception:', errorMessage)
       resolve({ success: false, error: errorMessage })
     }
   })
@@ -119,17 +120,17 @@ export function clearStorage(): Promise<{ success: boolean; error: string | null
     try {
       chrome.storage.local.clear(() => {
         if (chrome.runtime.lastError) {
-          console.error('Chrome storage clear error:', chrome.runtime.lastError.message)
+          logger.error('Chrome storage clear error:', chrome.runtime.lastError.message)
           resolve({ success: false, error: chrome.runtime.lastError.message ?? null })
           return
         }
 
-        console.log('All storage cleared')
+        logger.info('All storage cleared')
         resolve({ success: true, error: null })
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Chrome storage clear exception:', errorMessage)
+      logger.error('Chrome storage clear exception:', errorMessage)
       resolve({ success: false, error: errorMessage })
     }
   })

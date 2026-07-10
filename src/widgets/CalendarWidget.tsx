@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, RefreshCw, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -14,7 +15,6 @@ import {
   getDayAbbreviations,
   getWeekNumber,
   getEventColor,
-  formatEventTime,
 } from '../utils/calendar'
 import {
   initiateGoogleCalendarAuth,
@@ -34,7 +34,7 @@ interface CalendarWidgetProps {
 export function CalendarWidget({ title, config, onConfigChange }: CalendarWidgetProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [calendars, setCalendars] = useState<GoogleCalendar[]>([])
+  const [, setCalendars] = useState<GoogleCalendar[]>([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
@@ -101,7 +101,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       }
     } catch (err) {
       if (thisFetchId !== fetchIdRef.current) return
-      console.error('Error loading Google Calendar data:', err)
+      logger.error('Error loading Google Calendar data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load calendar data')
     } finally {
       if (thisFetchId === fetchIdRef.current) {
@@ -130,7 +130,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
 
       setCalendars(fetchedCalendars)
     } catch (err) {
-      console.error('Error connecting to Google:', err)
+      logger.error('Error connecting to Google:', err)
       setError(err instanceof Error ? err.message : 'Failed to connect to Google Calendar')
     } finally {
       setConnecting(false)
@@ -151,7 +151,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       setInitialLoading(true)
       lastFetchedCenterRef.current = null
     } catch (err) {
-      console.error('Error disconnecting:', err)
+      logger.error('Error disconnecting:', err)
       setError('Failed to disconnect')
     }
   }

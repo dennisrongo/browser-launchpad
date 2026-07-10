@@ -1,13 +1,14 @@
+import { logger } from './utils/logger'
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'FETCH_PAGE_TITLE' && request.url) {
-    console.log('[Background] Fetching title for:', request.url)
+    logger.info('[Background] Fetching title for:', request.url)
     fetchPageTitle(request.url)
       .then(title => {
-        console.log('[Background] Fetched title:', title)
+        logger.info('[Background] Fetched title:', title)
         sendResponse({ success: true, title })
       })
       .catch(error => {
-        console.error('[Background] Fetch error:', error)
+        logger.error('[Background] Fetch error:', error)
         sendResponse({ success: false, error: error.message })
       })
     return true
@@ -17,7 +18,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     fetchXTimeline(request.cookies, request.timelineType)
       .then(result => sendResponse(result))
       .catch(error => {
-        console.error('[Background] X timeline fetch error:', error)
+        logger.error('[Background] X timeline fetch error:', error)
         sendResponse({ success: false, error: error.message, tweets: [] })
       })
     return true
@@ -186,14 +187,14 @@ function extractTweetFromResult(tweetResult: Record<string, unknown> | undefined
   }
 
   if (quotedTweet) {
-    console.log('[Background] Extracted quoted tweet for', restId, quotedTweet)
+    logger.info('[Background] Extracted quoted tweet for', restId, quotedTweet)
   }
 
   let replyTo: XTweet | undefined
   const inReplyToStatusIdStr = legacy.in_reply_to_status_id_str as string | undefined
   const inReplyToScreenName = legacy.in_reply_to_screen_name as string | undefined
   if (inReplyToStatusIdStr && inReplyToScreenName) {
-    console.log('[Background] Found reply for tweet', restId, 'replying to', inReplyToScreenName)
+    logger.info('[Background] Found reply for tweet', restId, 'replying to', inReplyToScreenName)
     replyTo = {
       id: inReplyToStatusIdStr,
       authorName: inReplyToScreenName,
@@ -231,7 +232,7 @@ function parseTimelineResponse(data: Record<string, unknown>): XTweet[] {
 
     if (!instructions) return tweets
 
-    console.log('[Background] Parsing data:', { 
+    logger.info('[Background] Parsing data:', { 
       hasHome: !!home, 
       hasTimeline: !!timeline, 
       instructionsCount: instructions?.length 
@@ -280,7 +281,7 @@ function parseTimelineResponse(data: Record<string, unknown>): XTweet[] {
       }
     }
   } catch (error) {
-    console.error('[Background] Failed to parse X timeline response:', error)
+    logger.error('[Background] Failed to parse X timeline response:', error)
   }
 
   return tweets

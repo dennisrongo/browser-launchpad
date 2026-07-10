@@ -1,3 +1,4 @@
+import { logger } from './logger'
 /**
  * Chrome Storage Verification Utility
  *
@@ -73,7 +74,7 @@ export async function testStorageConnection(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Storage Test] ✓ Write successful:', testData)
+    logger.info('[Storage Test] ✓ Write successful:', testData)
 
     // Step 2: Read test data back
     const readResult = await new Promise<{ data: typeof testData | null; error: string | null }>((resolve) => {
@@ -102,7 +103,7 @@ export async function testStorageConnection(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Storage Test] ✓ Read successful:', readResult.data)
+    logger.info('[Storage Test] ✓ Read successful:', readResult.data)
 
     // Step 3: Verify data matches
     if (readResult.data.timestamp !== testData.timestamp) {
@@ -117,7 +118,7 @@ export async function testStorageConnection(): Promise<StorageTestResult> {
     // Step 4: Clean up test data
     await new Promise<void>((resolve) => {
       chrome.storage.local.remove(testKey, () => {
-        console.log('[Storage Test] ✓ Cleanup successful')
+        logger.info('[Storage Test] ✓ Cleanup successful')
         resolve()
       })
     })
@@ -155,7 +156,7 @@ export async function testPageStorageOperations(): Promise<StorageTestResult> {
       updated_at: new Date().toISOString(),
     }
 
-    console.log('[Page Storage Test] Creating test page:', testPage)
+    logger.info('[Page Storage Test] Creating test page:', testPage)
 
     const addResult = await pagesStorage.add(testPage)
 
@@ -167,7 +168,7 @@ export async function testPageStorageOperations(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Page Storage Test] ✓ Page added to storage')
+    logger.info('[Page Storage Test] ✓ Page added to storage')
 
     // Step 2: Verify page was saved by reading all pages
     const getResult = await pagesStorage.getAll()
@@ -199,7 +200,7 @@ export async function testPageStorageOperations(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Page Storage Test] ✓ Page retrieved from storage:', savedPage)
+    logger.info('[Page Storage Test] ✓ Page retrieved from storage:', savedPage)
 
     // Step 3: Verify data matches
     if (savedPage.name !== testPageName) {
@@ -222,7 +223,7 @@ export async function testPageStorageOperations(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Page Storage Test] ✓ Test page cleaned up')
+    logger.info('[Page Storage Test] ✓ Test page cleaned up')
 
     return {
       testName: 'Page Storage Operations',
@@ -259,7 +260,7 @@ export async function testStoragePersistence(): Promise<StorageTestResult> {
       })
     })
 
-    console.log('[Persistence Test] ✓ Data written')
+    logger.info('[Persistence Test] ✓ Data written')
 
     // Read data (simulates reload by doing fresh read)
     const read1 = await new Promise<typeof testData | null>((resolve) => {
@@ -277,7 +278,7 @@ export async function testStoragePersistence(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Persistence Test] ✓ First read successful')
+    logger.info('[Persistence Test] ✓ First read successful')
 
     // Read again to verify persistence
     const read2 = await new Promise<typeof testData | null>((resolve) => {
@@ -295,7 +296,7 @@ export async function testStoragePersistence(): Promise<StorageTestResult> {
       }
     }
 
-    console.log('[Persistence Test] ✓ Second read successful')
+    logger.info('[Persistence Test] ✓ Second read successful')
 
     // Clean up
     await new Promise<void>((resolve) => {
@@ -325,8 +326,8 @@ export async function runAllStorageTests(): Promise<{
   results: StorageTestResult[]
   summary: string
 }> {
-  console.log('=== Chrome Storage Verification Tests ===')
-  console.log('Testing that backend queries real Chrome storage (not in-memory mocks)...\n')
+  logger.info('=== Chrome Storage Verification Tests ===')
+  logger.info('Testing that backend queries real Chrome storage (not in-memory mocks)...\n')
 
   const tests = [
     testStorageAPIAvailable,
@@ -338,14 +339,14 @@ export async function runAllStorageTests(): Promise<{
   const results: StorageTestResult[] = []
 
   for (const test of tests) {
-    console.log(`Running: ${test.name}...`)
+    logger.info(`Running: ${test.name}...`)
     const result = await test()
     results.push(result)
 
     if (result.passed) {
-      console.log(`✓ PASS: ${result.message}\n`)
+      logger.info(`✓ PASS: ${result.message}\n`)
     } else {
-      console.error(`✗ FAIL: ${result.message}\n`)
+      logger.error(`✗ FAIL: ${result.message}\n`)
     }
   }
 
@@ -362,7 +363,7 @@ All Passed: ${allPassed ? 'YES ✓' : 'NO ✗'}
 ${allPassed ? '✓ Storage implementation verified - all data operations use real Chrome Storage API' : '✗ Some tests failed - check console for details'}
 `
 
-  console.log(summary)
+  logger.info(summary)
 
   return {
     allPassed,

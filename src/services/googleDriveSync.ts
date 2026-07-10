@@ -1,4 +1,4 @@
-import type { Page, Settings, TombstoneStore, VersionedBlob, Widget } from '../types'
+import type { Page, Settings, TombstoneStore, Widget } from '../types'
 
 import { logger } from '../utils/logger'
 import {
@@ -20,19 +20,11 @@ const GOOGLE_DRIVE_SYNC_VERSION = '2.0.0'
 const GOOGLE_DRIVE_MANIFEST_CLIENT_ID_PLACEHOLDER =
   'REPLACE_WITH_GOOGLE_EXTENSION_CLIENT_ID.apps.googleusercontent.com'
 
-const DEFAULT_GOOGLE_DRIVE_CONFIG: GoogleDriveConfig = {
-  autoSyncEnabled: false,
-}
-
 const DEFAULT_GOOGLE_DRIVE_SYNC_STATE: GoogleDriveSyncState = {
   lastSyncedAt: null,
   lastRestoredAt: null,
   lastError: null,
   syncFileId: null,
-}
-
-interface StoredGoogleDriveConfig {
-  autoSyncEnabled?: boolean
 }
 
 interface GoogleDriveFile {
@@ -135,18 +127,6 @@ function removeStorageValue(keys: string | string[]): Promise<void> {
       reject(error)
     }
   })
-}
-
-function normalizeGoogleDriveConfig(
-  config?: StoredGoogleDriveConfig
-): GoogleDriveConfig {
-  if (!config) {
-    return DEFAULT_GOOGLE_DRIVE_CONFIG
-  }
-
-  return {
-    autoSyncEnabled: config.autoSyncEnabled ?? false,
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -911,7 +891,7 @@ export async function syncLocalDataToGoogleDrive(): Promise<GoogleDriveSyncPaylo
     let mergedPages = localPages
     let mergedSeparateStore = localSeparateStore
     let mergedTombstones = localTombstones
-    let mergedSettings = localSettings
+    const mergedSettings = localSettings
 
     if (existingFile) {
       try {

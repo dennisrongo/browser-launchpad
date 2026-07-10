@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import type { GoogleTask, GoogleTaskList } from '../types'
 
 const TASKS_SCOPES = ['https://www.googleapis.com/auth/tasks']
@@ -204,16 +205,16 @@ export async function disconnectGoogleTasks(): Promise<void> {
       try {
         await chrome.identity.removeCachedAuthToken({ token })
       } catch (error) {
-        console.error('Error removing cached Google Tasks token:', error)
+        logger.error('Error removing cached Google Tasks token:', error)
       }
     }
 
     try {
       await chrome.identity.clearAllCachedAuthTokens()
     } catch (error) {
-      console.error('Error clearing cached Google auth tokens:', error)
+      logger.error('Error clearing cached Google auth tokens:', error)
     }
   } catch (error) {
-    console.error('Error disconnecting Google Tasks:', error)
+    logger.error('Error disconnecting Google Tasks:', error)
   }
 }

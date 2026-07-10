@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Browser Launchpad",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A customizable, widget-based dashboard for your new tab page",
   "author": "Dennis Rongo",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmIi7PsG0PYfThtQ0EW6+LQwTDVwQkP5ohBXPUgPtCA2ntSKDB0koT67x52532J3YTxdO9ZaNy/+JKpex9T4lP+qhs31GouI96H5poeFInYR7ytvdiAINMuhI6leGPqO4U2yWVtmhespPO8ejWz6S9vteWaPTDFOyYlVjSN7h27rfcS5Su0GR205YslBm4DFaNTAr2VHGw682JOsGUlmrgoGVJE7wBxaptlpDES1NAEN28hrzLgofBY99/DBTMLTB4d/yMV+gygtqoMquhtkEZM/w5t6CiWM+aObOjM+MJm9Vtihfac43YokgvzOolhLMJYSmBdDkvZ3GY6SflYk/MwIDAQAB",
@@ -22,7 +22,8 @@
     "newtab": "newtab.html"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "oauth2": {
     "client_id": "1060415387480-fe5eme78v2hrdk09129eii6i7f8u5vas.apps.googleusercontent.com",

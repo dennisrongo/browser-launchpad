@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect, useRef } from 'react'
 import { AlertTriangle, Settings, ExternalLink } from 'lucide-react'
 import { Widget, ChatMessage, AIChatWidgetConfig } from '../types'
@@ -47,7 +48,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
         setGlobalAIConfig(null)
       }
     } catch (error) {
-      console.error('Failed to load global AI config:', error)
+      logger.error('Failed to load global AI config:', error)
     }
   }
 
@@ -238,7 +239,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
           </div>
         )
 
-      case 'ai-chat':
+      case 'ai-chat': {
         const activeProvider = globalAIConfig?.activeProvider || 'openai'
         const providerConfig = globalAIConfig?.[activeProvider]
         const hasApiKey = !!(providerConfig?.apiKey)
@@ -310,6 +311,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
             )}
           </div>
         )
+      }
 
       case 'bookmark':
         return (

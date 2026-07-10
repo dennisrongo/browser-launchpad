@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ListTodo, AlertTriangle, RefreshCw, Link2, Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 import type { GoogleTasksWidgetConfig, GoogleTask, GoogleTaskList } from '../types'
@@ -56,7 +57,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       setTasks(fetchedTasks)
     } catch (err) {
       if (thisFetchId !== fetchIdRef.current) return
-      console.error('Error loading Google Tasks data:', err)
+      logger.error('Error loading Google Tasks data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
     } finally {
       if (thisFetchId === fetchIdRef.current) {
@@ -107,7 +108,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
   useEffect(() => {
     if (!config.googleConnected) return
     loadTaskLists().catch((err) => {
-      console.error('Error loading task lists:', err)
+      logger.error('Error loading task lists:', err)
     })
   }, [config.googleConnected, loadTaskLists])
 
@@ -128,7 +129,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
 
       setTaskLists(fetchedLists)
     } catch (err) {
-      console.error('Error connecting to Google Tasks:', err)
+      logger.error('Error connecting to Google Tasks:', err)
       setError(err instanceof Error ? err.message : 'Failed to connect to Google Tasks')
     } finally {
       setConnecting(false)
@@ -149,7 +150,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       setNewTaskTitle('')
       setInitialLoading(true)
     } catch (err) {
-      console.error('Error disconnecting:', err)
+      logger.error('Error disconnecting:', err)
       setError('Failed to disconnect')
     }
   }
@@ -172,7 +173,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       setTasks((prev) => [...prev, created])
       setNewTaskTitle('')
     } catch (err) {
-      console.error('Error creating task:', err)
+      logger.error('Error creating task:', err)
       setError(err instanceof Error ? err.message : 'Failed to create task')
     } finally {
       setSubmitting(false)
@@ -201,7 +202,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       const accessToken = await getTasksAccessToken()
       await updateGoogleTask(accessToken, selectedTaskListId, task.id, patch)
     } catch (err) {
-      console.error('Error toggling task:', err)
+      logger.error('Error toggling task:', err)
       setTasks(previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to update task')
     } finally {
@@ -219,7 +220,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       const accessToken = await getTasksAccessToken()
       await deleteGoogleTask(accessToken, selectedTaskListId, taskId)
     } catch (err) {
-      console.error('Error deleting task:', err)
+      logger.error('Error deleting task:', err)
       setTasks(previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to delete task')
     } finally {
@@ -255,7 +256,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       const accessToken = await getTasksAccessToken()
       await updateGoogleTask(accessToken, selectedTaskListId, taskId, { title: trimmed })
     } catch (err) {
-      console.error('Error updating task title:', err)
+      logger.error('Error updating task title:', err)
       setTasks(previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to update task')
     }

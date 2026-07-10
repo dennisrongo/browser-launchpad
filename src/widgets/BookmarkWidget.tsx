@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useCallback } from 'react'
 import { Pencil, Trash2, X, Link, AlertTriangle, GripVertical, RefreshCw } from 'lucide-react'
 import type { BookmarkWidgetConfig, Bookmark } from '../types'
@@ -48,16 +49,16 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
     }
     try {
       setIsFetching(true)
-      console.log('[BookmarkWidget] Fetching title for:', url)
+      logger.info('[BookmarkWidget] Fetching title for:', url)
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         const response = await chrome.runtime.sendMessage({ type: 'FETCH_PAGE_TITLE', url })
-        console.log('[BookmarkWidget] Response:', response)
+        logger.info('[BookmarkWidget] Response:', response)
         return response?.success ? response.title : null
       }
-      console.log('[BookmarkWidget] Chrome runtime not available')
+      logger.info('[BookmarkWidget] Chrome runtime not available')
       return null
     } catch (error) {
-      console.error('[BookmarkWidget] Error:', error)
+      logger.error('[BookmarkWidget] Error:', error)
       return null
     } finally {
       setIsFetching(false)

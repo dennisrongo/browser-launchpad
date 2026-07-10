@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import type { CalendarEvent, GoogleCalendar } from '../types'
 
 const CALENDAR_SCOPES = [
@@ -92,7 +93,7 @@ export async function fetchGoogleEvents(
       )
 
       if (!response.ok) {
-        console.error(`Failed to fetch events for calendar ${calendarId}:`, response.status)
+        logger.error(`Failed to fetch events for calendar ${calendarId}:`, response.status)
         continue
       }
 
@@ -111,7 +112,7 @@ export async function fetchGoogleEvents(
         })
       }
     } catch (error) {
-      console.error(`Error fetching events for calendar ${calendarId}:`, error)
+      logger.error(`Error fetching events for calendar ${calendarId}:`, error)
     }
   }
 
@@ -126,16 +127,16 @@ export async function disconnectGoogleCalendar(): Promise<void> {
       try {
         await chrome.identity.removeCachedAuthToken({ token })
       } catch (error) {
-        console.error('Error removing cached Google Calendar token:', error)
+        logger.error('Error removing cached Google Calendar token:', error)
       }
     }
 
     try {
       await chrome.identity.clearAllCachedAuthTokens()
     } catch (error) {
-      console.error('Error clearing cached Google auth tokens:', error)
+      logger.error('Error clearing cached Google auth tokens:', error)
     }
   } catch (error) {
-    console.error('Error disconnecting Google Calendar:', error)
+    logger.error('Error disconnecting Google Calendar:', error)
   }
 }

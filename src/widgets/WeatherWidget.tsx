@@ -1,7 +1,8 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect } from 'react'
 import { CloudSun, AlertTriangle, RefreshCw, Settings } from 'lucide-react'
 import { WeatherWidgetConfig } from '../types'
-import { fetchWeather, getWeatherIconUrl, getWeatherEmoji, formatTemperature, formatCondition } from '../utils/weather'
+import { fetchWeather, getWeatherEmoji, formatTemperature, formatCondition } from '../utils/weather'
 import { decodeApiKey } from '../utils/security'
 
 interface WeatherWidgetProps {
@@ -42,7 +43,7 @@ export function WeatherWidget({ title, config }: WeatherWidgetProps) {
           setGlobalApiKey(decodedKey)
         }
       } catch (error) {
-        console.error('Failed to load global weather API key:', error)
+        logger.error('Failed to load global weather API key:', error)
       }
     }
     loadGlobalApiKey()

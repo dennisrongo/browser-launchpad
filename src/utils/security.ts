@@ -1,3 +1,4 @@
+import { logger } from './logger'
 /**
  * Security utilities for API key storage
  * Implements encoding for API keys to prevent casual inspection
@@ -14,7 +15,7 @@ export function encodeApiKey(apiKey: string): string {
     // Use btoa for Base64 encoding
     return btoa(apiKey)
   } catch (error) {
-    console.error('Failed to encode API key:', error)
+    logger.error('Failed to encode API key:', error)
     return apiKey // Return original if encoding fails
   }
 }
@@ -28,7 +29,7 @@ export function decodeApiKey(encodedKey: string): string {
     // Use atob for Base64 decoding
     return atob(encodedKey)
   } catch (error) {
-    console.error('Failed to decode API key:', error)
+    logger.error('Failed to decode API key:', error)
     return encodedKey // Return original if decoding fails (might not be encoded)
   }
 }
@@ -55,13 +56,13 @@ export function isBaseEncoded(value: string): boolean {
  */
 export function logApiKeyInfo(apiKey: string, context: string = 'API key'): void {
   if (!apiKey) {
-    console.log(`${context}: <empty>`)
+    logger.info(`${context}: <empty>`)
     return
   }
   const len = apiKey.length
   const firstTwo = apiKey.substring(0, 2)
   const lastTwo = apiKey.substring(len - 2)
-  console.log(`${context}: ${firstTwo}...${lastTwo} (length: ${len})`)
+  logger.info(`${context}: ${firstTwo}...${lastTwo} (length: ${len})`)
 }
 
 /**

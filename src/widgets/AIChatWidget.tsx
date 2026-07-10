@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { AlertTriangle, Send, Sparkles } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -163,7 +164,7 @@ export function AIChatWidget({ config, onConfigChange, pageWidgets = [] }: AICha
         setGlobalConfig(null)
       }
     } catch (error) {
-      console.error('Failed to load global AI config:', error)
+      logger.error('Failed to load global AI config:', error)
     }
   }
 

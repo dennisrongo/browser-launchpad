@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect } from 'react'
 import { ClockWidgetConfig } from '../types'
 
@@ -30,7 +31,7 @@ export function ClockWidget({ config }: ClockWidgetProps) {
       }
       return date.toLocaleTimeString('en-US', options)
     } catch (error) {
-      console.error('Error formatting time:', error)
+      logger.error('Error formatting time:', error)
       return date.toLocaleTimeString()
     }
   }
@@ -59,7 +60,7 @@ export function ClockWidget({ config }: ClockWidgetProps) {
       const dayPeriod = parts.find((p) => p.type === 'dayPeriod')
       return { time, ampm: hour12 && dayPeriod ? dayPeriod.value : null }
     } catch (error) {
-      console.error('Error formatting time:', error)
+      logger.error('Error formatting time:', error)
       return { time: date.toLocaleTimeString(), ampm: null }
     }
   }
@@ -73,7 +74,7 @@ export function ClockWidget({ config }: ClockWidgetProps) {
         day: 'numeric',
       }).format(date)
     } catch (error) {
-      console.error('Error formatting date:', error)
+      logger.error('Error formatting date:', error)
       return date.toDateString()
     }
   }
@@ -183,7 +184,7 @@ export function ClockWidget({ config }: ClockWidgetProps) {
         seconds: get('second'),
       }
     } catch (error) {
-      console.error('Error formatting time parts:', error)
+      logger.error('Error formatting time parts:', error)
       return {
         hours: date.getHours(),
         minutes: date.getMinutes(),

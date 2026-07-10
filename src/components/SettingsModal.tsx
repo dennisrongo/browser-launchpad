@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
@@ -296,7 +297,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     } else {
       const saveResult = await settingsStorage.set(DEFAULT_SETTINGS)
       if (saveResult.success) {
-        console.log('✓ Default settings created in Chrome storage')
+        logger.info('✓ Default settings created in Chrome storage')
         setSettings(DEFAULT_SETTINGS)
       }
     }
@@ -315,7 +316,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         logApiKeyInfo(decodedConfig.openai.apiKey, 'OpenAI API key loaded')
       }
     } catch (error) {
-      console.error('Failed to load AI config:', error)
+      logger.error('Failed to load AI config:', error)
     }
   }
 
@@ -329,7 +330,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         logApiKeyInfo(decodedConfig.apiKey, 'Weather API key loaded')
       }
     } catch (error) {
-      console.error('Failed to load weather config:', error)
+      logger.error('Failed to load weather config:', error)
     }
   }
 
@@ -343,7 +344,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setGoogleDriveSyncStatus(syncState)
       setIsGoogleDriveConnected(authorized)
     } catch (error) {
-      console.error('Failed to load Google Drive state:', error)
+      logger.error('Failed to load Google Drive state:', error)
     }
   }
 
@@ -362,7 +363,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     }
     const result = await settingsStorage.set(updatedSettings)
     if (result.success) {
-      console.log('✓ Settings saved to Chrome storage')
+      logger.info('✓ Settings saved to Chrome storage')
       setSettings(updatedSettings)
       onSettingsChange(updatedSettings)
       setValidationError(null)
@@ -372,16 +373,16 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           openai: { apiKey: encodeApiKey(aiConfig.openai.apiKey), model: aiConfig.openai.model },
         }
         await chrome.storage.local.set({ ai_config: encodedConfig })
-        console.log('✓ AI config saved to Chrome storage (encoded)')
-      } catch (error) { console.error('Failed to save AI config:', error) }
+        logger.info('✓ AI config saved to Chrome storage (encoded)')
+      } catch (error) { logger.error('Failed to save AI config:', error) }
       try {
         const encodedWeatherConfig: WeatherConfig = { apiKey: encodeApiKey(weatherConfig.apiKey) }
         await chrome.storage.local.set({ weather_config: encodedWeatherConfig })
-        console.log('✓ Weather config saved to Chrome storage (encoded)')
-      } catch (error) { console.error('Failed to save weather config:', error) }
+        logger.info('✓ Weather config saved to Chrome storage (encoded)')
+      } catch (error) { logger.error('Failed to save weather config:', error) }
       onClose()
     } else {
-      console.error('Failed to save settings:', result.error)
+      logger.error('Failed to save settings:', result.error)
     }
   }
 
@@ -401,7 +402,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     const defaultSettings: Settings = { ...DEFAULT_SETTINGS, id: settings.id, created_at: settings.created_at, updated_at: new Date().toISOString() }
     const result = await settingsStorage.set(defaultSettings)
     if (result.success) {
-      console.log('✓ Settings reset to defaults')
+      logger.info('✓ Settings reset to defaults')
       setSettings(defaultSettings)
       setGridColumns(defaultSettings.grid_columns)
       setGridGap(defaultSettings.grid_gap)
@@ -418,21 +419,21 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           openai: { apiKey: '', model: DEFAULT_AI_CONFIG.openai.model },
         }
         await chrome.storage.local.set({ ai_config: emptyConfig })
-        console.log('✓ AI config reset to defaults')
-      } catch (error) { console.error('Failed to reset AI config:', error) }
+        logger.info('✓ AI config reset to defaults')
+      } catch (error) { logger.error('Failed to reset AI config:', error) }
       try {
         await chrome.storage.local.set({ weather_config: DEFAULT_WEATHER_CONFIG })
-        console.log('✓ Weather config reset to defaults')
-      } catch (error) { console.error('Failed to reset weather config:', error) }
+        logger.info('✓ Weather config reset to defaults')
+      } catch (error) { logger.error('Failed to reset weather config:', error) }
       try {
         await disconnectGoogleDrive()
         await resetGoogleDriveSyncState()
-        console.log('✓ Google Drive reset to defaults')
-      } catch (error) { console.error('Failed to reset Google Drive', error) }
+        logger.info('✓ Google Drive reset to defaults')
+      } catch (error) { logger.error('Failed to reset Google Drive', error) }
       setShowResetConfirm(false)
       setValidationError(null)
     } else {
-      console.error('Failed to reset settings:', result.error)
+      logger.error('Failed to reset settings:', result.error)
     }
   }
 
@@ -509,7 +510,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         }
         delete exportData.google_drive_tokens
         delete exportData.google_drive_sync_state
-        console.log('⚠️ API keys and OAuth tokens excluded from export')
+        logger.info('⚠️ API keys and OAuth tokens excluded from export')
       } else {
         delete exportData.google_drive_tokens
       }
@@ -524,12 +525,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      console.log('✓ Data exported successfully')
+      logger.info('✓ Data exported successfully')
       const fileName = `browser-launchpad-export-${new Date().toISOString().split('T')[0]}.json`
       setImportStatus({ type: 'success', message: `✅ Data exported successfully as ${fileName}` })
       setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     } catch (error) {
-      console.error('Failed to export data:', error)
+      logger.error('Failed to export data:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to export data'
       setImportStatus({ type: 'error', message: `❌ Export failed: ${errorMessage}` })
       setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
@@ -590,7 +591,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
 
   const handleConfirmImport = async () => {
     if (!pendingImportData || !pendingImportData.data) {
-      console.warn('[Import] No pending import data')
+      logger.warn('[Import] No pending import data')
       return
     }
     
@@ -601,25 +602,25 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setShowImportConfirm(false)
     
     try {
-      console.log('[Import] Starting...')
+      logger.info('[Import] Starting...')
       
       const existingData = await chrome.storage.local.get(null)
       const hasExistingData = existingData && Object.keys(existingData).length > 0
-      console.log('[Import] Has existing data:', hasExistingData)
+      logger.info('[Import] Has existing data:', hasExistingData)
       
       if (hasExistingData) {
         backupData = { ...existingData }
         await chrome.storage.local.set({ [BACKUP_KEY]: backupData })
-        console.log('[Import] Backup created')
+        logger.info('[Import] Backup created')
       }
       
       if (importMode === 'replace') {
-        console.log('[Import] Replace mode - clearing and setting data')
+        logger.info('[Import] Replace mode - clearing and setting data')
         await chrome.storage.local.clear()
         await chrome.storage.local.set(importData)
-        console.log('[Import] Data set successfully')
+        logger.info('[Import] Data set successfully')
       } else {
-        console.log('[Import] Merge mode')
+        logger.info('[Import] Merge mode')
         const currentData = await chrome.storage.local.get(null)
         delete currentData[BACKUP_KEY]
         
@@ -657,15 +658,15 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         const mergedData = { ...currentData, ...importData, pages: mergedPages }
         await chrome.storage.local.clear()
         await chrome.storage.local.set(mergedData)
-        console.log('[Import] Merge complete')
+        logger.info('[Import] Merge complete')
       }
       
       if (backupData) {
         try {
           await chrome.storage.local.remove(BACKUP_KEY)
-          console.log('[Import] Backup cleared')
+          logger.info('[Import] Backup cleared')
         } catch (e) {
-          console.warn('[Import] Backup cleanup failed (non-critical):', e)
+          logger.warn('[Import] Backup cleanup failed (non-critical):', e)
         }
       }
       
@@ -676,11 +677,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setPendingImportData(null)
       setImportMode('replace')
       
-      console.log('[Import] Success - reloading in 1.5s')
+      logger.info('[Import] Success - reloading in 1.5s')
       setTimeout(() => window.location.reload(), 1500)
       
     } catch (error) {
-      console.error('[Import] Error:', error)
+      logger.error('[Import] Error:', error)
       
       let errorMessage = 'Failed to import data'
       if (error instanceof Error) {
@@ -695,13 +696,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       
       if (backupData) {
         try {
-          console.log('[Import] Restoring backup...')
+          logger.info('[Import] Restoring backup...')
           await chrome.storage.local.clear()
           await chrome.storage.local.set(backupData)
           await chrome.storage.local.remove(BACKUP_KEY)
           errorMessage += ' Your data has been restored.'
         } catch (e) {
-          console.error('[Import] Restore failed:', e)
+          logger.error('[Import] Restore failed:', e)
           errorMessage += ' Could not restore backup.'
         }
       }
@@ -735,7 +736,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setShowImportConfirm(true)
       setImportStatus({ type: null, message: '' })
     } catch (error) {
-      console.error('Failed to validate import data:', error)
+      logger.error('Failed to validate import data:', error)
       setImportStatus({ type: 'error', message: error instanceof Error ? error.message : 'Failed to validate import file' })
       setTimeout(() => setImportStatus({ type: null, message: '' }), 5000)
     }

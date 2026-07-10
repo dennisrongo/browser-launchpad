@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader2, Plus, Pencil, Trash2, GripVertical, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, Package, AlertTriangle } from 'lucide-react'
 import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, pullAndMergeFromGoogleDrive, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
 import { addTombstone, pruneTombstones } from './services/tombstones'
@@ -157,9 +157,9 @@ function App() {
       // Verify Chrome Storage API connection first (Feature 1)
       const connectionCheck = await verifyStorageConnection()
       if (connectionCheck.connected) {
-        console.log('✓ Chrome Storage API connection verified')
+        logger.info('✓ Chrome Storage API connection verified')
       } else {
-        console.error('Chrome Storage API connection failed:', connectionCheck.error)
+        logger.error('Chrome Storage API connection failed:', connectionCheck.error)
       }
 
       // Load pages and settings in parallel for faster initial load
@@ -180,7 +180,7 @@ function App() {
         try {
           const pulled = await pullAndMergeFromGoogleDrive()
           if (pulled) {
-            ;[pagesResult, settingsResult] = await Promise.all([
+            [pagesResult, settingsResult] = await Promise.all([
               pagesStorage.getAll(),
               settingsStorage.get(),
             ])
@@ -192,7 +192,7 @@ function App() {
 
       // Handle pages
       if (pagesResult.data && pagesResult.data.length > 0) {
-        console.log('Loaded', pagesResult.data.length, 'pages from Chrome storage')
+        logger.info('Loaded', pagesResult.data.length, 'pages from Chrome storage')
         
         const migratedPages = pagesResult.data.map((page: any) => ({
           ...page,
@@ -220,16 +220,16 @@ function App() {
         const saveResult = await pagesStorage.set(newPages)
 
         if (saveResult.success) {
-          console.log('✓ Created default page in Chrome storage')
+          logger.info('✓ Created default page in Chrome storage')
           setPages(newPages)
         } else {
-          console.error('Failed to save default page:', saveResult.error)
+          logger.error('Failed to save default page:', saveResult.error)
         }
       }
 
       // Handle settings
       if (settingsResult.data) {
-        console.log('Loaded settings from Chrome storage')
+        logger.info('Loaded settings from Chrome storage')
         setSettings(settingsResult.data)
         applyTheme(settingsResult.data.theme)
       } else {
@@ -244,14 +244,14 @@ function App() {
         }
         const settingsSaveResult = await settingsStorage.set(defaultSettings)
         if (settingsSaveResult.success) {
-          console.log('✓ Created default settings in Chrome storage')
+          logger.info('✓ Created default settings in Chrome storage')
           setSettings(defaultSettings)
           applyTheme(defaultSettings.theme)
         }
       }
 
       const loadTime = performance.now() - startTime
-      console.log(`✓ App initialized in ${loadTime.toFixed(2)}ms`)
+      logger.info(`✓ App initialized in ${loadTime.toFixed(2)}ms`)
       setStorageVerified(true)
       setIsInitialized(true)
 
@@ -263,7 +263,7 @@ function App() {
         try {
           const didChange = await pullAndMergeFromGoogleDrive()
           if (didChange) {
-            console.log('✓ Pulled newer data from Google Drive')
+            logger.info('✓ Pulled newer data from Google Drive')
             const [refreshedPages, refreshedSettings] = await Promise.all([
               pagesStorage.getAll(),
               settingsStorage.get(),
@@ -322,14 +322,14 @@ function App() {
         let shouldAutoSync = false
 
         if (changes.pages) {
-          console.log('Storage changed, reloading pages')
+          logger.info('Storage changed, reloading pages')
           setPages((changes.pages.newValue ?? []) as any[])
           shouldAutoSync = hasPagesPayloadChanged(changes.pages)
         }
         if (changes.settings) {
           const newSettings = changes.settings.newValue as Settings | undefined
           if (newSettings) {
-            console.log('Settings changed, updating theme')
+            logger.info('Settings changed, updating theme')
             setSettings(newSettings)
             applyTheme(newSettings.theme)
             shouldAutoSync = true
@@ -414,10 +414,10 @@ function App() {
     const result = await pagesStorage.add(newPage)
 
     if (result.success) {
-      console.log('✓ Page added to Chrome storage')
+      logger.info('✓ Page added to Chrome storage')
     } else {
       // Rollback on error
-      console.error('Failed to add page, rolling back:', result.error)
+      logger.error('Failed to add page, rolling back:', result.error)
       setPages(previousPages)
       setActivePage(pages.length > 0 ? pages.length - 1 : 0)
     }
@@ -453,10 +453,10 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to rename page, rolling back:', result.error)
+      logger.error('Failed to rename page, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Page renamed in Chrome storage')
+      logger.info('✓ Page renamed in Chrome storage')
     }
   }
 
@@ -487,7 +487,7 @@ function App() {
 
     // Don't allow deleting the last page
     if (pages.length <= 1) {
-      console.warn('Cannot delete the last page')
+      logger.warn('Cannot delete the last page')
       setShowDeleteConfirm(false)
       setPageToDelete(null)
       return
@@ -520,11 +520,11 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to delete page, rolling back:', result.error)
+      logger.error('Failed to delete page, rolling back:', result.error)
       setPages(previousPages)
       setActivePage(previousActivePage)
     } else {
-      console.log('✓ Page deleted from Chrome storage')
+      logger.info('✓ Page deleted from Chrome storage')
     }
   }
 
@@ -606,11 +606,11 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to reorder pages, rolling back:', result.error)
+      logger.error('Failed to reorder pages, rolling back:', result.error)
       setPages(previousPages)
       setActivePage(previousActivePage)
     } else {
-      console.log('✓ Pages reordered in Chrome storage')
+      logger.info('✓ Pages reordered in Chrome storage')
     }
   }
 
@@ -661,10 +661,10 @@ function App() {
     const result = await pagesStorage.set(updatedPages)
 
     if (!result.success) {
-      console.error('Failed to add widget, rolling back:', result.error)
+      logger.error('Failed to add widget, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget added to Chrome storage')
+      logger.info('✓ Widget added to Chrome storage')
     }
   }
 
@@ -709,10 +709,10 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to delete widget, rolling back:', result.error)
+      logger.error('Failed to delete widget, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget deleted from Chrome storage')
+      logger.info('✓ Widget deleted from Chrome storage')
     }
   }
 
@@ -771,10 +771,10 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to update widget configuration, rolling back:', result.error)
+      logger.error('Failed to update widget configuration, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget configuration updated in Chrome storage')
+      logger.info('✓ Widget configuration updated in Chrome storage')
     }
   }
 
@@ -816,10 +816,10 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to update widget title, rolling back:', result.error)
+      logger.error('Failed to update widget title, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget title updated in Chrome storage')
+      logger.info('✓ Widget title updated in Chrome storage')
     }
   }
 
@@ -862,10 +862,10 @@ function App() {
 
     if (!result.success) {
       // Rollback on error
-      console.error('Failed to update widget config, rolling back:', result.error)
+      logger.error('Failed to update widget config, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget config updated in Chrome storage')
+      logger.info('✓ Widget config updated in Chrome storage')
     }
   }
 
@@ -900,10 +900,10 @@ function App() {
     const result = await pagesStorage.set(updatedPages)
 
     if (!result.success) {
-      console.error('Failed to transfer bookmark, rolling back:', result.error)
+      logger.error('Failed to transfer bookmark, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Bookmark transferred between widgets in Chrome storage')
+      logger.info('✓ Bookmark transferred between widgets in Chrome storage')
     }
   }
 
@@ -961,10 +961,10 @@ function App() {
     const result = await pagesStorage.set(updatedPages)
 
     if (!result.success) {
-      console.error('Failed to move widget, rolling back:', result.error)
+      logger.error('Failed to move widget, rolling back:', result.error)
       setPages(previousPages)
     } else {
-      console.log('✓ Widget moved to another page in Chrome storage')
+      logger.info('✓ Widget moved to another page in Chrome storage')
     }
   }
 
@@ -1137,10 +1137,10 @@ function App() {
 
       const result = await pagesStorage.set(updatedPages)
       if (!result.success) {
-        console.error('Failed to reorder widgets, rolling back:', result.error)
+        logger.error('Failed to reorder widgets, rolling back:', result.error)
         setPages(previousPages)
       } else {
-        console.log('✓ Widgets reordered in Chrome storage')
+        logger.info('✓ Widgets reordered in Chrome storage')
       }
     }
 

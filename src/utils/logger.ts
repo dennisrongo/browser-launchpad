@@ -8,7 +8,7 @@ interface LogEntry {
   level: LogLevel
   message: string
   timestamp: string
-  data?: any
+  data?: unknown[]
 }
 
 class Logger {
@@ -19,12 +19,15 @@ class Logger {
     return new Date().toISOString()
   }
 
-  private addLog(level: LogLevel, message: string, data?: any): void {
+  private addLog(level: LogLevel, args: unknown[]): void {
+    const [first, ...rest] = args
+    const message = typeof first === 'string' ? first : String(first)
+
     const entry: LogEntry = {
       level,
       message,
       timestamp: this.formatTimestamp(),
-      data,
+      data: rest.length > 0 ? rest : undefined,
     }
 
     // Add to logs array
@@ -35,35 +38,32 @@ class Logger {
       this.logs.shift()
     }
 
-    // Also log to console for development
+    // Also log to console for development. Production stays quiet by design;
+    // recent entries remain retrievable via getLogs() for diagnostics.
     if (import.meta.env.DEV) {
       const logMethod = level === 'error' ? console.error :
                         level === 'warn' ? console.warn :
                         level === 'debug' ? console.debug :
                         console.log
 
-      if (data) {
-        logMethod(`[${level.toUpperCase()}] ${message}`, data)
-      } else {
-        logMethod(`[${level.toUpperCase()}] ${message}`)
-      }
+      logMethod(`[${level.toUpperCase()}]`, ...args)
     }
   }
 
-  info(message: string, data?: any): void {
-    this.addLog('info', message, data)
+  info(...args: unknown[]): void {
+    this.addLog('info', args)
   }
 
-  warn(message: string, data?: any): void {
-    this.addLog('warn', message, data)
+  warn(...args: unknown[]): void {
+    this.addLog('warn', args)
   }
 
-  error(message: string, data?: any): void {
-    this.addLog('error', message, data)
+  error(...args: unknown[]): void {
+    this.addLog('error', args)
   }
 
-  debug(message: string, data?: any): void {
-    this.addLog('debug', message, data)
+  debug(...args: unknown[]): void {
+    this.addLog('debug', args)
   }
 
   /**

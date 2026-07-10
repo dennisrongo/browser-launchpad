@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, Pause, RotateCcw, SkipForward, Volume2, VolumeX, Clock, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns'
@@ -100,7 +101,7 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
           }
         }
       } catch (e) {
-        console.error('Failed to load pomodoro state:', e)
+        logger.error('Failed to load pomodoro state:', e)
       }
     }
     loadState()
@@ -119,7 +120,7 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
         }
       }
     } catch (e) {
-      console.error('Failed to load pomodoro history:', e)
+      logger.error('Failed to load pomodoro history:', e)
     }
   }, [widgetId])
 
@@ -169,7 +170,7 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
       await pomodoroHistoryStorage.set(widgetId, makeVersionedBlob(currentHistory))
       setHistory(currentHistory)
     } catch (e) {
-      console.error('Failed to record session:', e)
+      logger.error('Failed to record session:', e)
     }
   }, [widgetId])
 
@@ -178,7 +179,7 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
       try {
         await chrome.storage.local.set({ [storageKey.current]: timerState })
       } catch (e) {
-        console.error('Failed to save pomodoro state:', e)
+        logger.error('Failed to save pomodoro state:', e)
       }
     }
     saveState()

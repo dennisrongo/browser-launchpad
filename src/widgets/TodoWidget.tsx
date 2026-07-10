@@ -566,10 +566,11 @@ export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidg
     }
 
     switch (localConfig.sortBy) {
-      case 'priority':
+      case 'priority': {
         const priorityOrder = { high: 0, medium: 1, low: 2 }
         items.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
         break
+      }
       case 'dueDate':
         items.sort((a, b) => {
           if (!a.dueDate && !b.dueDate) return 0
