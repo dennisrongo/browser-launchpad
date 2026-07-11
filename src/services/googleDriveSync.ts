@@ -8,6 +8,12 @@ import {
   setTombstones,
 } from './tombstones'
 import {
+  clearGrantedScopes,
+  getManifestScopes,
+  isReauthRequiredError,
+  setGrantedScopes,
+} from '../utils/authScopes'
+import {
   mergeVersionedBlob,
   toVersionedBlob,
 } from '../utils/versionedBlob'
@@ -292,7 +298,7 @@ async function googleDriveRequest(
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${token}`)
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...init,
     headers,
   })
@@ -304,10 +310,21 @@ async function googleDriveRequest(
     const retryHeaders = new Headers(init.headers)
     retryHeaders.set('Authorization', `Bearer ${freshToken}`)
 
-    return fetch(url, {
+    response = await fetch(url, {
       ...init,
       headers: retryHeaders,
     })
+  }
+
+  if (!response.ok) {
+    const errorClone = response.clone()
+    const errorBody = await errorClone.text()
+    if (isReauthRequiredError(errorBody)) {
+      logger.warn(
+        '[GoogleDrive] API error indicates revoked consent or changed scopes; forcing re-authentication.'
+      )
+      await forceGoogleDriveReauth()
+    }
   }
 
   return response
@@ -842,7 +859,24 @@ export async function isGoogleDriveAuthorized(): Promise<boolean> {
 export async function initiateGoogleDriveAuth(): Promise<string> {
   const token = await getAuthToken(true)
   await updateGoogleDriveSyncState({ lastError: null })
+  await setGrantedScopes(getManifestScopes())
   return token
+}
+
+export async function forceGoogleDriveReauth(): Promise<void> {
+  logger.info('[GoogleDrive] Forcing re-authentication due to scope or consent change.')
+
+  await disconnectGoogleDrive()
+  await resetGoogleDriveSyncState()
+
+  try {
+    await initiateGoogleDriveAuth()
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Google Drive re-authentication failed.'
+    await updateGoogleDriveSyncState({ lastError: message })
+    logger.error('[GoogleDrive] Re-authentication failed.', error)
+  }
 }
 
 export async function getValidGoogleDriveAccessToken(): Promise<string> {
@@ -1160,4 +1194,5 @@ export async function disconnectGoogleDrive(): Promise<void> {
   }
 
   await updateGoogleDriveSyncState({ lastError: null })
+  await clearGrantedScopes()
 }
