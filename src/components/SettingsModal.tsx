@@ -1029,7 +1029,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
             <div className="glass-card rounded-card p-4">
               <p className="text-text-secondary text-sm mb-3">A customizable, widget-based dashboard for your browser.</p>
               <div className="text-sm text-text-muted">
-                <span>Version: <strong className="text-text-secondary">1.0.0</strong></span>
+                <span>Version: <strong className="text-text-secondary">{chrome.runtime.getManifest()?.version ?? '1.0.0'}</strong></span>
               </div>
             </div>
           </>
