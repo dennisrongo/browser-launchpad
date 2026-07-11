@@ -1,4 +1,35 @@
 import { logger } from './utils/logger'
+import { recordVersionInstall, recordVersionUpdate } from './utils/version'
+import { getGrantedScopes, getManifestScopes, scopesDiffer } from './utils/authScopes'
+import { forceGoogleDriveReauth } from './services/googleDriveSync'
+
+chrome.runtime.onInstalled.addListener((details) => {
+  const currentVersion = chrome.runtime.getManifest().version
+  if (details.reason === 'install') {
+    void recordVersionInstall(currentVersion)
+  } else if (details.reason === 'update') {
+    void recordVersionUpdate(currentVersion)
+    void checkOAuthScopeChanges()
+  }
+})
+
+async function checkOAuthScopeChanges(): Promise<void> {
+  try {
+    const grantedScopes = await getGrantedScopes()
+    const manifestScopes = getManifestScopes()
+
+    if (scopesDiffer(grantedScopes, manifestScopes)) {
+      logger.info('[Background] OAuth scopes changed since last authorization.', {
+        granted: grantedScopes,
+        current: manifestScopes,
+      })
+      await forceGoogleDriveReauth()
+    }
+  } catch (error) {
+    logger.error('[Background] Failed to check OAuth scope changes:', error)
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'FETCH_PAGE_TITLE' && request.url) {
     logger.info('[Background] Fetching title for:', request.url)
