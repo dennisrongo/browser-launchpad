@@ -2,7 +2,7 @@ import { logger } from '../utils/logger'
 import { useState, useCallback } from 'react'
 import { Pencil, Trash2, X, Link, AlertTriangle, GripVertical, RefreshCw } from 'lucide-react'
 import type { BookmarkWidgetConfig, Bookmark } from '../types'
-import { getBookmarkIconDisplay } from '../utils/favicon'
+import { BookmarkIcon } from '../components/BookmarkIcon'
 
 const BOOKMARK_MIME = 'application/x-bookmark'
 
@@ -250,22 +250,6 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
     setDragOverBookmarkId(null)
   }
 
-  const renderIcon = (bookmark: { url: string; icon?: string }) => {
-    const display = getBookmarkIconDisplay(bookmark.url, bookmark.icon)
-    if (display.type === 'image') {
-      return (
-        <img
-          src={display.content}
-          alt=""
-          draggable={false}
-          className="w-4 h-4 flex-shrink-0 object-contain rounded"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
-      )
-    }
-    return <Link className="w-4 h-4 flex-shrink-0 text-text-muted" />
-  }
-
   return (
     <div className="flex flex-col h-full">
       <div
@@ -310,7 +294,7 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
                   <span className="cursor-grab text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
                     <GripVertical className="w-3 h-3" />
                   </span>
-                  {renderIcon(bookmark)}
+                  <BookmarkIcon url={bookmark.url} icon={bookmark.icon} />
                   <a
                     href={bookmark.url}
                     target="_blank"

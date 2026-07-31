@@ -1,34 +1,55 @@
-import { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Pencil, Settings, Check } from 'lucide-react'
 
+import type { Page } from '../types'
+import { SearchBookmarks } from './SearchBookmarks'
+
+const MOBILE_QUERY = '(max-width: 639px)'
+
 interface HeaderProps {
-  storageVerified?: boolean
   isEditMode?: boolean
   onSettingsClick?: () => void
   onEditToggle?: () => void
+  pages?: Page[]
   children?: ReactNode
 }
 
 export function Header({
-  storageVerified = false,
   isEditMode = false,
   onSettingsClick,
   onEditToggle,
+  pages = [],
   children,
 }: HeaderProps) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches
+  )
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const handler = (event: MediaQueryListEvent) => setIsMobile(event.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  // On mobile, an open search takes over the whole top row, so the edit and
+  // settings buttons step out of the way and the search control stretches.
+  const searchTakesOver = isMobile && searchOpen
+
   return (
     <header className="glass-card border-b border-border-subtle/60 px-4 sm:px-6 py-2 sm:py-3 sticky top-0 z-40">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {storageVerified && (
-            <span className="text-xs font-medium flex items-center gap-1.5 text-accent">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-              Storage Connected
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          {onEditToggle && (
+      <div className="flex items-center justify-end">
+        <div className={`flex items-center gap-1 ${searchTakesOver ? 'flex-1' : ''}`}>
+          <SearchBookmarks
+            pages={pages}
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            isMobile={isMobile}
+            takeover={searchTakesOver}
+          />
+          {onEditToggle && !searchTakesOver && (
             <button
               onClick={onEditToggle}
               className={`p-2 rounded-button transition-all duration-150 ease-out ${
@@ -47,7 +68,7 @@ export function Header({
               )}
             </button>
           )}
-          {onSettingsClick && (
+          {onSettingsClick && !searchTakesOver && (
             <button
               onClick={onSettingsClick}
               className="p-2 rounded-button text-text-muted hover:text-secondary hover:bg-surface transition-all duration-150 ease-out"

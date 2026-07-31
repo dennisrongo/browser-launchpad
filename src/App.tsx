@@ -5,6 +5,7 @@ import { pagesStorage, settingsStorage, verifyStorageConnection } from './servic
 import { addTombstone, pruneTombstones } from './services/tombstones'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
+import { isEditableTarget } from './utils/isEditableTarget'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
@@ -107,7 +108,6 @@ function isSeparateStoreSyncKey(key: string): boolean {
 function App() {
   const [pages, setPages] = useState<any[]>([])
   const [activePage, setActivePage] = useState(0)
-  const [storageVerified, setStorageVerified] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [editingPageId, setEditingPageId] = useState<string | null>(null)
   const [editingPageName, setEditingPageName] = useState('')
@@ -252,7 +252,6 @@ function App() {
 
       const loadTime = performance.now() - startTime
       logger.info(`✓ App initialized in ${loadTime.toFixed(2)}ms`)
-      setStorageVerified(true)
       setIsInitialized(true)
 
       // Auto-pull from Drive: silently merge the latest cloud data into local.
@@ -361,11 +360,7 @@ function App() {
   // Keyboard navigation for pages
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement
-      const isEditable = target.tagName === 'INPUT' || 
-                         target.tagName === 'TEXTAREA' || 
-                         target.isContentEditable
-      if (isEditable) return
+      if (isEditableTarget(event.target)) return
 
       if (event.key === 'ArrowRight') {
         event.preventDefault()
@@ -1196,9 +1191,9 @@ function App() {
       <div className="min-h-screen bg-background text-text bg-gradient-mesh">
         {/* Header Skeleton */}
         <header className="border-b border-border-subtle px-4 sm:px-6 py-2 sm:py-3">
-          <div className="flex items-center justify-between">
-            <div className="h-4 w-24 bg-surface animate-pulse rounded"></div>
+          <div className="flex items-center justify-end">
             <div className="flex gap-2">
+              <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
               <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
               <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
             </div>
@@ -1241,10 +1236,10 @@ function App() {
   return (
     <div className="min-h-screen bg-background text-text">
       <Header
-        storageVerified={storageVerified}
         isEditMode={isEditMode}
         onSettingsClick={() => setShowSettings(true)}
         onEditToggle={() => setIsEditMode(!isEditMode)}
+        pages={pages}
       >
         {/* Page Navigation */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-3">

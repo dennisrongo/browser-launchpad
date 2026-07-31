@@ -86,6 +86,7 @@ export default {
         'dropdown-in': 'dropdownIn 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
         'modal-in': 'modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         'fade-in-fast': 'fadeIn 0.1s ease-out',
+        'expand-in': 'expandIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
       },
       keyframes: {
         fadeIn: {
@@ -111,6 +112,10 @@ export default {
         modalIn: {
           '0%': { opacity: '0', transform: 'translateY(16px) scale(0.96)' },
           '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        expandIn: {
+          '0%': { opacity: '0', transform: 'translateX(8px) scaleX(0.85)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scaleX(1)' },
         },
       },
       transitionTimingFunction: {
