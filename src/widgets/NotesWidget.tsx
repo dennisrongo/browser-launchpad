@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, Pencil, Save } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { notesStorage } from '../services/storage'
+import { notesStorage, widgetAuxKeys, getFromStorage, removeFromStorage } from '../services/storage'
 import type { VersionedBlob } from '../types'
 import { makeVersionedBlob, toVersionedBlob } from '../utils/versionedBlob'
 
@@ -31,14 +31,14 @@ export function NotesWidget({ title, widgetId, config, onConfigChange }: NotesWi
       // Keyed on widgetId (stable across renames). Falls back to the legacy
       // title-based key and migrates it forward on first save. The stored
       // value is a VersionedBlob so the sync layer can do per-key LWW merge.
-      const newKey = `notes-${widgetId}`
-      let result = await notesStorage.get<VersionedBlob<NotesWidgetConfig>>(newKey)
+      let result = await notesStorage.get<VersionedBlob<NotesWidgetConfig>>(widgetId)
       if (!result.data) {
-        const legacyKey = `notes-${title}`
-        result = await notesStorage.get<VersionedBlob<NotesWidgetConfig>>(legacyKey)
-        if (result.data) {
-          await notesStorage.set(newKey, result.data)
-          await notesStorage.clear(legacyKey)
+        const legacyKey = widgetAuxKeys.notesLegacy(title)
+        const legacyResult = await getFromStorage<VersionedBlob<NotesWidgetConfig>>(legacyKey)
+        if (legacyResult.data) {
+          await notesStorage.set(widgetId, legacyResult.data)
+          await removeFromStorage(legacyKey)
+          result = legacyResult
         }
       }
       if (result.data) {
@@ -55,7 +55,7 @@ export function NotesWidget({ title, widgetId, config, onConfigChange }: NotesWi
 
   const handleSave = useCallback(async () => {
     const newConfig: NotesWidgetConfig = { content }
-    await notesStorage.set(`notes-${widgetId}`, makeVersionedBlob(newConfig))
+    await notesStorage.set(widgetId, makeVersionedBlob(newConfig))
     onConfigChange?.(newConfig)
     setIsEditing(false)
   }, [content, widgetId, onConfigChange])

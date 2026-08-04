@@ -248,30 +248,43 @@ export const chatHistoryStorage = {
     removeFromStorage(`chat-history-${widgetId}`),
 }
 
+// Full chrome.storage keys for per-widget auxiliary data (notes content,
+// todo lists, pomodoro history). Single source of truth for the key
+// strings - they are stored-data formats shared with Drive sync, so the
+// produced formats must not change.
+export const widgetAuxKeys = {
+  notes: (widgetId: string) => `notes-notes-${widgetId}`,
+  notesLegacy: (widgetTitle: string) => `notes-notes-${widgetTitle}`,
+  todo: (widgetId: string) => `todo-list-todo-widget-${widgetId}`,
+  todoLegacy: (widgetTitle: string) => `todo-list-todo-widget-${widgetTitle}`,
+  pomodoroHistory: (widgetId: string) => `pomodoro-history-${widgetId}`,
+}
+
 export const todoListStorage = {
-  get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> => getFromStorage<T>(`todo-list-${widgetId}`),
+  get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> =>
+    getFromStorage<T>(widgetAuxKeys.todo(widgetId)),
   set: (widgetId: string, config: unknown): Promise<{ success: boolean; error: string | null }> =>
-    setToStorage({ [`todo-list-${widgetId}`]: config }),
+    setToStorage({ [widgetAuxKeys.todo(widgetId)]: config }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
-    removeFromStorage(`todo-list-${widgetId}`),
+    removeFromStorage(widgetAuxKeys.todo(widgetId)),
 }
 
 export const pomodoroHistoryStorage = {
   get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> =>
-    getFromStorage<T>(`pomodoro-history-${widgetId}`),
+    getFromStorage<T>(widgetAuxKeys.pomodoroHistory(widgetId)),
   set: (widgetId: string, history: unknown): Promise<{ success: boolean; error: string | null }> =>
-    setToStorage({ [`pomodoro-history-${widgetId}`]: history }),
+    setToStorage({ [widgetAuxKeys.pomodoroHistory(widgetId)]: history }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
-    removeFromStorage(`pomodoro-history-${widgetId}`),
+    removeFromStorage(widgetAuxKeys.pomodoroHistory(widgetId)),
 }
 
 export const notesStorage = {
   get: <T = unknown>(widgetId: string): Promise<StorageResult<T>> =>
-    getFromStorage<T>(`notes-${widgetId}`),
+    getFromStorage<T>(widgetAuxKeys.notes(widgetId)),
   set: (widgetId: string, config: unknown): Promise<{ success: boolean; error: string | null }> =>
-    setToStorage({ [`notes-${widgetId}`]: config }),
+    setToStorage({ [widgetAuxKeys.notes(widgetId)]: config }),
   clear: (widgetId: string): Promise<{ success: boolean; error: string | null }> =>
-    removeFromStorage(`notes-${widgetId}`),
+    removeFromStorage(widgetAuxKeys.notes(widgetId)),
 }
 
 export default {

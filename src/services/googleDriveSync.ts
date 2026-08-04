@@ -17,6 +17,7 @@ import {
   mergeVersionedBlob,
   toVersionedBlob,
 } from '../utils/versionedBlob'
+import { widgetAuxKeys } from './storage'
 
 const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
 const GOOGLE_DRIVE_CONFIG_KEY = 'google_drive_config'
@@ -452,17 +453,17 @@ function deriveSeparateStoreKeys(pages: Page[]): string[] {
       if (widget.type === 'notes') {
         // Keyed on widget.id (stable across renames). Falls back to the
         // legacy title-based key so older backups still restore correctly.
-        keys.push(`notes-notes-${widget.id}`)
+        keys.push(widgetAuxKeys.notes(widget.id))
         if (widget.title) {
-          keys.push(`notes-notes-${widget.title}`)
+          keys.push(widgetAuxKeys.notesLegacy(widget.title))
         }
       } else if (widget.type === 'todo') {
-        keys.push(`todo-list-todo-widget-${widget.id}`)
+        keys.push(widgetAuxKeys.todo(widget.id))
         if (widget.title) {
-          keys.push(`todo-list-todo-widget-${widget.title}`)
+          keys.push(widgetAuxKeys.todoLegacy(widget.title))
         }
       } else if (widget.type === 'pomodoro') {
-        keys.push(`pomodoro-history-${widget.id}`)
+        keys.push(widgetAuxKeys.pomodoroHistory(widget.id))
       }
     }
   }

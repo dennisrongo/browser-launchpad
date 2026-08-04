@@ -1,7 +1,8 @@
 import { useState, memo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Clock, Bookmark as BookmarkIcon, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter, LayoutDashboard, ListTodo } from 'lucide-react'
+import { Clock, Bookmark as BookmarkIcon, CloudSun, MessageSquare, Package, GripVertical, MoreVertical, Settings, Pencil, Copy, Trash2, Info, CheckSquare, Timer, Calendar, MoveRight, Plus, FileText, Twitter, LayoutDashboard, ListTodo } from 'lucide-react'
 import type { Widget, Bookmark } from '../types'
+import { MAX_TITLE_LENGTH } from '../utils/constants'
 import { ClockWidget } from '../widgets/ClockWidget'
 import { BookmarkWidget } from '../widgets/BookmarkWidget'
 import { WeatherWidget } from '../widgets/WeatherWidget'
@@ -19,6 +20,7 @@ interface WidgetCardProps {
   pageWidgets?: Widget[]
   onEdit?: (widgetId: string) => void
   onEditTitle?: (widgetId: string) => void
+  onClone?: (widgetId: string) => void
   onMove?: (widgetId: string) => void
   onDelete?: (widgetId: string) => void
   onConfigChange?: (widgetId: string, newConfig: any) => void
@@ -40,6 +42,7 @@ function WidgetCardComponent({
   pageWidgets = [],
   onEdit,
   onEditTitle,
+  onClone,
   onMove,
   onDelete,
   onConfigChange,
@@ -258,7 +261,7 @@ function WidgetCardComponent({
               onMouseDown={(e) => e.stopPropagation()}
               className="input-base flex-1 py-1 text-sm font-semibold"
               autoFocus
-              maxLength={50}
+              maxLength={MAX_TITLE_LENGTH}
             />
           ) : (
             <h3
@@ -352,6 +355,16 @@ function WidgetCardComponent({
                     >
                       <Pencil className="w-4 h-4 text-text-muted" />
                       Edit Title
+                    </button>
+                    <button
+                      onClick={() => {
+                        onClone?.(widget.id)
+                        setShowMenu(false)
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 transition-colors duration-100 flex items-center gap-2.5 text-text rounded-lg mx-1"
+                    >
+                      <Copy className="w-4 h-4 text-text-muted" />
+                      Clone
                     </button>
                     <div className="my-1.5 mx-3 border-t border-border-subtle/60" />
                     <button

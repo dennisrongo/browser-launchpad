@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { createPortal } from 'react-dom'
 import { Plus, Check, Calendar, Archive, ArchiveRestore, Trash2, GripVertical, X, Tag, ChevronDown } from 'lucide-react'
-import { todoListStorage } from '../services/storage'
+import { todoListStorage, widgetAuxKeys, getFromStorage, removeFromStorage } from '../services/storage'
 import type { TodoWidgetConfig, TodoItem, TodoTag, VersionedBlob } from '../types'
 import { makeVersionedBlob, toVersionedBlob } from '../utils/versionedBlob'
 
@@ -382,14 +382,14 @@ export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidg
       // Keyed on widgetId (stable across renames). Falls back to the legacy
       // title-based key and migrates it forward on first save. The stored
       // value is a VersionedBlob so the sync layer can do per-key LWW merge.
-      const newKey = `todo-widget-${widgetId}`
-      let result = await todoListStorage.get<VersionedBlob<TodoWidgetConfig>>(newKey)
+      let result = await todoListStorage.get<VersionedBlob<TodoWidgetConfig>>(widgetId)
       if (!result.data) {
-        const legacyKey = `todo-widget-${title}`
-        result = await todoListStorage.get<VersionedBlob<TodoWidgetConfig>>(legacyKey)
-        if (result.data) {
-          await todoListStorage.set(newKey, result.data)
-          await todoListStorage.clear(legacyKey)
+        const legacyKey = widgetAuxKeys.todoLegacy(title)
+        const legacyResult = await getFromStorage<VersionedBlob<TodoWidgetConfig>>(legacyKey)
+        if (legacyResult.data) {
+          await todoListStorage.set(widgetId, legacyResult.data)
+          await removeFromStorage(legacyKey)
+          result = legacyResult
         }
       }
       if (result.data) {
@@ -406,7 +406,7 @@ export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidg
 
   const saveConfig = useCallback(async (newConfig: TodoWidgetConfig) => {
     setLocalConfig(newConfig)
-    await todoListStorage.set(`todo-widget-${widgetId}`, makeVersionedBlob(newConfig))
+    await todoListStorage.set(widgetId, makeVersionedBlob(newConfig))
     onConfigChange?.(newConfig)
   }, [widgetId, onConfigChange])
 

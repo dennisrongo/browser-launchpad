@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger'
+import { MAX_TITLE_LENGTH } from '../utils/constants'
 import { useState, useEffect, useRef } from 'react'
 import { AlertTriangle, Settings, ExternalLink } from 'lucide-react'
 import { Widget, ChatMessage, AIChatWidgetConfig } from '../types'
@@ -609,7 +610,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Widget title"
               className="input-base"
-              maxLength={50}
+              maxLength={MAX_TITLE_LENGTH}
             />
           </div>
 

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Plus, Pencil, Trash2, Package, AlertTriangle } from 'lucide-react'
 import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, pullAndMergeFromGoogleDrive, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
-import { pagesStorage, settingsStorage, verifyStorageConnection } from './services/storage'
+import { pagesStorage, settingsStorage, notesStorage, todoListStorage, pomodoroHistoryStorage, verifyStorageConnection } from './services/storage'
 import { addTombstone, pruneTombstones } from './services/tombstones'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
 import { isEditableTarget } from './utils/isEditableTarget'
+import { MAX_TITLE_LENGTH } from './utils/constants'
 import { WidgetTypeSelector } from './components/WidgetTypeSelector'
 import { WidgetCard } from './components/WidgetCard'
 import { WidgetConfigModal } from './components/WidgetConfigModal'
@@ -91,6 +92,14 @@ const DEFAULT_WIDGET_TITLES: Record<WidgetType, string> = {
   kanban: 'Kanban Board',
   'google-tasks': 'Tasks',
 }
+
+// Widget types whose data also lives in widget-scoped chrome.storage keys
+// (see widgetAuxKeys in services/storage).
+const WIDGET_AUX_STORAGE_BY_TYPE = {
+  notes: notesStorage,
+  todo: todoListStorage,
+  pomodoro: pomodoroHistoryStorage,
+} as const
 
 function hasPagesPayloadChanged(change: chrome.storage.StorageChange): boolean {
   const previousPages = Array.isArray(change.oldValue) ? (change.oldValue as Page[]) : []
@@ -738,6 +747,137 @@ function App() {
     setEditingWidgetTitle(widget.title)
   }
 
+  const handleCloneWidget = async (widgetId: string) => {
+    const cloneId = 'widget-' + Date.now()
+
+    // Menu callbacks can be stale closures: WidgetCard's memo comparator
+    // ignores callback props, so read all state through refs.
+    const findWidgetLocation = (pagesSnapshot: any[]) => {
+      for (let pageIndex = 0; pageIndex < pagesSnapshot.length; pageIndex++) {
+        const widget = pagesSnapshot[pageIndex].widgets?.find((w: Widget) => w.id === widgetId)
+        if (widget) {
+          return { pageIndex, widget: widget as Widget }
+        }
+      }
+      return null
+    }
+
+    const initialLocation = findWidgetLocation(pagesRef.current)
+    if (!initialLocation) return
+
+    // Notes/todo/pomodoro keep their data in storage keys scoped to the
+    // widget id; copy those across so the clone starts with the same data.
+    await cloneWidgetAuxiliaryStorage(initialLocation.widget, cloneId)
+
+    // Re-read state after the await: a Drive pull or another user action may
+    // have advanced it while the storage copies were in flight.
+    const currentPages = pagesRef.current
+    const location = findWidgetLocation(currentPages)
+    if (!location) return
+
+    const { pageIndex, widget: sourceWidget } = location
+
+    // Deep copy so nested data (bookmarks, notes, kanban cards, etc.) is
+    // fully independent from the source widget.
+    const clonedConfig = JSON.parse(JSON.stringify(sourceWidget.config ?? {}))
+
+    // Bookmarks can be dragged between widgets and are matched by id, so the
+    // clone must not share bookmark ids with its source.
+    if (sourceWidget.type === 'bookmark') {
+      const bookmarkConfig = clonedConfig as { bookmarks: Bookmark[] }
+      const baseTimestamp = Date.now()
+      bookmarkConfig.bookmarks = (bookmarkConfig.bookmarks ?? []).map((bookmark, index) => ({
+        ...bookmark,
+        id: `bookmark-${baseTimestamp}-${index}`,
+      }))
+    }
+
+    const cloneSuffix = ' (Copy)'
+    const cloneTitle = sourceWidget.title.length + cloneSuffix.length > MAX_TITLE_LENGTH
+      ? sourceWidget.title.slice(0, MAX_TITLE_LENGTH - cloneSuffix.length) + cloneSuffix
+      : sourceWidget.title + cloneSuffix
+
+    const timestamp = new Date().toISOString()
+    const currentPage = currentPages[pageIndex]
+    const numColumns = numColsRef.current
+    const sourceColumn = getEffectiveColumn(sourceWidget.column, numColumns)
+    const columnWidgets = (currentPage.widgets as Widget[])
+      .filter((w: Widget) => getEffectiveColumn(w.column, numColumns) === sourceColumn)
+      .sort((a: Widget, b: Widget) => (a.order ?? 0) - (b.order ?? 0))
+
+    const clone: Widget = {
+      ...sourceWidget,
+      id: cloneId,
+      title: cloneTitle,
+      config: clonedConfig,
+      column: sourceColumn,
+      order: 0,
+      created_at: timestamp,
+      updated_at: timestamp,
+    }
+
+    const insertIndex = columnWidgets.findIndex((w: Widget) => w.id === sourceWidget.id) + 1
+    const insertedColumnWidgets = [...columnWidgets]
+    insertedColumnWidgets.splice(insertIndex, 0, clone)
+
+    const orderById = new Map<string, number>()
+    insertedColumnWidgets.forEach((w: Widget, index) => orderById.set(w.id, index))
+
+    const updatedWidgets = (currentPage.widgets as Widget[]).map((w: Widget) =>
+      orderById.has(w.id) ? { ...w, order: orderById.get(w.id)! } : w
+    )
+    updatedWidgets.push({ ...clone, order: orderById.get(cloneId)! })
+
+    const updatedPages = [...currentPages]
+    updatedPages[pageIndex] = {
+      ...currentPage,
+      widgets: updatedWidgets,
+      updated_at: timestamp,
+      layout_updated_at: timestamp,
+    }
+
+    const previousPages = currentPages
+    setPages(updatedPages)
+
+    const result = await pagesStorage.set(updatedPages)
+
+    if (!result.success) {
+      logger.error('Failed to clone widget, rolling back:', result.error)
+      setPages(previousPages)
+      void removeClonedAuxiliaryStorage(sourceWidget.type, cloneId)
+    } else {
+      logger.info('✓ Widget cloned in Chrome storage')
+    }
+  }
+
+  const cloneWidgetAuxiliaryStorage = async (sourceWidget: Widget, cloneId: string) => {
+    const widgetType = sourceWidget.type
+    if (widgetType !== 'notes' && widgetType !== 'todo' && widgetType !== 'pomodoro') return
+
+    // The storage helpers resolve errors as values rather than throwing.
+    const storage = WIDGET_AUX_STORAGE_BY_TYPE[widgetType]
+    const result = await storage.get(sourceWidget.id)
+    if (result.error) {
+      logger.error('Failed to read widget storage during clone:', result.error)
+      return
+    }
+    if (!result.data) return
+
+    const copyResult = await storage.set(cloneId, result.data)
+    if (!copyResult.success) {
+      logger.error('Failed to copy widget storage during clone:', copyResult.error)
+    }
+  }
+
+  const removeClonedAuxiliaryStorage = async (widgetType: WidgetType, cloneId: string) => {
+    if (widgetType !== 'notes' && widgetType !== 'todo' && widgetType !== 'pomodoro') return
+
+    const result = await WIDGET_AUX_STORAGE_BY_TYPE[widgetType].clear(cloneId)
+    if (!result.success) {
+      logger.error('Failed to clean up cloned widget storage after rollback:', result.error)
+    }
+  }
+
   const handleSaveWidgetConfig = async (widgetId: string, newConfig: any, newTitle: string) => {
     const currentPage = pages[activePage]
     if (!currentPage) return
@@ -1282,7 +1422,7 @@ function App() {
                   onBlur={() => handleSaveRename(page.id)}
                   className="px-3 py-2 bg-surface text-text border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-secondary"
                   autoFocus
-                  maxLength={50}
+                  maxLength={MAX_TITLE_LENGTH}
                 />
               ) : (
                 <>
@@ -1436,6 +1576,7 @@ function App() {
                                pageWidgets={pages[activePage]?.widgets || []}
                                onEdit={handleEditWidget}
                                onEditTitle={handleEditWidgetTitle}
+                               onClone={handleCloneWidget}
                                onMove={handleMoveWidget}
                                onDelete={handleDeleteWidget}
                                onConfigChange={handleWidgetConfigChange}
