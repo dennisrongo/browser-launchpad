@@ -1,48 +1,43 @@
 import { logger } from '../utils/logger'
 import type { GoogleTask, GoogleTaskList } from '../types'
+import { authorizeGoogle, getGoogleAccessToken, reconnectGoogle, throwForBadResponse } from './googleAuth'
 
-const TASKS_SCOPES = ['https://www.googleapis.com/auth/tasks']
+export const TASKS_SCOPES = ['https://www.googleapis.com/auth/tasks']
 
 const TASKS_API_BASE = 'https://tasks.googleapis.com/tasks/v1'
 
-async function getAuthToken(interactive: boolean): Promise<string> {
-  const result = await chrome.identity.getAuthToken({
-    interactive,
-    scopes: TASKS_SCOPES,
-  })
+export function initiateGoogleTasksAuth(): Promise<string> {
+  return authorizeGoogle(TASKS_SCOPES)
+}
 
-  if (!result.token) {
-    throw new Error(
-      interactive
-        ? 'Google Tasks sign-in did not return an access token.'
-        : 'Google Tasks is not connected.'
-    )
+export function reconnectGoogleTasks(): Promise<string> {
+  return reconnectGoogle(TASKS_SCOPES)
+}
+
+export function getTasksAccessToken(): Promise<string> {
+  return getGoogleAccessToken(TASKS_SCOPES)
+}
+
+function toGoogleTask(item: any): GoogleTask {
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    completed: item.completed ?? null,
+    updated: item.updated,
+    due: item.due ?? null,
+    notes: item.notes,
+    position: item.position,
   }
-
-  return result.token
-}
-
-export async function initiateGoogleTasksAuth(): Promise<string> {
-  return getAuthToken(true)
-}
-
-export async function getTasksAccessToken(): Promise<string> {
-  return getAuthToken(false)
 }
 
 export async function fetchGoogleTaskLists(accessToken: string): Promise<GoogleTaskList[]> {
   const response = await fetch(`${TASKS_API_BASE}/users/@me/lists`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   })
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Tasks')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to fetch task lists: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to fetch task lists')
   }
 
   const data = await response.json()
@@ -68,33 +63,15 @@ export async function fetchGoogleTasks(
 
   const response = await fetch(
     `${TASKS_API_BASE}/lists/${encodeURIComponent(taskListId)}/tasks?${params}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   )
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Tasks')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to fetch tasks: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to fetch tasks')
   }
 
   const data = await response.json()
-
-  return (data.items || []).map((item: any) => ({
-    id: item.id,
-    title: item.title,
-    status: item.status,
-    completed: item.completed ?? null,
-    updated: item.updated,
-    due: item.due ?? null,
-    notes: item.notes,
-    position: item.position,
-  }))
+  return (data.items || []).map(toGoogleTask)
 }
 
 export async function createGoogleTask(
@@ -112,25 +89,10 @@ export async function createGoogleTask(
   })
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Tasks')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to create task: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to create task')
   }
 
-  const item = await response.json()
-
-  return {
-    id: item.id,
-    title: item.title,
-    status: item.status,
-    completed: item.completed ?? null,
-    updated: item.updated,
-    due: item.due ?? null,
-    notes: item.notes,
-    position: item.position,
-  }
+  return toGoogleTask(await response.json())
 }
 
 export async function updateGoogleTask(
@@ -152,25 +114,10 @@ export async function updateGoogleTask(
   )
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Tasks')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to update task: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to update task')
   }
 
-  const item = await response.json()
-
-  return {
-    id: item.id,
-    title: item.title,
-    status: item.status,
-    completed: item.completed ?? null,
-    updated: item.updated,
-    due: item.due ?? null,
-    notes: item.notes,
-    position: item.position,
-  }
+  return toGoogleTask(await response.json())
 }
 
 export async function deleteGoogleTask(
@@ -182,24 +129,18 @@ export async function deleteGoogleTask(
     `${TASKS_API_BASE}/lists/${encodeURIComponent(taskListId)}/tasks/${encodeURIComponent(taskId)}`,
     {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
     }
   )
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Tasks')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to delete task: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to delete task')
   }
 }
 
 export async function disconnectGoogleTasks(): Promise<void> {
   try {
-    const token = await getAuthToken(false).catch(() => null)
+    const token = await getTasksAccessToken().catch(() => null)
 
     if (token) {
       try {

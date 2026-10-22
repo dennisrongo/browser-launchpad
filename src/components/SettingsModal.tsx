@@ -2,7 +2,6 @@ import { logger } from '../utils/logger'
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
-  Cloud,
   Database,
   Download,
   Eye,
@@ -30,6 +29,7 @@ import {
   resetGoogleDriveSyncState,
 } from '../services/googleDriveSync'
 import { settingsStorage } from '../services/storage'
+import { describeAuthError } from '../services/googleAuth'
 import { decodeApiKey, encodeApiKey, logApiKeyInfo } from '../utils/security'
 
 type ThemeOption = {
@@ -178,10 +178,6 @@ interface AIProviderConfig {
   }
 }
 
-interface WeatherConfig {
-  apiKey: string
-}
-
 interface StatusMessage {
   type: 'success' | 'error' | null
   message: string
@@ -202,10 +198,6 @@ const DEFAULT_AI_CONFIG: AIProviderConfig = {
     apiKey: '',
     model: 'gpt-4o-mini',
   },
-}
-
-const DEFAULT_WEATHER_CONFIG: WeatherConfig = {
-  apiKey: '',
 }
 
 const DEFAULT_GOOGLE_DRIVE_SYNC_STATE: GoogleDriveSyncState = {
@@ -231,9 +223,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
   const [gridGap, setGridGap] = useState(24)
   const [theme, setTheme] = useState<ThemeName>('modern-light')
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>(DEFAULT_AI_CONFIG)
-  const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>(DEFAULT_WEATHER_CONFIG)
   const [googleDriveSyncStatus, setGoogleDriveSyncStatus] = useState<GoogleDriveSyncState>(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
-  const [showApiKeys, setShowApiKeys] = useState({ openai: false, weather: false })
+  const [showApiKeys, setShowApiKeys] = useState({ openai: false })
   const [importStatus, setImportStatus] = useState<StatusMessage>({ type: null, message: '' })
   const [googleDriveStatusMessage, setGoogleDriveStatusMessage] = useState<StatusMessage>({ type: null, message: '' })
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -250,7 +241,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     if (isOpen) {
       loadSettings()
       loadAIConfig()
-      loadWeatherConfig()
       loadGoogleDriveState()
     }
   }, [isOpen])
@@ -320,20 +310,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     }
   }
 
-  const loadWeatherConfig = async () => {
-    try {
-      const result = await chrome.storage.local.get(['weather_config'])
-      if (result.weather_config) {
-        const storedConfig = result.weather_config as WeatherConfig
-        const decodedConfig: WeatherConfig = { apiKey: decodeApiKey(storedConfig.apiKey) }
-        setWeatherConfig(decodedConfig)
-        logApiKeyInfo(decodedConfig.apiKey, 'Weather API key loaded')
-      }
-    } catch (error) {
-      logger.error('Failed to load weather config:', error)
-    }
-  }
-
   const loadGoogleDriveState = async () => {
     try {
       const [syncState, authorized] = await Promise.all([
@@ -375,11 +351,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ ai_config: encodedConfig })
         logger.info('✓ AI config saved to Chrome storage (encoded)')
       } catch (error) { logger.error('Failed to save AI config:', error) }
-      try {
-        const encodedWeatherConfig: WeatherConfig = { apiKey: encodeApiKey(weatherConfig.apiKey) }
-        await chrome.storage.local.set({ weather_config: encodedWeatherConfig })
-        logger.info('✓ Weather config saved to Chrome storage (encoded)')
-      } catch (error) { logger.error('Failed to save weather config:', error) }
       onClose()
     } else {
       logger.error('Failed to save settings:', result.error)
@@ -391,7 +362,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
     setGridGap(settings.grid_gap)
     setTheme(settings.theme)
     void loadAIConfig()
-    void loadWeatherConfig()
     void loadGoogleDriveState()
     setGoogleDriveStatusMessage({ type: null, message: '' })
     setValidationError(null)
@@ -408,7 +378,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
       setGridGap(defaultSettings.grid_gap)
       setTheme(defaultSettings.theme)
       setAIConfig(DEFAULT_AI_CONFIG)
-      setWeatherConfig(DEFAULT_WEATHER_CONFIG)
       setGoogleDriveSyncStatus(DEFAULT_GOOGLE_DRIVE_SYNC_STATE)
       setIsGoogleDriveConnected(false)
       setGoogleDriveStatusMessage({ type: null, message: '' })
@@ -421,10 +390,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         await chrome.storage.local.set({ ai_config: emptyConfig })
         logger.info('✓ AI config reset to defaults')
       } catch (error) { logger.error('Failed to reset AI config:', error) }
-      try {
-        await chrome.storage.local.set({ weather_config: DEFAULT_WEATHER_CONFIG })
-        logger.info('✓ Weather config reset to defaults')
-      } catch (error) { logger.error('Failed to reset weather config:', error) }
       try {
         await disconnectGoogleDrive()
         await resetGoogleDriveSyncState()
@@ -904,27 +869,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
               </div>
             </div>
 
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Weather</h3>
-              <p className="text-sm text-text-secondary mb-4">Configure your OpenWeatherMap API key for weather widgets.</p>
-              <div className="p-4 glass-card rounded-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <Cloud className="w-6 h-6 text-primary" />
-                  <h4 className="font-semibold">OpenWeatherMap</h4>
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="weather-key" className="block text-sm font-medium mb-1.5">API Key</label>
-                  <div className="flex gap-2">
-                    <input type={showApiKeys.weather ? 'text' : 'password'} id="weather-key" value={weatherConfig.apiKey} onChange={(e) => setWeatherConfig(prev => ({ ...prev, apiKey: e.target.value }))} placeholder="Enter your OpenWeatherMap API key" className="input-base flex-1" />
-                    <button type="button" onClick={() => setShowApiKeys(prev => ({ ...prev, weather: !prev.weather }))} className="btn-secondary px-3" title={showApiKeys.weather ? 'Hide API key' : 'Show API key'}>
-                      {showApiKeys.weather ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-text-muted mt-1.5">Get a free API key at <a href="https://openweathermap.org/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openweathermap.org</a></p>
-                </div>
-              </div>
-            </div>
-
           </>
         )}
 
@@ -981,6 +925,26 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
                   <p className="text-sm font-medium">{formatSyncDate(googleDriveSyncStatus.lastSyncedAt)}</p>
                 </div>
               )}
+
+              {googleDriveSyncStatus.lastError && !googleDriveStatusMessage.type && (() => {
+                const issue = describeAuthError(googleDriveSyncStatus.lastError, 'Google Drive')
+                return (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-button px-3 py-2.5 text-sm status-inline">
+                    <div className="min-w-0">
+                      <p className="font-semibold">{issue.title}</p>
+                      <p className="text-xs opacity-80 break-words">{issue.needsReconnect ? issue.description : issue.raw}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleConnectGoogleDrive}
+                      disabled={isConnectingGoogleDrive}
+                      className="shrink-0 text-xs font-semibold hover:underline disabled:opacity-60"
+                    >
+                      {isConnectingGoogleDrive ? 'Working...' : 'Reconnect'}
+                    </button>
+                  </div>
+                )
+              })()}
 
               {googleDriveStatusMessage.type && (
                 <div className={`mt-3 p-3 rounded-button text-sm border ${

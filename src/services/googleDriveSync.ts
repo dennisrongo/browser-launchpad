@@ -18,6 +18,7 @@ import {
   toVersionedBlob,
 } from '../utils/versionedBlob'
 import { widgetAuxKeys } from './storage'
+import { withTabRestore } from './googleAuth'
 
 const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata'
 const GOOGLE_DRIVE_CONFIG_KEY = 'google_drive_config'
@@ -745,7 +746,7 @@ function scrubWidgetConfig(widget: Widget): Widget {
   if (widget.type === 'weather') {
     const config = widget.config as unknown as Record<string, unknown>
     if ('apiKey' in config && config.apiKey) {
-      return { ...widget, config: { ...widget.config, apiKey: '' } } as Widget
+      return { ...widget, config: { ...widget.config, apiKey: '' } } as unknown as Widget
     }
   }
 
@@ -858,7 +859,16 @@ export async function isGoogleDriveAuthorized(): Promise<boolean> {
 }
 
 export async function initiateGoogleDriveAuth(): Promise<string> {
-  const token = await getAuthToken(true)
+  const token = await withTabRestore(async () => {
+    try {
+      return await getAuthToken(true)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      if (!/invalid credentials|credentials rejected/i.test(message)) throw error
+      await chrome.identity.clearAllCachedAuthTokens().catch(() => undefined)
+      return getAuthToken(true)
+    }
+  })
   await updateGoogleDriveSyncState({ lastError: null })
   await setGrantedScopes(getManifestScopes())
   return token

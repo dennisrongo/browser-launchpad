@@ -1,34 +1,22 @@
 import { logger } from '../utils/logger'
 import type { CalendarEvent, GoogleCalendar } from '../types'
+import { GoogleAuthError, authorizeGoogle, getGoogleAccessToken, reconnectGoogle, throwForBadResponse } from './googleAuth'
 
-const CALENDAR_SCOPES = [
+export const CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/calendar.events.readonly',
 ]
 
-async function getAuthToken(interactive: boolean): Promise<string> {
-  const result = await chrome.identity.getAuthToken({
-    interactive,
-    scopes: CALENDAR_SCOPES,
-  })
-
-  if (!result.token) {
-    throw new Error(
-      interactive
-        ? 'Google Calendar sign-in did not return an access token.'
-        : 'Google Calendar is not connected.'
-    )
-  }
-
-  return result.token
+export function initiateGoogleCalendarAuth(): Promise<string> {
+  return authorizeGoogle(CALENDAR_SCOPES)
 }
 
-export async function initiateGoogleCalendarAuth(): Promise<string> {
-  return getAuthToken(true)
+export function reconnectGoogleCalendar(): Promise<string> {
+  return reconnectGoogle(CALENDAR_SCOPES)
 }
 
-export async function getCalendarAccessToken(): Promise<string> {
-  return getAuthToken(false)
+export function getCalendarAccessToken(): Promise<string> {
+  return getGoogleAccessToken(CALENDAR_SCOPES)
 }
 
 export async function fetchGoogleCalendars(accessToken: string): Promise<GoogleCalendar[]> {
@@ -42,11 +30,7 @@ export async function fetchGoogleCalendars(accessToken: string): Promise<GoogleC
   )
 
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized - please reconnect Google Calendar')
-    }
-    const error = await response.text()
-    throw new Error(`Failed to fetch calendars: ${error}`)
+    return throwForBadResponse(response, accessToken, 'Failed to fetch calendars')
   }
 
   const data = await response.json()
@@ -92,6 +76,10 @@ export async function fetchGoogleEvents(
         }
       )
 
+      if (response.status === 401) {
+        return throwForBadResponse(response, accessToken, 'Failed to fetch events')
+      }
+
       if (!response.ok) {
         logger.error(`Failed to fetch events for calendar ${calendarId}:`, response.status)
         continue
@@ -112,6 +100,7 @@ export async function fetchGoogleEvents(
         })
       }
     } catch (error) {
+      if (error instanceof GoogleAuthError) throw error
       logger.error(`Error fetching events for calendar ${calendarId}:`, error)
     }
   }
@@ -121,7 +110,7 @@ export async function fetchGoogleEvents(
 
 export async function disconnectGoogleCalendar(): Promise<void> {
   try {
-    const token = await getAuthToken(false).catch(() => null)
+    const token = await getCalendarAccessToken().catch(() => null)
 
     if (token) {
       try {

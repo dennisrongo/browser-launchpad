@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, RefreshCw, Link2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { CalendarWidgetConfig, CalendarEvent, GoogleCalendar } from '../types'
 import {
@@ -22,7 +22,10 @@ import {
   fetchGoogleCalendars,
   fetchGoogleEvents,
   disconnectGoogleCalendar,
+  reconnectGoogleCalendar,
 } from '../services/googleCalendar'
+import { describeAuthError, onGoogleAuthRestored } from '../services/googleAuth'
+import { ServiceErrorState } from '../components/ServiceErrorState'
 import { DayEventsModal } from '../components/DayEventsModal'
 
 interface CalendarWidgetProps {
@@ -38,6 +41,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const fetchIdRef = useRef(0)
   const lastFetchedCenterRef = useRef<Date | null>(null)
@@ -114,6 +118,23 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     loadGoogleData()
   }, [loadGoogleData])
 
+  useEffect(() => {
+    if (!config.googleConnected) return
+    return onGoogleAuthRestored(() => loadGoogleData(true))
+  }, [config.googleConnected, loadGoogleData])
+
+  const handleReconnect = async () => {
+    setReconnecting(true)
+    try {
+      await reconnectGoogleCalendar()
+    } catch (err) {
+      logger.error('Error reconnecting Google Calendar:', err)
+      setError(err instanceof Error ? err.message : 'Failed to reconnect Google Calendar')
+    } finally {
+      setReconnecting(false)
+    }
+  }
+
   const handleConnectGoogle = async () => {
     setConnecting(true)
     setError(null)
@@ -186,8 +207,8 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   if (!config.googleConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
-          <CalendarIcon className="w-6 h-6 text-secondary" />
+        <div className="status-badge status-badge-muted mb-3">
+          <CalendarIcon className="w-5 h-5 text-secondary" strokeWidth={1.75} />
         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
         <p className="text-neutral text-xs mb-3 text-center px-4">
@@ -211,7 +232,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
           )}
         </button>
         {error && (
-          <p className="text-red-500 text-xs mt-2 text-center px-4">{error}</p>
+          <p className="status-inline rounded-input px-3 py-1.5 text-[11px] mt-3 text-center max-w-[260px]">{describeAuthError(error, 'Google Calendar').title}</p>
         )}
       </div>
     )
@@ -220,8 +241,8 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   if (initialLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">
-          <CalendarIcon className="w-6 h-6 text-secondary animate-pulse" />
+        <div className="status-badge status-badge-muted mb-3">
+          <CalendarIcon className="w-5 h-5 text-secondary animate-pulse" strokeWidth={1.75} />
         </div>
         <p className="text-text-muted text-xs">Loading calendar...</p>
       </div>
@@ -229,28 +250,14 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   }
 
   if (error) {
+    const issue = describeAuthError(error, 'Google Calendar')
     return (
-      <div className="flex flex-col items-center justify-center h-full px-2">
-        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
-          <AlertTriangle className="w-6 h-6 text-red-500" />
-        </div>
-        <p className="text-red-500 text-xs text-center mb-3">{error}</p>
-        <div className="flex gap-2">
-          <button
-            onClick={handleRefresh}
-            className="btn-secondary text-xs flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Retry
-          </button>
-          <button
-            onClick={handleDisconnect}
-            className="text-xs text-text-muted hover:text-red-500"
-          >
-            Disconnect
-          </button>
-        </div>
-      </div>
+      <ServiceErrorState
+        issue={issue}
+        busy={reconnecting}
+        onPrimary={issue.needsReconnect ? handleReconnect : handleRefresh}
+        onDisconnect={handleDisconnect}
+      />
     )
   }
 
@@ -272,7 +279,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
           </button>
           <button
             onClick={handleToday}
-            className="text-xs text-primary hover:underline ml-1"
+            className="text-xs font-medium text-primary hover:underline ml-1.5"
           >
             Today
           </button>
@@ -323,10 +330,10 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                       type="button"
                       onClick={() => setSelectedDate(day.date)}
                       className={`
-                        relative flex flex-col items-center justify-start p-0.5 rounded text-[11px] w-full
-                        ${day.isToday ? 'bg-primary/20 ring-1 ring-primary' : ''}
+                        relative flex flex-col items-center justify-start p-0.5 rounded-lg text-[11px] w-full
+                        ${day.isToday ? 'today-cell' : ''}
                         ${!day.isCurrentMonth ? 'text-text-muted opacity-50' : 'text-text'}
-                        hover:bg-surface transition-colors cursor-pointer min-h-[28px]
+                        hover-row transition-colors cursor-pointer min-h-[28px]
                       `}
                       title={dayEvents.length > 0 ? `${dayEvents.length} event(s)` : 'View events'}
                     >
@@ -368,8 +375,8 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                 onClick={() => setSelectedDate(day.date)}
                 className={`
                   flex flex-col items-center p-1 rounded text-center w-full cursor-pointer
-                  ${day.isToday ? 'bg-primary/20 ring-1 ring-primary' : ''}
-                  hover:bg-surface/50 transition-colors
+                  ${day.isToday ? 'today-cell' : ''}
+                  hover-row transition-colors
                 `}
                 title="View events"
               >
