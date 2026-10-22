@@ -283,14 +283,90 @@
 
 @layer components {
   .glass-card {
-    background: var(--glass-bg);
+    background-color: var(--glass-bg);
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 42%);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--glass-border);
-    box-shadow: 
-      0 2px 8px rgba(0,0,0,0.04),
-      0 4px 16px rgba(0,0,0,0.04),
-      inset 0 1px 0 rgba(255,255,255,0.08);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.06),
+      0 12px 32px -14px rgba(0,0,0,0.28),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+    transition: border-color 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
+  }
+
+  .glass-card:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 26%, var(--glass-border));
+  }
+
+  .widget-header {
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, transparent 0%, var(--color-border) 18%, var(--color-border) 82%, transparent 100%) 1;
+  }
+
+  .widget-icon-chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.625rem;
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent);
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+  }
+
+  .status-badge-warn {
+    color: var(--color-accent);
+    background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--color-accent) 22%, transparent), color-mix(in srgb, var(--color-accent) 8%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 0 24px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  }
+
+  .status-badge-danger {
+    color: #f87171;
+    background: radial-gradient(circle at 50% 35%, rgba(248,113,113,0.22), rgba(248,113,113,0.08));
+    box-shadow: inset 0 0 0 1px rgba(248,113,113,0.28), 0 0 24px rgba(248,113,113,0.12);
+  }
+
+  .status-badge-muted {
+    color: var(--color-text-secondary);
+    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text-muted) 24%, transparent);
+  }
+
+  .weather-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--color-text) 4%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 6%, transparent);
+  }
+
+  .hover-row:hover {
+    background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  }
+
+  .today-cell {
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+
+  .status-inline {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
 
   .glass-modal {
@@ -339,20 +415,26 @@
     @apply px-4 py-2 font-medium rounded-button;
     background: linear-gradient(150deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
     color: var(--color-on-primary);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    box-shadow: 
-      0 1px 2px rgba(0,0,0,0.08),
-      0 2px 4px rgba(0,0,0,0.06),
-      inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.12),
+      0 4px 12px -4px color-mix(in srgb, var(--color-primary) 55%, transparent),
+      inset 0 1px 0 rgba(255,255,255,0.22);
     @apply transition-all duration-150 ease-out;
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
   }
 
   .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 
-      0 2px 4px rgba(0,0,0,0.1),
-      0 4px 8px rgba(0,0,0,0.08),
-      inset 0 1px 0 rgba(255,255,255,0.2);
+    filter: brightness(1.06);
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.12),
+      0 8px 18px -6px color-mix(in srgb, var(--color-primary) 60%, transparent),
+      inset 0 1px 0 rgba(255,255,255,0.28);
   }
 
   .btn-primary:active {
