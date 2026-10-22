@@ -53,10 +53,21 @@ export interface Bookmark {
   icon?: string // emoji or data URL
 }
 
+export type WeatherDetailKey =
+  | 'feelsLike'
+  | 'humidity'
+  | 'wind'
+  | 'highLow'
+  | 'precipitation'
+  | 'uvIndex'
+  | 'sunrise'
+  | 'sunset'
+
 export interface WeatherWidgetConfig {
   city: string
   units: 'celsius' | 'fahrenheit'
-  apiKey?: string
+  show?: Partial<Record<WeatherDetailKey, boolean>>
+  forecastDays?: 0 | 3 | 5 | 7
 }
 
 export interface AIChatWidgetConfig {

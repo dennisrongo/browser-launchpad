@@ -80,7 +80,7 @@ Sync your settings and bookmarks to Google Drive for backup, or use the import/e
 ![Data & Sync Settings](public/screenshots/3.png)
 
 ### API Integrations
-Configure your OpenAI API key and Weather API key to enable the AI Chat and Weather widgets.
+Configure your OpenAI API key to enable the AI Chat widget. The Weather widget works out of the box with no key.
 
 ![API Integrations](public/screenshots/4.png)
 
@@ -167,17 +167,16 @@ browser-launchpad/
 
 ### API Keys
 
-To use the AI Chat and Weather widgets, you'll need to configure API keys:
+To use the AI Chat widget, you'll need to configure an API key (the Weather widget needs none):
 
 1. Open the extension
 2. Click the Settings button
 3. Navigate to the API Integrations tab
-4. Configure your API keys:
+4. Configure your API key:
 
 | Service | Website | Notes |
 |---------|---------|-------|
 | **OpenAI** | [platform.openai.com](https://platform.openai.com) | Supports GPT-4 and GPT-3.5 models |
-| **OpenWeatherMap** | [openweathermap.org](https://openweathermap.org) | Free tier available |
 
 ### Google Drive Sync
 

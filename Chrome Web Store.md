@@ -2,7 +2,7 @@ Browser Launchpad transforms your new tab page into a powerful, personalized das
 
 WIDGETS
 - Bookmarks — Save and organize your favorite links with folders, custom icons, and quick access
-- Weather — Real-time weather for any city using OpenWeatherMap
+- Weather — Real-time weather for any city, no API key needed (powered by Open-Meteo)
 - AI Chat — Chat with an AI assistant powered by OpenAI (GPT models), with Markdown-formatted replies
 - Clock — Display time for any timezone worldwide, in four font styles (modern, classic, digital, elegant)
 - Calendar — Month or week view; connect Google Calendar to see upcoming events, and click any date for that day's schedule
@@ -30,7 +30,6 @@ GETTING STARTED
 
 OPTIONAL INTEGRATIONS
 Some widgets require a free API key or account sign-in:
-- Weather: OpenWeatherMap (free tier available)
 - AI Chat: OpenAI
 - Calendar: Google Calendar (OAuth sign-in)
 - Google Tasks: Google account (OAuth sign-in)

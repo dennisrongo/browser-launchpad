@@ -104,7 +104,13 @@ function WidgetCardComponent({
           />
         )
       case 'weather':
-        return <WeatherWidget title={widget.title} config={widget.config as any} />
+        return (
+          <WeatherWidget
+            title={widget.title}
+            config={widget.config as any}
+            onConfigure={() => onEdit?.(widget.id)}
+          />
+        )
       case 'ai-chat':
         return (
           <AIChatWidget
@@ -238,7 +244,7 @@ function WidgetCardComponent({
         ${isDragging ? 'widget-dragging' : ''}
       `}
     >
-      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border-subtle/60">
+      <div className="widget-header relative flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2.5 flex-1">
           {!isEditing && (
             <div
@@ -248,7 +254,7 @@ function WidgetCardComponent({
               <GripVertical className="w-4 h-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
             </div>
           )}
-          <div className="text-secondary pointer-events-none">
+          <div className="widget-icon-chip pointer-events-none">
             {getWidgetIcon()}
           </div>
           {isEditing ? (
@@ -267,7 +273,7 @@ function WidgetCardComponent({
             <h3
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => onEdit?.(widget.id)}
-              className="font-semibold text-text hover:text-primary transition-colors duration-200 text-sm cursor-pointer"
+              className="font-semibold tracking-tight text-text hover:text-primary transition-colors duration-200 text-sm cursor-pointer"
               title="Click to edit title"
             >
               {widget.title}

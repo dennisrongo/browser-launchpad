@@ -32,7 +32,7 @@ We only request the minimum permissions necessary. We do not access your files, 
 
 When you use certain widgets, data is sent to third-party services:
 
-- **Weather Widget**: Your configured city name is sent to OpenWeatherMap
+- **Weather Widget**: Your configured city name is sent to Open-Meteo (open-meteo.com)
 - **AI Chat Widget**: Your messages are sent to OpenAI
 
 These calls only occur when you actively use these features.

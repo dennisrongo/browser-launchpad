@@ -3,6 +3,7 @@ import { MAX_TITLE_LENGTH } from '../utils/constants'
 import { useState, useEffect, useRef } from 'react'
 import { AlertTriangle, Settings, ExternalLink } from 'lucide-react'
 import { Widget, ChatMessage, AIChatWidgetConfig } from '../types'
+import { resolveWeatherDetails, WEATHER_DETAIL_OPTIONS } from '../utils/weather'
 
 interface WidgetConfigModalProps {
   isOpen: boolean
@@ -206,7 +207,7 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
                 className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className="text-xs text-text-secondary mt-1">
-                Enter the city name for weather data
+                Add a state or country to narrow it down, e.g. Austin, TX
               </p>
             </div>
             <div>
@@ -234,9 +235,40 @@ export function WidgetConfigModal({ isOpen, widget, onSave, onCancel, onOpenSett
                 </label>
               </div>
             </div>
-            <p className="text-xs text-text-secondary">
-              Configure your OpenWeatherMap API key in <strong>Settings → Weather</strong>.
-            </p>
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Details to show</label>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {WEATHER_DETAIL_OPTIONS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={resolveWeatherDetails(config)[key]}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          show: { ...resolveWeatherDetails(config), [key]: e.target.checked },
+                        })
+                      }
+                      className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Forecast</label>
+              <select
+                value={config.forecastDays ?? 0}
+                onChange={(e) => setConfig({ ...config, forecastDays: Number(e.target.value) })}
+                className="w-full px-3 py-2 bg-background text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={0}>Off</option>
+                <option value={3}>Next 3 days</option>
+                <option value={5}>Next 5 days</option>
+                <option value={7}>Next 7 days</option>
+              </select>
+            </div>
           </div>
         )
 
