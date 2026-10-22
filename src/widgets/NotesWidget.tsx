@@ -122,7 +122,7 @@ export function NotesWidget({ title, widgetId, config, onConfigChange }: NotesWi
           <Pencil className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-thin">
         {content.trim() ? (
           <div className="prose prose-sm max-w-none prose-p:my-2 prose-p:text-text prose-headings:my-3 prose-headings:text-text prose-h1:text-text prose-h2:text-text prose-h3:text-text prose-strong:text-text prose-em:text-text prose-code:text-primary prose-code:bg-surface prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-pre:bg-surface prose-pre:text-text prose-pre:border prose-pre:border-border prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-text prose-li:marker:text-text-muted prose-ul:marker:text-text-muted prose-ol:marker:text-text-muted prose-blockquote:border-primary prose-blockquote:text-text-secondary prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-hr:border-border prose-table:text-text prose-th:text-text prose-th:bg-surface prose-td:text-text prose-td:border-border">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>

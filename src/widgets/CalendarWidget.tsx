@@ -330,32 +330,33 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
                       type="button"
                       onClick={() => setSelectedDate(day.date)}
                       className={`
-                        relative flex flex-col items-center justify-start p-0.5 rounded-lg text-[11px] w-full
-                        ${day.isToday ? 'today-cell' : ''}
+                        day-cell flex flex-col items-center justify-center rounded-lg text-[11px] w-full
                         ${!day.isCurrentMonth ? 'text-text-muted opacity-50' : 'text-text'}
-                        hover-row transition-colors cursor-pointer min-h-[28px]
+                        cursor-pointer min-h-[32px] focus-visible:outline-none
                       `}
                       title={dayEvents.length > 0 ? `${dayEvents.length} event(s)` : 'View events'}
                     >
-                      <span className={`font-medium ${day.isToday ? 'text-primary' : ''}`}>
+                      <span
+                        className={`day-number flex items-center justify-center w-6 h-6 rounded-full font-medium leading-none ${
+                          day.isToday ? 'today-cell text-primary' : ''
+                        }`}
+                      >
                         {format(day.date, 'd')}
                       </span>
-                      {dayEvents.length > 0 && (
-                        <span className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
-                          {dayEvents.slice(0, maxVisibleEvents).map((event, i) => (
-                            <span
-                              key={i}
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{ backgroundColor: getEventColor(event.colorId) }}
-                            />
-                          ))}
-                          {dayEvents.length > maxVisibleEvents && (
-                            <span className="text-[8px] text-text-muted">
-                              +{dayEvents.length - maxVisibleEvents}
-                            </span>
-                          )}
-                        </span>
-                      )}
+                      <span className="flex items-center justify-center gap-0.5 h-1.5 mt-px leading-none">
+                        {dayEvents.slice(0, maxVisibleEvents).map((event, i) => (
+                          <span
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: getEventColor(event.colorId) }}
+                          />
+                        ))}
+                        {dayEvents.length > maxVisibleEvents && (
+                          <span className="text-[8px] text-text-muted">
+                            +{dayEvents.length - maxVisibleEvents}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   )
                 })}
@@ -390,7 +391,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1">
+          <div className="flex-1 overflow-y-auto scrollbar-thin space-y-1">
             {weekGrid.map((day) => {
               if (day.events.length === 0) return null
 

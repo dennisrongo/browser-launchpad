@@ -1,3 +1,11 @@
+const themed = (name) => ({ opacityValue }) => {
+  const alpha = Number(opacityValue)
+  if (opacityValue === undefined || String(opacityValue).startsWith('var(') || !(alpha < 1)) {
+    return `var(${name})`
+  }
+  return `color-mix(in srgb, var(${name}) ${Math.round(alpha * 100)}%, transparent)`
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -9,36 +17,36 @@ export default {
     extend: {
       colors: {
         primary: {
-          light: 'var(--color-primary-light)',
-          DEFAULT: 'var(--color-primary)',
+          light: themed('--color-primary-light'),
+          DEFAULT: themed('--color-primary'),
         },
         secondary: {
-          light: 'var(--color-secondary-light)',
-          DEFAULT: 'var(--color-secondary)',
+          light: themed('--color-secondary-light'),
+          DEFAULT: themed('--color-secondary'),
         },
         accent: {
-          light: 'var(--color-accent-light)',
-          DEFAULT: 'var(--color-accent)',
+          light: themed('--color-accent-light'),
+          DEFAULT: themed('--color-accent'),
         },
         neutral: {
-          light: 'var(--color-neutral-light)',
-          DEFAULT: 'var(--color-neutral)',
+          light: themed('--color-neutral-light'),
+          DEFAULT: themed('--color-neutral'),
         },
         background: {
-          DEFAULT: 'var(--color-background)',
+          DEFAULT: themed('--color-background'),
         },
         surface: {
-          DEFAULT: 'var(--color-surface)',
-          elevated: 'var(--color-surface-elevated)',
+          DEFAULT: themed('--color-surface'),
+          elevated: themed('--color-surface-elevated'),
         },
         text: {
-          DEFAULT: 'var(--color-text)',
-          secondary: 'var(--color-text-secondary)',
-          muted: 'var(--color-text-muted)',
+          DEFAULT: themed('--color-text'),
+          secondary: themed('--color-text-secondary'),
+          muted: themed('--color-text-muted'),
         },
         border: {
-          DEFAULT: 'var(--color-border)',
-          subtle: 'var(--color-border-subtle)',
+          DEFAULT: themed('--color-border'),
+          subtle: themed('--color-border-subtle'),
         },
       },
       fontFamily: {

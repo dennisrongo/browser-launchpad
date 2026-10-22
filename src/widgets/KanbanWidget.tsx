@@ -142,7 +142,7 @@ export function KanbanWidget({ config, onConfigChange }: KanbanWidgetProps) {
 
   return (
     <div
-      className="p-3 overflow-x-auto"
+      className="p-3 overflow-x-auto scrollbar-thin"
       data-internal-dnd="true"
       onDragOver={e => e.stopPropagation()}
       onDrop={e => e.stopPropagation()}

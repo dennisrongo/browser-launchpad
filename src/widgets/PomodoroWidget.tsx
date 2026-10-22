@@ -473,7 +473,7 @@ export function PomodoroWidget({ config, onConfigChange, widgetId = 'default' }:
                     </div>
                   </div>
                   
-                  <div className="max-h-20 overflow-y-auto space-y-0.5">
+                  <div className="max-h-20 overflow-y-auto scrollbar-thin space-y-0.5">
                     {dayHistory?.sessions.filter(s => s.type === 'focus').map(session => (
                       <div
                         key={session.id}

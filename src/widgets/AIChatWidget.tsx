@@ -333,7 +333,7 @@ export function AIChatWidget({ config, onConfigChange, pageWidgets = [] }: AICha
   return (
     <div className="flex flex-col h-full min-h-[300px]">
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto mb-3 space-y-3 pr-1" style={{ maxHeight: 'calc(100% - 180px)' }}>
+      <div className="flex-1 overflow-y-auto scrollbar-thin mb-3 space-y-3 pr-1" style={{ maxHeight: 'calc(100% - 180px)' }}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-3">

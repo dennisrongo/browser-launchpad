@@ -262,7 +262,7 @@ function SortableItem({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowTagPicker(false)} />
           <div
-            className="fixed w-40 bg-surface-elevated rounded-lg z-50 p-2 animate-dropdown-in origin-top-right max-h-48 overflow-y-auto shadow-lg border border-border-subtle"
+            className="fixed w-40 bg-surface-elevated rounded-lg z-50 p-2 animate-dropdown-in origin-top-right max-h-48 overflow-y-auto scrollbar-thin shadow-lg border border-border-subtle"
             style={{ backdropFilter: 'none', top: dropdownPosition.top, left: dropdownPosition.left - 160 }}
           >
             <div className="text-xs text-text-muted mb-1 px-1">Tags</div>
@@ -671,7 +671,7 @@ export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidg
         </div>
       )}
 
-      <div className="flex items-center gap-1 mb-2 text-xs">
+      <div className="flex flex-wrap items-center gap-1 mb-2 text-xs">
         {(['all', 'active', 'completed', 'archived'] as const).map(filter => (
           <button
             key={filter}
@@ -719,7 +719,7 @@ export function TodoWidget({ title, widgetId, config, onConfigChange }: TodoWidg
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         {filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-24 text-text-muted">
             <p className="text-sm">No tasks</p>

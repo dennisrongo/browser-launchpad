@@ -253,7 +253,7 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
   return (
     <div className="flex flex-col h-full">
       <div
-        className="flex-1 overflow-y-auto space-y-1"
+        className="flex-1 overflow-y-auto scrollbar-thin"
         onDragOver={handleListDragOver}
         onDrop={handleListDrop}
         onDragLeave={(e) => {
@@ -314,6 +314,7 @@ export function BookmarkWidget({ title: _title, widgetId, config, onConfigChange
                     </button>
                   </div>
                 </div>
+                {index < bookmarks.length - 1 && <div className="bookmark-divider" aria-hidden="true" />}
               </div>
             ))}
             {crossWidgetDropIndex === bookmarks.length && (

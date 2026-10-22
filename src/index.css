@@ -269,6 +269,8 @@
 
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
   }
 
   body {
@@ -278,6 +280,15 @@
 
   button, input, select, textarea {
     @apply transition-all duration-150;
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 70%, transparent);
+    outline-offset: -2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
@@ -344,14 +355,45 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text-muted) 24%, transparent);
   }
 
-  .weather-stat {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.6rem;
-    border-radius: 0.625rem;
+  .bookmark-divider {
+    height: 1px;
+    margin: 3px 0.5rem 3px 1.75rem;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-text) 14%, transparent) 0%,
+      color-mix(in srgb, var(--color-text) 6%, transparent) 65%,
+      transparent 100%
+    );
+  }
+
+  .day-number {
+    transition: background-color 120ms ease-out, box-shadow 120ms ease-out;
+  }
+
+  .day-cell:hover .day-number:not(.today-cell),
+  .day-cell:focus-visible .day-number:not(.today-cell) {
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  }
+
+  .day-cell:hover .day-number.today-cell {
+    background: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  }
+
+  .weather-panel {
+    border-radius: 0.875rem;
     background: color-mix(in srgb, var(--color-text) 4%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 6%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent);
+  }
+
+  .weather-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 0.875rem 1rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .weather-forecast-day + .weather-forecast-day {
+    border-left: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
   }
 
   .hover-row:hover {
