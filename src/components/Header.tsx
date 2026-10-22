@@ -12,6 +12,7 @@ interface HeaderProps {
   onSettingsClick?: () => void
   onEditToggle?: () => void
   pages?: Page[]
+  actions?: ReactNode
   children?: ReactNode
 }
 
@@ -20,6 +21,7 @@ export function Header({
   onSettingsClick,
   onEditToggle,
   pages = [],
+  actions,
   children,
 }: HeaderProps) {
   const [isMobile, setIsMobile] = useState(
@@ -40,8 +42,10 @@ export function Header({
 
   return (
     <header className="glass-card border-b border-border-subtle/60 px-4 sm:px-6 py-2 sm:py-3 sticky top-0 z-40">
-      <div className="flex items-center justify-end">
-        <div className={`flex items-center gap-1 ${searchTakesOver ? 'flex-1' : ''}`}>
+      <div className="flex items-center gap-3">
+        {!searchTakesOver && children && <div className="min-w-0 flex-1">{children}</div>}
+        <div className={`flex items-center gap-1 ${searchTakesOver ? 'flex-1' : 'ml-auto shrink-0'}`}>
+          {!searchTakesOver && actions}
           <SearchBookmarks
             pages={pages}
             open={searchOpen}
@@ -80,7 +84,6 @@ export function Header({
           )}
         </div>
       </div>
-      {children}
     </header>
   )
 }

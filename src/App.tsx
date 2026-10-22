@@ -1331,18 +1331,17 @@ function App() {
       <div className="min-h-screen bg-background text-text bg-gradient-mesh">
         {/* Header Skeleton */}
         <header className="border-b border-border-subtle px-4 sm:px-6 py-2 sm:py-3">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center gap-3">
             <div className="flex gap-2">
+              <div className="h-10 w-20 bg-surface animate-pulse rounded-button"></div>
+              <div className="h-10 w-24 bg-surface animate-pulse rounded-button"></div>
+              <div className="h-10 w-16 bg-surface animate-pulse rounded-button"></div>
+            </div>
+            <div className="flex gap-2 ml-auto">
               <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
               <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
               <div className="w-9 h-9 bg-surface animate-pulse rounded-lg"></div>
             </div>
-          </div>
-          {/* Page tabs skeleton */}
-          <div className="flex gap-2 mt-3">
-            <div className="h-10 w-20 bg-surface animate-pulse rounded-button"></div>
-            <div className="h-10 w-24 bg-surface animate-pulse rounded-button"></div>
-            <div className="h-10 w-16 bg-surface animate-pulse rounded-button"></div>
           </div>
         </header>
         
@@ -1380,10 +1379,21 @@ function App() {
         onSettingsClick={() => setShowSettings(true)}
         onEditToggle={() => setIsEditMode(!isEditMode)}
         pages={pages}
+        actions={
+          isEditMode ? (
+            <button
+              onClick={handleAddWidget}
+              className="btn-primary !px-3 !py-1.5 text-sm flex items-center justify-center gap-1.5 mr-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Widget</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          ) : null
+        }
       >
         {/* Page Navigation */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-3">
-          <div className="flex gap-2 flex-wrap overflow-x-auto scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
           {pages.map((page, index) => (
             <div
               key={page.id}
@@ -1393,7 +1403,7 @@ function App() {
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, page.id)}
               onDragEnd={handleDragEnd}
-              className={`group relative flex items-center rounded-button transition-all duration-150 ease-out ${
+              className={`group relative flex shrink-0 items-center rounded-button transition-all duration-150 ease-out ${
                 isEditMode ? 'cursor-move' : ''
               } ${
                 activePage === index
@@ -1490,16 +1500,6 @@ function App() {
                 </div>
               )}
             </div>
-          )}
-          </div>
-          {isEditMode && (
-            <button
-              onClick={handleAddWidget}
-              className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              Add Widget
-            </button>
           )}
         </div>
       </Header>
