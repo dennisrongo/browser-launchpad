@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger'
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -26,8 +26,10 @@ import {
   WEATHER_DETAIL_OPTIONS,
   type WeatherData,
 } from '../utils/weather'
+import { readWidgetCache, widgetCacheKey, writeWidgetCache } from '../services/widgetCache'
 
 interface WeatherWidgetProps {
+  widgetId: string
   title: string
   config: WeatherWidgetConfig
   onConfigure?: () => void
@@ -67,15 +69,18 @@ function getDetailValue(key: WeatherDetailKey, data: WeatherData, unitSymbol: st
   }
 }
 
-export function WeatherWidget({ title, config, onConfigure }: WeatherWidgetProps) {
-  const [data, setData] = useState<WeatherData | null>(null)
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
+export function WeatherWidget({ widgetId, title, config, onConfigure }: WeatherWidgetProps) {
+  const units = config.units || 'celsius'
+  const forecastDays = config.forecastDays ?? 0
+  const cacheKey = widgetCacheKey('weather', widgetId, config.city?.trim().toLowerCase(), units, forecastDays)
+  const cacheKeyRef = useRef(cacheKey)
+  cacheKeyRef.current = cacheKey
+
+  const [data, setData] = useState<WeatherData | null>(() => readWidgetCache<WeatherData>(cacheKey)?.data ?? null)
+  const [updatedAt, setUpdatedAt] = useState<number | null>(() => readWidgetCache<WeatherData>(cacheKey)?.fetchedAt ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-
-  const units = config.units || 'celsius'
-  const forecastDays = config.forecastDays ?? 0
 
   const fetchWeatherData = async (showRefreshSpinner = false) => {
     if (!config.city || config.city.trim() === '') {
@@ -91,23 +96,41 @@ export function WeatherWidget({ title, config, onConfigure }: WeatherWidgetProps
       setError(null)
     }
 
+    const requestKey = cacheKey
     try {
       const result = await fetchWeather(config.city, units, forecastDays)
+      const fetchedAt = writeWidgetCache('weather', widgetId, requestKey, result)
+      if (requestKey !== cacheKeyRef.current) return
       setData(result)
-      setUpdatedAt(new Date())
+      setUpdatedAt(fetchedAt)
       setError(null)
     } catch (err) {
+      if (requestKey !== cacheKeyRef.current) return
       logger.error('Failed to fetch weather:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch weather data')
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (requestKey === cacheKeyRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }
 
   useEffect(() => {
+    const hit = readWidgetCache<WeatherData>(cacheKey)
+    if (hit) {
+      setData(hit.data)
+      setUpdatedAt(hit.fetchedAt)
+      setError(null)
+      setLoading(false)
+      setRefreshing(false)
+      if (!hit.fresh) fetchWeatherData(true)
+      return
+    }
+    setData(null)
+    setUpdatedAt(null)
     fetchWeatherData()
-  }, [config.city, units, forecastDays])
+  }, [cacheKey])
 
   useEffect(() => {
     if (!config.city || config.city.trim() === '') return
@@ -239,7 +262,7 @@ export function WeatherWidget({ title, config, onConfigure }: WeatherWidgetProps
         {error ? (
           <span className="text-red-500" title={error}>Update failed</span>
         ) : updatedAt ? (
-          <span>Updated {updatedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+          <span>Updated {new Date(updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
         ) : null}
         <button
           onClick={() => fetchWeatherData(true)}

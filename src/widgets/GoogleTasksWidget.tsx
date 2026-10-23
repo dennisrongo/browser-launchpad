@@ -15,17 +15,34 @@ import {
 } from '../services/googleTasks'
 import { describeAuthError, onGoogleAuthRestored } from '../services/googleAuth'
 import { ServiceErrorState } from '../components/ServiceErrorState'
+import { UpdatedAgo } from '../components/UpdatedAgo'
+import {
+  invalidateWidgetCacheType,
+  patchWidgetCache,
+  readWidgetCache,
+  widgetCacheKey,
+  writeWidgetCache,
+} from '../services/widgetCache'
 
 interface GoogleTasksWidgetProps {
+  widgetId: string
   title: string
   config: GoogleTasksWidgetConfig
   onConfigChange?: (newConfig: GoogleTasksWidgetConfig) => void
 }
 
-export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasksWidgetProps) {
+export function GoogleTasksWidget({ widgetId, title, config, onConfigChange }: GoogleTasksWidgetProps) {
+  const selectedTaskListId = config.selectedTaskListId
+  const showCompleted = config.showCompleted ?? true
+  const cacheKey = widgetCacheKey('google-tasks', widgetId, selectedTaskListId, showCompleted)
+
+  const [initialHit] = useState(() =>
+    config.googleConnected && selectedTaskListId ? readWidgetCache<GoogleTask[]>(cacheKey) : null
+  )
   const [taskLists, setTaskLists] = useState<GoogleTaskList[]>([])
-  const [tasks, setTasks] = useState<GoogleTask[]>([])
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [tasks, setTasks] = useState<GoogleTask[]>(() => initialHit?.data ?? [])
+  const [fetchedAt, setFetchedAt] = useState<number | null>(initialHit?.fetchedAt ?? null)
+  const [initialLoading, setInitialLoading] = useState(!initialHit)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
@@ -35,9 +52,12 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
   const [editingTitle, setEditingTitle] = useState('')
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
   const fetchIdRef = useRef(0)
+  const skipFreshMountRef = useRef(!!initialHit?.fresh)
 
-  const selectedTaskListId = config.selectedTaskListId
-  const showCompleted = config.showCompleted ?? true
+  const applyTasks = (update: (prev: GoogleTask[]) => GoogleTask[]) => {
+    setTasks(update)
+    patchWidgetCache<GoogleTask[]>(cacheKey, update)
+  }
 
   const loadTasks = useCallback(async (silent = false) => {
     if (!config.googleConnected || !selectedTaskListId) {
@@ -58,7 +78,9 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       const fetchedTasks = await fetchGoogleTasks(accessToken, selectedTaskListId, showCompleted)
 
       if (thisFetchId !== fetchIdRef.current) return
+      const writtenAt = writeWidgetCache('google-tasks', widgetId, cacheKey, fetchedTasks)
       setTasks(fetchedTasks)
+      setFetchedAt(writtenAt)
     } catch (err) {
       if (thisFetchId !== fetchIdRef.current) return
       logger.error('Error loading Google Tasks data:', err)
@@ -68,9 +90,13 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
         setInitialLoading(false)
       }
     }
-  }, [config.googleConnected, selectedTaskListId, showCompleted])
+  }, [widgetId, cacheKey, config.googleConnected, selectedTaskListId, showCompleted])
 
   useEffect(() => {
+    if (skipFreshMountRef.current) {
+      skipFreshMountRef.current = false
+      return
+    }
     loadTasks()
   }, [loadTasks])
 
@@ -128,6 +154,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
     setReconnecting(true)
     try {
       await reconnectGoogleTasks()
+      invalidateWidgetCacheType('google-tasks')
     } catch (err) {
       logger.error('Error reconnecting Google Tasks:', err)
       setError(err instanceof Error ? err.message : 'Failed to reconnect Google Tasks')
@@ -142,6 +169,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
 
     try {
       const accessToken = await initiateGoogleTasksAuth()
+      invalidateWidgetCacheType('google-tasks')
       const fetchedLists = await fetchGoogleTaskLists(accessToken)
 
       const primary = fetchedLists[0]
@@ -163,6 +191,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
   const handleDisconnect = async () => {
     try {
       await disconnectGoogleTasks()
+      invalidateWidgetCacheType('google-tasks')
       onConfigChange?.({
         ...config,
         googleConnected: false,
@@ -170,6 +199,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       })
       setTasks([])
       setTaskLists([])
+      setFetchedAt(null)
       setError(null)
       setNewTaskTitle('')
       setInitialLoading(true)
@@ -194,7 +224,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
     try {
       const accessToken = await getTasksAccessToken()
       const created = await createGoogleTask(accessToken, selectedTaskListId, trimmed)
-      setTasks((prev) => [...prev, created])
+      applyTasks((prev) => [...prev, created])
       setNewTaskTitle('')
     } catch (err) {
       logger.error('Error creating task:', err)
@@ -215,7 +245,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
 
     // Optimistic update
     const previousTasks = tasks
-    setTasks((prev) =>
+    applyTasks((prev) =>
       prev.map((t) =>
         t.id === task.id ? { ...t, status: nextStatus, completed: patch.completed } : t
       )
@@ -227,7 +257,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       await updateGoogleTask(accessToken, selectedTaskListId, task.id, patch)
     } catch (err) {
       logger.error('Error toggling task:', err)
-      setTasks(previousTasks)
+      applyTasks(() => previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to update task')
     } finally {
       setActionInProgress(null)
@@ -237,7 +267,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
   const handleDeleteTask = async (taskId: string) => {
     if (!selectedTaskListId) return
     const previousTasks = tasks
-    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    applyTasks((prev) => prev.filter((t) => t.id !== taskId))
 
     setActionInProgress(taskId)
     try {
@@ -245,7 +275,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       await deleteGoogleTask(accessToken, selectedTaskListId, taskId)
     } catch (err) {
       logger.error('Error deleting task:', err)
-      setTasks(previousTasks)
+      applyTasks(() => previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to delete task')
     } finally {
       setActionInProgress(null)
@@ -270,7 +300,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
     }
 
     const previousTasks = tasks
-    setTasks((prev) =>
+    applyTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, title: trimmed } : t))
     )
     setEditingTaskId(null)
@@ -281,7 +311,7 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
       await updateGoogleTask(accessToken, selectedTaskListId, taskId, { title: trimmed })
     } catch (err) {
       logger.error('Error updating task title:', err)
-      setTasks(previousTasks)
+      applyTasks(() => previousTasks)
       setError(err instanceof Error ? err.message : 'Failed to update task')
     }
   }
@@ -500,6 +530,8 @@ export function GoogleTasksWidget({ title, config, onConfigChange }: GoogleTasks
           </button>
         </div>
       )}
+
+      <UpdatedAgo fetchedAt={fetchedAt} className="block mt-1 text-right text-[10px] text-text-muted" />
     </div>
   )
 }

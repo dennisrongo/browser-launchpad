@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Package, AlertTriangle } from 'lucide-react'
 import { getIsRestoringFromGoogleDrive, getStoredGoogleDriveConfig, pullAndMergeFromGoogleDrive, syncLocalDataToGoogleDrive } from './services/googleDriveSync'
 import { pagesStorage, settingsStorage, notesStorage, todoListStorage, pomodoroHistoryStorage, verifyStorageConnection } from './services/storage'
 import { addTombstone, pruneTombstones } from './services/tombstones'
+import { invalidateWidgetCache } from './services/widgetCache'
 import { applyTheme } from './utils/theme'
 import { logger } from './utils/logger'
 import { isEditableTarget } from './utils/isEditableTarget'
@@ -499,6 +500,7 @@ function App() {
 
     const deletedPageIndex = pages.findIndex((p) => p.id === pageToDelete)
     const updatedPages = pages.filter((page) => page.id !== pageToDelete)
+    pages[deletedPageIndex]?.widgets.forEach((widget: Widget) => invalidateWidgetCache(widget.id))
 
     // Record a tombstone so the deletion propagates across devices instead of
     // being resurrected by the next sync merge.
@@ -688,6 +690,7 @@ function App() {
     if (!currentPage) return
 
     const updatedWidgets = currentPage.widgets.filter((w: Widget) => w.id !== widgetToDelete)
+    invalidateWidgetCache(widgetToDelete)
 
     // Record a tombstone so the widget deletion propagates across devices
     // instead of being resurrected by the next sync merge.

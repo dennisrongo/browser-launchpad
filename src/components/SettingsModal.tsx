@@ -29,6 +29,7 @@ import {
   resetGoogleDriveSyncState,
 } from '../services/googleDriveSync'
 import { settingsStorage } from '../services/storage'
+import { clearWidgetCache } from '../services/widgetCache'
 import { describeAuthError } from '../services/googleAuth'
 import { decodeApiKey, encodeApiKey, logApiKeyInfo } from '../utils/security'
 
@@ -583,6 +584,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         logger.info('[Import] Replace mode - clearing and setting data')
         await chrome.storage.local.clear()
         await chrome.storage.local.set(importData)
+        clearWidgetCache()
         logger.info('[Import] Data set successfully')
       } else {
         logger.info('[Import] Merge mode')
@@ -623,6 +625,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
         const mergedData = { ...currentData, ...importData, pages: mergedPages }
         await chrome.storage.local.clear()
         await chrome.storage.local.set(mergedData)
+        clearWidgetCache()
         logger.info('[Import] Merge complete')
       }
       
@@ -664,6 +667,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChange }: SettingsMod
           logger.info('[Import] Restoring backup...')
           await chrome.storage.local.clear()
           await chrome.storage.local.set(backupData)
+          clearWidgetCache()
           await chrome.storage.local.remove(BACKUP_KEY)
           errorMessage += ' Your data has been restored.'
         } catch (e) {

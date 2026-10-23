@@ -106,6 +106,7 @@ function WidgetCardComponent({
       case 'weather':
         return (
           <WeatherWidget
+            widgetId={widget.id}
             title={widget.title}
             config={widget.config as any}
             onConfigure={() => onEdit?.(widget.id)}
@@ -141,6 +142,7 @@ function WidgetCardComponent({
       case 'calendar':
         return (
           <CalendarWidget
+            widgetId={widget.id}
             title={widget.title}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}
@@ -156,7 +158,7 @@ function WidgetCardComponent({
           />
         )
       case 'x-timeline':
-        return <XTimelineWidget title={widget.title} config={widget.config as any} />
+        return <XTimelineWidget widgetId={widget.id} title={widget.title} config={widget.config as any} />
       case 'kanban':
         return (
           <KanbanWidget
@@ -168,6 +170,7 @@ function WidgetCardComponent({
       case 'google-tasks':
         return (
           <GoogleTasksWidget
+            widgetId={widget.id}
             title={widget.title}
             config={widget.config as any}
             onConfigChange={(newConfig) => onConfigChange?.(widget.id, newConfig)}

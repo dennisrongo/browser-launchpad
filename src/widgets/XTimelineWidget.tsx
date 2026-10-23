@@ -1,8 +1,16 @@
-import { useState, useEffect, useCallback, memo, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react'
 import { Twitter, AlertTriangle, RefreshCw, Pause, Play, RotateCcw, ExternalLink } from 'lucide-react'
 import type { XTimelineWidgetConfig, XTweet } from '../types'
+import { UpdatedAgo } from '../components/UpdatedAgo'
+import {
+  invalidateWidgetCache,
+  readWidgetCache,
+  widgetCacheKey,
+  writeWidgetCache,
+} from '../services/widgetCache'
 
 interface XTimelineWidgetProps {
+  widgetId: string
   title: string
   config: XTimelineWidgetConfig
 }
@@ -134,16 +142,23 @@ function NestedTweet({ tweet }: { tweet: XTweet }) {
   )
 }
 
-export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: XTimelineWidgetProps) {
+export const XTimelineWidget = memo(function XTimelineWidget({ widgetId, title, config }: XTimelineWidgetProps) {
+  const cacheKey = widgetCacheKey('x-timeline', widgetId, config.timelineType || 'following')
+  const [initialHit] = useState(() => readWidgetCache<XTweet[]>(cacheKey))
+  const [fetchedAt, setFetchedAt] = useState<number | null>(initialHit?.fetchedAt ?? null)
   const [state, setState] = useState<TimelineState>({
-    tweets: [],
+    tweets: initialHit?.data ?? [],
     loading: false,
     error: null,
-    authenticated: false,
+    authenticated: !!initialHit,
   })
   const [refreshing, setRefreshing] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const skipFreshMountRef = useRef(!!initialHit?.fresh)
+  const servedKeyRef = useRef(initialHit ? cacheKey : null)
+  const cacheKeyRef = useRef(cacheKey)
+  cacheKeyRef.current = cacheKey
 
   const tweetsPerPage = Math.max(1, Math.min(10, config.tweetsPerPage || 3))
   const scrollIntervalSeconds = Math.max(3, Math.min(30, config.scrollIntervalSeconds || 5))
@@ -177,9 +192,12 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
         setState((prev) => ({ ...prev, loading: true, error: null }))
       }
 
+      const requestKey = cacheKey
       try {
         const cookies = await getXCookies()
         if (!cookies) {
+          invalidateWidgetCache(widgetId, 'x-timeline')
+          setFetchedAt(null)
           setState((prev) => ({
             ...prev,
             loading: false,
@@ -199,6 +217,10 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
         })
 
         if (response?.success) {
+          const writtenAt = writeWidgetCache('x-timeline', widgetId, requestKey, response.tweets || [])
+          if (requestKey !== cacheKeyRef.current) return
+          servedKeyRef.current = requestKey
+          setFetchedAt(writtenAt)
           setState({
             tweets: response.tweets || [],
             loading: false,
@@ -207,6 +229,8 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
           })
           setCurrentPage(0)
         } else {
+          invalidateWidgetCache(widgetId, 'x-timeline')
+          setFetchedAt(null)
           setState({
             tweets: [],
             loading: false,
@@ -218,6 +242,8 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
           })
         }
       } catch {
+        invalidateWidgetCache(widgetId, 'x-timeline')
+        setFetchedAt(null)
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -227,18 +253,28 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
         if (showRefreshSpinner) setRefreshing(false)
       }
     },
-    [config.timelineType, getXCookies]
+    [config.timelineType, getXCookies, widgetId, cacheKey]
   )
 
   useEffect(() => {
     getXCookies().then((cookies) => {
-      setState((prev) => ({ ...prev, authenticated: !!cookies }))
+      if (!cookies) {
+        invalidateWidgetCache(widgetId, 'x-timeline')
+        setFetchedAt(null)
+        setState((prev) => ({ ...prev, authenticated: false, tweets: [] }))
+        return
+      }
+      setState((prev) => ({ ...prev, authenticated: true }))
     })
-  }, [getXCookies])
+  }, [getXCookies, widgetId])
 
   useEffect(() => {
-    fetchTimeline()
-  }, [fetchTimeline])
+    if (skipFreshMountRef.current) {
+      skipFreshMountRef.current = false
+      return
+    }
+    fetchTimeline(servedKeyRef.current === cacheKey)
+  }, [fetchTimeline, cacheKey])
 
   useEffect(() => {
     const minutes = Math.max(1, Math.min(config.refreshMinutes || 5, 60))
@@ -456,6 +492,7 @@ export const XTimelineWidget = memo(function XTimelineWidget({ title, config }: 
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs text-text-muted">
           {config.timelineType === 'foryou' ? 'For You' : 'Following'}
+          <UpdatedAgo fetchedAt={fetchedAt} className="ml-2 text-[10px]" />
         </span>
         <div className="flex items-center gap-1">
           {showPaginationControls && totalPages > 1 && (

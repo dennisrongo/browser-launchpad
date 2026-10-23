@@ -27,24 +27,45 @@ import {
 import { describeAuthError, onGoogleAuthRestored } from '../services/googleAuth'
 import { ServiceErrorState } from '../components/ServiceErrorState'
 import { DayEventsModal } from '../components/DayEventsModal'
+import { UpdatedAgo } from '../components/UpdatedAgo'
+import {
+  invalidateWidgetCacheType,
+  readWidgetCache,
+  widgetCacheKey,
+  writeWidgetCache,
+} from '../services/widgetCache'
 
 interface CalendarWidgetProps {
+  widgetId: string
   title: string
   config: CalendarWidgetConfig
   onConfigChange?: (newConfig: CalendarWidgetConfig) => void
 }
 
-export function CalendarWidget({ title, config, onConfigChange }: CalendarWidgetProps) {
+const calendarCacheKey = (widgetId: string, calendarIds: string[] | undefined, center: Date) =>
+  widgetCacheKey('calendar', widgetId, calendarIds?.join(','), `${center.getFullYear()}-${center.getMonth()}`)
+
+export function CalendarWidget({ widgetId, title, config, onConfigChange }: CalendarWidgetProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [initialHit] = useState(() =>
+    config.googleConnected
+      ? readWidgetCache<CalendarEvent[]>(calendarCacheKey(widgetId, config.selectedCalendars, new Date()))
+      : null
+  )
+  const [events, setEvents] = useState<CalendarEvent[]>(() => initialHit?.data ?? [])
+  const [fetchedAt, setFetchedAt] = useState<number | null>(initialHit?.fetchedAt ?? null)
   const [, setCalendars] = useState<GoogleCalendar[]>([])
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(!initialHit)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const fetchIdRef = useRef(0)
-  const lastFetchedCenterRef = useRef<Date | null>(null)
+  const lastFetchedCenterRef = useRef<Date | null>(
+    initialHit ? new Date(currentDate.getFullYear(), currentDate.getMonth(), 1) : null
+  )
+  const revalidateOnMountRef = useRef(!!initialHit && !initialHit.fresh)
+  const skipFreshMountRef = useRef(!!initialHit?.fresh)
 
   const firstDayOfWeek = config.firstDayOfWeek ?? 0
   const showWeekNumbers = config.showWeekNumbers ?? false
@@ -58,12 +79,19 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       return
     }
 
+    if (skipFreshMountRef.current && !force) {
+      skipFreshMountRef.current = false
+      return
+    }
+
     const thisFetchId = ++fetchIdRef.current
+    const revalidating = revalidateOnMountRef.current
+    revalidateOnMountRef.current = false
 
     // Skip the network call if the current month is already within the
     // previously fetched window. The fetch range spans month-1 to month+2,
     // so navigating to an adjacent month is already in state.
-    if (!initialLoading && !force) {
+    if (!initialLoading && !force && !revalidating) {
       const lastFetched = lastFetchedCenterRef.current
       if (lastFetched) {
         const monthDiff =
@@ -100,7 +128,14 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
         const fetchedEvents = await fetchGoogleEvents(accessToken, calendarIds, startDate, endDate)
 
         if (thisFetchId !== fetchIdRef.current) return
+        const writtenAt = writeWidgetCache(
+          'calendar',
+          widgetId,
+          calendarCacheKey(widgetId, config.selectedCalendars, currentDate),
+          fetchedEvents
+        )
         setEvents(fetchedEvents)
+        setFetchedAt(writtenAt)
         lastFetchedCenterRef.current = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
       }
     } catch (err) {
@@ -112,7 +147,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
         setInitialLoading(false)
       }
     }
-  }, [config.googleConnected, config.selectedCalendars, currentDate, initialLoading])
+  }, [widgetId, config.googleConnected, config.selectedCalendars, currentDate, initialLoading])
 
   useEffect(() => {
     loadGoogleData()
@@ -127,6 +162,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     setReconnecting(true)
     try {
       await reconnectGoogleCalendar()
+      invalidateWidgetCacheType('calendar')
     } catch (err) {
       logger.error('Error reconnecting Google Calendar:', err)
       setError(err instanceof Error ? err.message : 'Failed to reconnect Google Calendar')
@@ -141,6 +177,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
 
     try {
       const accessToken = await initiateGoogleCalendarAuth()
+      invalidateWidgetCacheType('calendar')
       const fetchedCalendars = await fetchGoogleCalendars(accessToken)
 
       onConfigChange?.({
@@ -161,6 +198,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
   const handleDisconnect = async () => {
     try {
       await disconnectGoogleCalendar()
+      invalidateWidgetCacheType('calendar')
       onConfigChange?.({
         ...config,
         googleConnected: false,
@@ -168,6 +206,7 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
       })
       setEvents([])
       setCalendars([])
+      setFetchedAt(null)
       setError(null)
       setInitialLoading(true)
       lastFetchedCenterRef.current = null
@@ -249,8 +288,9 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
     )
   }
 
-  if (error) {
-    const issue = describeAuthError(error, 'Google Calendar')
+  const issue = error ? describeAuthError(error, 'Google Calendar') : null
+
+  if (issue && (fetchedAt === null || issue.needsReconnect)) {
     return (
       <ServiceErrorState
         issue={issue}
@@ -295,6 +335,13 @@ export function CalendarWidget({ title, config, onConfigChange }: CalendarWidget
           </button>
         </div>
       </div>
+
+      {(issue || fetchedAt !== null) && (
+        <div className="flex items-center justify-end gap-2 -mt-1 mb-1 text-[10px] text-text-muted">
+          {issue && <span className="text-red-500" title={issue.raw}>Update failed</span>}
+          <UpdatedAgo fetchedAt={fetchedAt} />
+        </div>
+      )}
 
       {viewMode === 'month' && monthGrid && (
         <div className="flex-1 flex flex-col">
