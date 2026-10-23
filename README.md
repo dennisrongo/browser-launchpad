@@ -141,6 +141,50 @@ Add widgets to your dashboard from a variety of options: Bookmarks, Weather, AI 
 | `npm run build` | Production build (runs TypeScript check then Vite build) |
 | `npm run lint` | Run ESLint on .ts/.tsx files |
 | `npm run type` | TypeScript type check (no emit) |
+| `npm run e2e` | Build the extension, then run the Playwright end-to-end suite (see below) |
+
+### End-to-End Tests
+
+```bash
+npm run e2e
+```
+
+This builds the extension into `dist/` and runs the Playwright suite in `e2e/` against it. To run part of the suite without rebuilding (build first if the source changed):
+
+```bash
+npx playwright test e2e/widgets.spec.ts -g "weather"
+```
+
+**Browser setup.** Each test loads the unpacked extension into Playwright's Chromium, not your installed Chrome (recent Chrome ignores `--load-extension`). Install it once with `npx playwright install chromium`. If Playwright wants a Chromium revision other than the one you have cached, set `PW_CHROMIUM_PATH` to the full Chromium executable (not `chrome-headless-shell`, which does not load extensions):
+
+```powershell
+$env:PW_CHROMIUM_PATH = "$env:LOCALAPPDATA\ms-playwright\chromium-<revision>\chrome-win64\chrome.exe"
+```
+
+On macOS or Linux, point it at the Chromium binary inside the same `ms-playwright` cache folder.
+
+**It never takes your mouse or keyboard.** Chromium runs headless and the tests drive the page over the debugging protocol, so you can keep working while the suite runs.
+
+**Writing tests** (`e2e/fixtures.ts`, `e2e/seed.ts`). Every test gets a throwaway browser profile. Seed `chrome.storage` before the page loads, then open it:
+
+```ts
+await seedStorage({ pages: [makePage([makeWidget('notes', { content: '# Hi' }, { id: 'notes-1', title: 'My Notes' })])] })
+const page = await openNewTab()
+```
+
+`openNewTab({ time })` freezes the page clock for time-dependent widgets.
+
+**Error guard.** Every test fails if the page logs a console error, throws an uncaught exception, or requests a host the test did not stub (all `http(s)` traffic is blocked unless a stub answers it). For an error a test expects, allow it explicitly:
+
+```ts
+test.use({ allowedErrors: [/status of 500/] })
+```
+
+`e2e/guards.spec.ts` proves the guard fires and stays quiet when it should.
+
+**Network stubs** (`e2e/stubs.ts`). `stubWeather`, `stubGoogleAuth` (a fake token plus an empty Drive sync), `stubGoogleTasks` and `stubGoogleCalendar` answer the widgets' calls and return the requests they received, so a test can assert on what was sent.
+
+**Known quirk.** Occasionally Chromium does not close within 10 seconds. The fixture then kills that test's browser and adds a `teardown-hang` annotation to the test result; the cause is not yet known.
 
 ### Project Structure
 
@@ -158,8 +202,10 @@ browser-launchpad/
 ├── public/
 │   ├── manifest.json   # Chrome Extension manifest
 │   └── newtab.html    # New tab page HTML
+├── e2e/                # Playwright end-to-end tests, fixtures and network stubs
 ├── dist/               # Build output
 ├── package.json
+├── playwright.config.ts
 └── vite.config.ts
 ```
 
